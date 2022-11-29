@@ -1,0 +1,32 @@
+#
+# Copyright 2022 NXP 
+#
+# NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+#
+
+# Other Targets
+
+# if make is called with 'clean' as the first argument, prepare some special workaround to limit command line length 
+ifeq (clean,$(firstword $(MAKECMDGOALS)))
+
+# do not run any target exept for ones with + commands, this will skip 'clean', and assume it's done
+MAKEFLAGS+=  -t
+
+# get the files that exist and really need to be removed
+cleanfiles := $(strip $(foreach f, $(EXECUTABLES) $(OBJS) $(C_DEPS) *.axf ,$(wildcard $(f))))
+
+# create a .clean target name for them
+cleantargets:=$(patsubst %,%.clean,$(cleanfiles))
+
+# they do not exist as files 
+.PHONY: $(cleantargets)
+
+# add targets as an order dependency to 'clean' to get them executed with 'clean'
+clean: | $(cleantargets) $(info make: Using 'clean' workaround from 'makefile.targets'. )
+
+# # add a %.clean pattern rule for each file, with a + to force execution 
+$(cleantargets): %.clean : %
+	+@${RM} $<
+
+# end of section only for 'clean' target
+endif

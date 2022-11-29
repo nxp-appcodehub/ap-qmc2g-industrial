@@ -1,0 +1,899 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<title>Quad Motor Control 2nd Generation</title>
+	<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body onload="main()">
+	<object id="pcm" height="0" width="0" classid="clsid:48A185F1-FFDB-11D3-80E3-00C04F176153">
+	</object>
+	<h1>Data hub API test       </h1>
+	<input type="button" style="font-size: larger; color: green;" value="Disable status update!" onclick="motorStatusUpdateEnDis()" id="statusButton">
+	
+	<table cellpadding = "5" cellspacing = "5" border = "1">
+	<tr>
+	  <td class="td_header"> <h2> Control</h2>
+	  </td>
+	  
+	  <td class="td_header" colspan = "2"> <h2> Motor status</h2>
+	  </td>
+	</tr>
+	
+	<tr>
+	<td rowspan = "2">
+	<form method="post">
+	
+		<fieldset>
+			<legend>Motor ID Selection</legend>
+			<input type="radio" name="motor_id" value="0" id = "Motor1"><label for="Motor1">Motor 1</label><br>
+			<input type="radio" name="motor_id" value="1" id = "Motor2"><label for="Motor2">Motor 2</label><br>
+			<input type="radio" name="motor_id" value="2" checked id = "Motor3"><label for="Motor3">Motor 3</label><br>
+			<input type="radio" name="motor_id" value="3" id = "Motor4"><label for="Motor4">Motor 4</label>
+			
+		</fieldset>
+	</form>
+
+	
+	<form method="post">
+
+		<fieldset>
+		    <legend>Control Method Selection</legend>
+			<input type="radio" name="control_method" value="0" id = "Scalar control"><label for="Scalar control">Scalar Control</label><br>
+			<input type="radio" name="control_method" value="1" checked id = "Speed control"><label for="Speed control">Speed Control(FOC)</label><br>
+			<input type="radio" name="control_method" value="2" id = "Position control"><label for="Position control">Position Control(FOC)</label><br>
+			<br>
+		</fieldset>
+	</form>
+	
+	<fieldset>
+		<label class="lable_commands">Speed command:</label> <input type="text" id="motor_speed" value="0" align="left"> RPM <br>
+		<label class="lable_commands">Position command:</label> <input type="text" id="motor_position" value="0" align="left"> Rounds <br>
+		<label class="lable_commands">Frequency in VF:</label> <input type="text" id="motor_vf_freq" value="0" align="left"> Hz <br>
+		<label class="lable_commands">Gain in VF:</label> <input type="text" id="motor_vf_gain" value="0" align="left"> <br>
+	</fieldset>
+
+	<form method="post">
+
+		<fieldset>
+		    <legend>Is position command from a trajectory? </legend>
+			<input type="radio" name="random_position" value="0" checked id = "Position is not from trajectory"><label for="Position is not from trajectory">No</label><br>
+			<input type="radio" name="random_position" value="1" id = "Position is from trajectory"><label for="Position is from trajectory">Yes</label><br>
+		</fieldset>
+	</form>
+	
+	<form method="post">
+
+		<fieldset>
+		    <legend>Motor Switch</legend>
+			<input type="radio" name="motor_switch" value="0" checked id = "App off"><label for="App off">Off</label><br>
+			<input type="radio" name="motor_switch" value="1" id = "App on"><label for="App on">On</label><br>
+		</fieldset>
+	</form>
+
+	<input type="button" value="Click to update!" onclick="updateAll()"> <br>
+	<span id="span_status" type="text"></span> <span id="span_status1" type="text"></span>  <span id="span_status2" type="text"></span> <br> 
+	<span id="span_status4" type="text"></span> <br> <span id="span_status5" type="text"></span> <br>
+	<span id="span_status3" type="text"></span> <br>
+	<font style="font-weight:bold;"><span id="span_status6" type="text"></span></font> <br>
+
+	</td>
+	
+		<td>
+			<h1>Motor1:</h1><hr>
+			Motor Switch - <font style="color:darkgreen; font-weight: bold;"><span id="span_Motor1_app_switch">??</span></font> <br>
+			Fault Status - <font style="color:blue; font-weight: bold;"> <span id="span_Motor1_fault_status">??</span></font><br>
+			State - <font style="font-weight: bold;"><span id="span_Motor1_state">??</span></font> <br>
+			DC bus voltage : <span id="span_Motor1_Udcb">??</span>Volts <br>
+			Speed : <span id="span_Motor1_speed">??</span>RPM<br>
+			Position : <span id="span_Motor1_position">??</span>Rounds <br>
+			Phase A current : <span id="span_Motor1_Ia">??</span>A<br>
+			Phase B current : <span id="span_Motor1_Ib">??</span>A <br>
+			Phase C current : <span id="span_Motor1_Ic">??</span>A <br>
+			Phase Alpha voltage : <span id="span_Motor1_Ualpha">??</span>Volts <br>
+			Phase Beta voltage : <span id="span_Motor1_Ubeta">??</span>Volts <br>
+		</td>
+		
+		<td>
+			<h1>Motor2:</h1><hr>
+			Motor Switch - <font style="color:darkgreen; font-weight: bold;"><span id="span_Motor2_app_switch">??</span></font> <br>
+			Fault Status - <font style="color:blue; font-weight: bold;"><span id="span_Motor2_fault_status">??</span></font><br>
+			State - <font style="font-weight: bold;"><span id="span_Motor2_state">??</span></font> <br>
+			DC bus voltage : <span id="span_Motor2_Udcb">??</span>Volts <br>
+			Speed : <span id="span_Motor2_speed">??</span>RPM<br>
+			Position : <span id="span_Motor2_position">??</span>Rounds <br>
+			Phase A current : <span id="span_Motor2_Ia">??</span>A<br>
+			Phase B current : <span id="span_Motor2_Ib">??</span>A <br>
+			Phase C current : <span id="span_Motor2_Ic">??</span>A <br>
+			Phase Alpha voltage : <span id="span_Motor2_Ualpha">??</span>Volts <br>
+			Phase Beta voltage : <span id="span_Motor2_Ubeta">??</span>Volts <br>
+		</td>	
+	</tr>
+		<td>
+			<h1>Motor3:</h1><hr>
+			Motor Switch - <font style="color:darkgreen; font-weight: bold;"><span id="span_Motor3_app_switch">??</span></font> <br>
+			Fault Status - <font style="color:blue; font-weight: bold;"><span id="span_Motor3_fault_status">??</span></font><br>
+			State - <font style="font-weight: bold;"><span id="span_Motor3_state">??</span></font> <br>
+			DC bus voltage : <span id="span_Motor3_Udcb">??</span>Volts <br>
+			Speed : <span id="span_Motor3_speed">??</span>RPM<br>
+			Position : <span id="span_Motor3_position">??</span>Rounds <br>
+			Phase A current : <span id="span_Motor3_Ia">??</span>A<br>
+			Phase B current : <span id="span_Motor3_Ib">??</span>A <br>
+			Phase C current : <span id="span_Motor3_Ic">??</span>A <br>
+			Phase Alpha voltage : <span id="span_Motor3_Ualpha">??</span>Volts <br>
+			Phase Beta voltage : <span id="span_Motor3_Ubeta">??</span>Volts <br>
+		</td>
+		
+		<td>
+			<h1>Motor4:</h1><hr>
+			Motor Switch - <font style="color:darkgreen; font-weight: bold;"><span id="span_Motor4_app_switch">??</span></font> <br>
+			Fault Status - <font style="color:blue; font-weight: bold;"><span id="span_Motor4_fault_status">??</span></font><br>
+			State - <font style="font-weight: bold;"><span id="span_Motor4_state">??</span></font> <br>
+			DC bus voltage : <span id="span_Motor4_Udcb">??</span>Volts <br>
+			Speed : <span id="span_Motor4_speed">??</span>RPM<br>
+			Position : <span id="span_Motor4_position">??</span>Rounds <br>
+			Phase A current : <span id="span_Motor4_Ia">??</span>A<br>
+			Phase B current : <span id="span_Motor4_Ib">??</span>A <br>
+			Phase C current : <span id="span_Motor4_Ic">??</span>A <br>
+			Phase Alpha voltage : <span id="span_Motor4_Ualpha">??</span>Volts <br>
+			Phase Beta voltage : <span id="span_Motor4_Ubeta">??</span>Volts <br>
+		</td>	
+	<tr>
+		
+	</tr>
+	
+	
+	</table>
+	<br>
+	
+	<label class="note_class1">(1) MC_QueueMotorCommand() is invoked in FreemasterTask() to send motor commands to a command queue. </label> <br>
+	<label class="note_class2">(a) DataHubTask() is unblocked when command queue is not empty. Motor commands are fetched from the command queue, and then written into an internal memory.</label><br>
+	<label class="note_class2">(b) Motor slow loop ISRs read this internal memory by MC_GetMotorCommand_fromISR(). Commands won't be updated (stay as previous one) if DataHubTask() is writing this internal memory.</label><br>
+	<label class="note_class1">(2) MC_DequeueMotorStatus() is invoked in getMotorStatusTask() every 30ms to get 4 motors status from a motor status queue.</label> <br>
+	<label class="note_class2">(a) Motor fast loop and slow loop ISRs put motor status into an internal memory. Internal memory won't be updated if DataHubTask() is reading it.</label> <br>
+	<label class="note_class2">(b) DataHubTask() is unblocked every 100ms to get motor status from this internal memory, and then put them into the motor status queue.</label> <br>
+	<br><hr>
+	<div class = "footer">
+		Copyright 2022 NXP
+	</div>
+	
+	<script language="JavaScript">
+		var timeInterval;
+		var s_Motor_1_speed;
+		var i_Motor_1_speed_cmd;
+		var s_status;
+		var s_status1;
+		var s_status2;
+		var s_status3;
+		var s_status4;
+		var s_status5;
+		var s_status6;
+		
+		var f_motor_id;
+		var f_control_method;
+		var f_random_position;
+		var f_motor_switch;
+		
+		var i_motor_speed_cmd;
+		var i_motor_position_cmd;
+		var i_vf_freq_cmd;
+		var i_vf_gain_cmd;
+		
+		var s_motor1_app_switch;
+		var s_motor1_fault_status;
+		var s_motor1_state;
+		var s_motor1_Udcb;
+		var s_motor1_Ia;
+		var s_motor1_Ib;
+		var s_motor1_Ic;
+		var s_motor1_Ualpha;
+		var s_motor1_Ubeta;
+		var s_motor1_speed;
+		var s_motor1_position;
+		
+		var s_motor2_app_switch;
+		var s_motor2_fault_status;
+		var s_motor2_state;
+		var s_motor2_Udcb;
+		var s_motor2_Ia;
+		var s_motor2_Ib;
+		var s_motor2_Ic;
+		var s_motor2_Ualpha;
+		var s_motor2_Ubeta;
+		var s_motor2_speed;
+		var s_motor2_position;
+		
+		var s_motor3_app_switch;
+		var s_motor3_fault_status;
+		var s_motor3_state;
+		var s_motor3_Udcb;
+		var s_motor3_Ia;
+		var s_motor3_Ib;
+		var s_motor3_Ic;
+		var s_motor3_Ualpha;
+		var s_motor3_Ubeta;
+		var s_motor3_speed;
+		var s_motor3_position;
+		
+		var s_motor4_app_switch;
+		var s_motor4_fault_status;
+		var s_motor4_state;
+		var s_motor4_Udcb;
+		var s_motor4_Ia;
+		var s_motor4_Ib;
+		var s_motor4_Ic;
+		var s_motor4_Ualpha;
+		var s_motor4_Ubeta;
+		var s_motor4_speed;
+		var s_motor4_position;
+		
+		var temp;
+
+		var motorCmdStatus;
+		
+		function main()
+		{
+
+			s_motor1_app_switch = document.getElementById("span_Motor1_app_switch");
+			s_motor1_fault_status = document.getElementById("span_Motor1_fault_status");
+			s_motor1_state = document.getElementById("span_Motor1_state");
+			s_motor1_Udcb = document.getElementById("span_Motor1_Udcb");
+			s_motor1_speed = document.getElementById("span_Motor1_speed");
+			s_motor1_Ualpha = document.getElementById("span_Motor1_Ualpha");
+			s_motor1_Ubeta = document.getElementById("span_Motor1_Ubeta");
+			s_motor1_Ia = document.getElementById("span_Motor1_Ia");
+			s_motor1_Ib = document.getElementById("span_Motor1_Ib");
+			s_motor1_Ic = document.getElementById("span_Motor1_Ic");
+			s_motor1_position = document.getElementById("span_Motor1_position");
+			
+			s_motor2_app_switch = document.getElementById("span_Motor2_app_switch");
+			s_motor2_fault_status = document.getElementById("span_Motor2_fault_status");
+			s_motor2_state = document.getElementById("span_Motor2_state");
+			s_motor2_Udcb = document.getElementById("span_Motor2_Udcb");
+			s_motor2_speed = document.getElementById("span_Motor2_speed");
+			s_motor2_Ualpha = document.getElementById("span_Motor2_Ualpha");
+			s_motor2_Ubeta = document.getElementById("span_Motor2_Ubeta");
+			s_motor2_Ia = document.getElementById("span_Motor2_Ia");
+			s_motor2_Ib = document.getElementById("span_Motor2_Ib");
+			s_motor2_Ic = document.getElementById("span_Motor2_Ic");
+			s_motor2_position = document.getElementById("span_Motor2_position");
+			
+			s_motor3_app_switch = document.getElementById("span_Motor3_app_switch");
+			s_motor3_fault_status = document.getElementById("span_Motor3_fault_status");
+			s_motor3_state = document.getElementById("span_Motor3_state");
+			s_motor3_Udcb = document.getElementById("span_Motor3_Udcb");
+			s_motor3_speed = document.getElementById("span_Motor3_speed");
+			s_motor3_Ualpha = document.getElementById("span_Motor3_Ualpha");
+			s_motor3_Ubeta = document.getElementById("span_Motor3_Ubeta");
+			s_motor3_Ia = document.getElementById("span_Motor3_Ia");
+			s_motor3_Ib = document.getElementById("span_Motor3_Ib");
+			s_motor3_Ic = document.getElementById("span_Motor3_Ic");
+			s_motor3_position = document.getElementById("span_Motor3_position");
+			
+			s_motor4_app_switch = document.getElementById("span_Motor4_app_switch");
+			s_motor4_fault_status = document.getElementById("span_Motor4_fault_status");
+			s_motor4_state = document.getElementById("span_Motor4_state");
+			s_motor4_Udcb = document.getElementById("span_Motor4_Udcb");
+			s_motor4_speed = document.getElementById("span_Motor4_speed");
+			s_motor4_Ualpha = document.getElementById("span_Motor4_Ualpha");
+			s_motor4_Ubeta = document.getElementById("span_Motor4_Ubeta");
+			s_motor4_Ia = document.getElementById("span_Motor4_Ia");
+			s_motor4_Ib = document.getElementById("span_Motor4_Ib");
+			s_motor4_Ic = document.getElementById("span_Motor4_Ic");
+			s_motor4_position = document.getElementById("span_Motor4_position");
+			
+			i_motor_speed_cmd = document.getElementById("motor_speed");
+			i_motor_position_cmd = document.getElementById("motor_position");
+			i_vf_freq_cmd = document.getElementById("motor_vf_freq");
+			i_vf_gain_cmd = document.getElementById("motor_vf_gain");
+			s_status = document.getElementById("span_status");
+			s_status1 = document.getElementById("span_status1");
+			s_status2 = document.getElementById("span_status2");
+			s_status3 = document.getElementById("span_status3");
+			s_status4 = document.getElementById("span_status4");
+			s_status5 = document.getElementById("span_status5");
+			s_status6 = document.getElementById("span_status6");
+			
+			f_motor_id = document.getElementsByName("motor_id");
+			f_control_method = document.getElementsByName("control_method");
+			f_random_position = document.getElementsByName("random_position");
+			f_motor_switch = document.getElementsByName("motor_switch");
+			timeInterval = setInterval(timer, 300);
+		}
+		
+		function timer()
+		{
+
+			// Motor 1
+			if(pcm.ReadVariable("Motor1_app_switch"))
+			{
+				s_motor1_app_switch.innerText = pcm.LastVariable_tValue;
+			}
+			else
+			{
+				s_motor1_app_switch.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor1_state"))
+			{
+				s_motor1_state.innerText = pcm.LastVariable_tValue;
+				if(s_motor1_state.innerText == "kMC_Fault")
+				{
+					s_motor1_state.style.color = "red";
+				}
+				else
+				{
+					s_motor1_state.style.color = "green";
+				}
+			}
+			else
+			{
+				s_motor1_state.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor1_fault_status"))
+			{
+				s_motor1_fault_status.innerText = pcm.LastVariable_tValue;
+			}
+			else
+			{
+				s_motor1_fault_status.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor1_speed"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor1_speed.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor1_speed.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor1_position"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor1_position.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor1_position.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor1_Udcb"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor1_Udcb.innerText = temp.toFixed(2);
+			}
+			else
+			{
+				s_motor1_Udcb.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor1_Ualpha"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor1_Ualpha.innerText = temp.toFixed(2);
+			}
+			else
+			{
+				s_motor1_Ualpha.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor1_Ubeta"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor1_Ubeta.innerText = temp.toFixed(2);
+			}
+			else
+			{
+				s_motor1_Ubeta.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor1_Ia"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor1_Ia.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor1_Ia.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor1_Ib"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor1_Ib.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor1_Ib.innerText = "ERROR: " + pcm.LastRetMsg;
+			} 
+			if(pcm.ReadVariable("Motor1_Ic"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor1_Ic.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor1_Ic.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			
+			// Motor 2
+			if(pcm.ReadVariable("Motor2_app_switch"))
+			{
+				s_motor2_app_switch.innerText = pcm.LastVariable_tValue;
+			}
+			else
+			{
+				s_motor2_app_switch.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor2_state"))
+			{
+				s_motor2_state.innerText = pcm.LastVariable_tValue;
+				if(s_motor2_state.innerText == "kMC_Fault")
+				{
+					s_motor2_state.style.color = "red";
+				}
+				else
+				{
+					s_motor2_state.style.color = "green";
+				}
+			}
+			else
+			{
+				s_motor2_state.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor2_fault_status"))
+			{
+				s_motor2_fault_status.innerText = pcm.LastVariable_tValue;
+			}
+			else
+			{
+				s_motor2_fault_status.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor2_speed"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor2_speed.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor2_speed.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor2_position"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor2_position.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor2_position.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor2_Udcb"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor2_Udcb.innerText = temp.toFixed(2);
+			}
+			else
+			{
+				s_motor2_Udcb.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor2_Ualpha"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor2_Ualpha.innerText = temp.toFixed(2);
+			}
+			else
+			{
+				s_motor2_Ualpha.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor2_Ubeta"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor2_Ubeta.innerText = temp.toFixed(2);
+			}
+			else
+			{
+				s_motor1_Ubeta.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor2_Ia"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor2_Ia.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor2_Ia.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor2_Ib"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor2_Ib.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor2_Ib.innerText = "ERROR: " + pcm.LastRetMsg;
+			} 
+			if(pcm.ReadVariable("Motor2_Ic"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor2_Ic.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor2_Ic.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			
+			// Motor 3
+			if(pcm.ReadVariable("Motor3_app_switch"))
+			{
+				s_motor3_app_switch.innerText = pcm.LastVariable_tValue;
+			}
+			else
+			{
+				s_motor3_app_switch.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor3_state"))
+			{
+				s_motor3_state.innerText = pcm.LastVariable_tValue;
+				if(s_motor3_state.innerText == "kMC_Fault")
+				{
+					s_motor3_state.style.color = "red";
+				}
+				else
+				{
+					s_motor3_state.style.color = "green";
+				}
+			}
+			else
+			{
+				s_motor3_state.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor3_fault_status"))
+			{
+				s_motor3_fault_status.innerText = pcm.LastVariable_tValue;
+			}
+			else
+			{
+				s_motor3_fault_status.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor3_speed"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor3_speed.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor3_speed.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor3_position"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor3_position.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor3_position.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor3_Udcb"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor3_Udcb.innerText = temp.toFixed(2);
+			}
+			else
+			{
+				s_motor3_Udcb.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor3_Ualpha"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor3_Ualpha.innerText = temp.toFixed(2);
+			}
+			else
+			{
+				s_motor3_Ualpha.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor3_Ubeta"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor3_Ubeta.innerText = temp.toFixed(2);
+			}
+			else
+			{
+				s_motor3_Ubeta.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor3_Ia"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor3_Ia.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor3_Ia.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor3_Ib"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor3_Ib.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor3_Ib.innerText = "ERROR: " + pcm.LastRetMsg;
+			} 
+			if(pcm.ReadVariable("Motor3_Ic"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor3_Ic.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor3_Ic.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			
+			// Motor 4
+			if(pcm.ReadVariable("Motor4_app_switch"))
+			{
+				s_motor4_app_switch.innerText = pcm.LastVariable_tValue;
+			}
+			else
+			{
+				s_motor4_app_switch.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor4_state"))
+			{
+				s_motor4_state.innerText = pcm.LastVariable_tValue;
+				if(s_motor4_state.innerText == "kMC_Fault")
+				{
+					s_motor4_state.style.color = "red";
+				}
+				else
+				{
+					s_motor4_state.style.color = "green";
+				}
+			}
+			else
+			{
+				s_motor4_state.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor4_fault_status"))
+			{
+				s_motor4_fault_status.innerText = pcm.LastVariable_tValue;
+			}
+			else
+			{
+				s_motor4_fault_status.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor4_speed"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor4_speed.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor4_speed.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor4_position"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor4_position.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor4_position.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor4_Udcb"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor4_Udcb.innerText = temp.toFixed(2);
+			}
+			else
+			{
+				s_motor4_Udcb.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor4_Ualpha"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor4_Ualpha.innerText = temp.toFixed(2);
+			}
+			else
+			{
+				s_motor4_Ualpha.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor4_Ubeta"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor4_Ubeta.innerText = temp.toFixed(2);
+			}
+			else
+			{
+				s_motor4_Ubeta.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor4_Ia"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor4_Ia.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor4_Ia.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			if(pcm.ReadVariable("Motor4_Ib"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor4_Ib.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor4_Ib.innerText = "ERROR: " + pcm.LastRetMsg;
+			} 
+			if(pcm.ReadVariable("Motor4_Ic"))
+			{
+				temp = pcm.LastVariable_vValue;
+				s_motor4_Ic.innerText = temp.toFixed(3);
+			}
+			else
+			{
+				s_motor4_Ic.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+
+			// Motor command update status
+			if(pcm.ReadVariable("eSetCmdStatus"))
+			{
+				motorCmdStatus = pcm.LastVariable_vValue;
+				if(motorCmdStatus == 0)
+				{
+					s_status6.innerText = "Successfully updated!";
+					s_status6.style.color = "green";
+				}
+				else if(motorCmdStatus == 4)
+				{
+					s_status6.innerText = "Err:Some commands are out of range!";
+					s_status6.style.color = "red";
+				
+				}
+				else if(motorCmdStatus == 1)
+				{
+					s_status6.innerText = "Err:Fail to write the command queue!";
+					s_status6.style.color = "red";
+				}
+			}
+			
+			
+		}
+		
+		function updateAll()
+		{
+			for(var i = 0; i < f_motor_id.length; i++)
+			{
+				if(f_motor_id[i].checked == true)
+				{
+					if(pcm.WriteVariable("Motor Id(ext)", f_motor_id[i].value))
+					{
+						s_status.innerText = f_motor_id[i].id + "/";
+					}
+					else
+					{
+						s_status.innerText = "ERROR: " + pcm.LastRetMsg;
+					}
+				}
+			}
+			
+			for(var i = 0; i < f_control_method.length; i++)
+			{
+				if(f_control_method[i].checked == true)
+				{
+					if(pcm.WriteVariable("Control Method(ext)", f_control_method[i].value))
+					{
+						s_status1.innerText = f_control_method[i].id;
+					}
+					else
+					{
+						s_status1.innerText = "ERROR: " + pcm.LastRetMsg;
+					}
+					
+					if(f_control_method[0].checked == true) // scalar control
+					{
+						if(pcm.WriteVariable("VF Frequency(Hz,ext)", i_vf_freq_cmd.value))
+						{
+							s_status4.innerText ="Frequency: " + i_vf_freq_cmd.value+"Hz   ";
+						}
+						else
+						{
+							s_status4.innerText = "ERROR: " + pcm.LastRetMsg;
+						}
+						
+						if(pcm.WriteVariable("VF Gain(ext)", i_vf_gain_cmd.value))
+						{
+							s_status5.innerText ="Gain: "+ i_vf_gain_cmd.value+"  ";
+						}
+						else
+						{
+							s_status5.innerText = "ERROR: " + pcm.LastRetMsg;
+						}
+						
+						s_status2.innerText = " ";
+					
+					}
+					else if(f_control_method[1].checked == true) // speed control
+					{
+						if(pcm.WriteVariable("Speed Command(RPM,ext)", i_motor_speed_cmd.value))
+						{
+							s_status4.innerText ="Speed: "+ i_motor_speed_cmd.value+"RPM   ";
+						
+						}
+						else
+						{
+							s_status4.innerText = "ERROR: " + pcm.LastRetMsg;
+						}
+						s_status5.innerText = " ";
+						s_status2.innerText = " ";
+					}
+					else if(f_control_method[2].checked == true) // position control
+					{
+						if(pcm.WriteVariable("Position Command(Rounds,ext)", i_motor_position_cmd.value))
+						{
+							s_status4.innerText ="Position: "+ i_motor_position_cmd.value+"Rounds   ";
+						}
+						else
+						{
+							s_status4.innerText = "ERROR: " + pcm.LastRetMsg;
+						}
+						s_status5.innerText = " ";
+						
+						for(var i = 0; i < f_random_position.length; i++)
+						{
+							if(f_random_position[i].checked == true)
+							{
+								if(pcm.WriteVariable("Is Position Random(ext)", f_random_position[i].value))
+								{
+									s_status2.innerText = "/"+f_random_position[i].id;
+								}
+								else
+								{
+									s_status2.innerText = "ERROR: " + pcm.LastRetMsg;
+								}
+							}
+						}
+					}
+				}
+			}
+
+			for(var i = 0; i < f_motor_switch.length; i++)
+			{
+				if(f_motor_switch[i].checked == true)
+				{
+					if(pcm.WriteVariable("Switch(ext)", f_motor_switch[i].value))
+					{
+						s_status3.innerText = f_motor_switch[i].id + "  ";
+					}
+					else
+					{
+						s_status3.innerText = "ERROR: " + pcm.LastRetMsg;
+					}
+				}
+			}
+			
+			// Update motor commands at last stage
+			if(pcm.WriteVariable("bSendCmd", 1))
+			{
+				// s_status6.innerText = "Successfully updated!";
+			}
+			else
+			{
+				s_status6.innerText = "ERROR: " + pcm.LastRetMsg;
+			}
+			
+		}
+
+		function motorStatusUpdateEnDis()
+		{
+			var elem = document.getElementById("statusButton");
+			if(elem.value == "Disable status update!")
+			{
+				elem.value = "Enable status update!"
+				elem.style.color = "red";
+				clearInterval(timeInterval);
+			}
+			else if(elem.value == "Enable status update!")
+			{
+				elem.value = "Disable status update!"
+				elem.style.color = "green";
+				timeInterval = setInterval(timer, 300);
+			}
+		}
+		
+	</script>
+</body>
+
+</html>

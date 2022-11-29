@@ -1,0 +1,22 @@
+/*
+ * Copyright 2022 NXP 
+ *
+ * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ */
+
+<#if memory.name=="SRAM_OC1">
+		/* default project */
+		
+		
+		*freertos_kernel*(*.bss*)
+		*lwip*(*.bss*)
+		*application_util.o(*.bss*)
+		*fsl_debug_console.o(.bss.s_debugConsoleState)
+		
+		
+		
+</#if>
+       *(.bss.$${memory.alias})
+       *(.bss.$${memory.name})
+       *(.bss.$${memory.alias}.*)
+       *(.bss.$${memory.name}.*)

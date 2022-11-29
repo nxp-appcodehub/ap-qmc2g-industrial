@@ -1,0 +1,21 @@
+/*
+ * Copyright 2022 NXP 
+ *
+ * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ */
+
+       *(EXCLUDE_FILE(
+						*freertos_kernel*
+						*interrupts.o*
+						*fsl_clock.o*
+						*tsn_tasks*
+						*libavb-freertos.a:*
+						*libavb-core.a:*
+						*libc_nano.a:*
+						*libm.a:*
+	    ) *.rodata*)
+		*(EXCLUDE_FILE(
+						*freertos_kernel*
+						*interrupts.o*
+						*fsl_clock.o*
+		) *.constdata*)

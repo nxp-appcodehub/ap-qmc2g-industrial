@@ -1,0 +1,67 @@
+.motor_id_sel{
+	border-color: red;
+
+}
+	
+form{
+
+	width: 400px;
+	background: rgb(255, 145, 71);
+}
+
+h1 {
+    font-size: medium; /*  */
+	font-family: cursive;
+}
+
+h2 {
+    font-size: large; /*  */
+	font-family: sans-serif;
+}
+
+td {
+	vertical-align: top;
+	text-align: left;
+}
+
+.td_header {
+	vertical-align: top;
+	text-align: center;
+}
+
+body  
+{  
+	background-color:blanchedalmond;
+} 
+
+fieldset
+{
+	border:none;
+	width:500px;
+	margin:0px auto;
+}
+
+.lable_commands
+{
+	display:inline-block;
+	width:180px;
+	margin-right:0px;
+	text-align:left;
+	color: blue;
+}
+.note_class1
+{
+	text-align: left;
+	font-family: Arial, Helvetica, sans-serif;
+	font-size:small;
+	color: blue;
+}
+
+.note_class2
+{
+	text-align: left;
+	margin-left: 30px;
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: small;
+	color:blueviolet;
+}

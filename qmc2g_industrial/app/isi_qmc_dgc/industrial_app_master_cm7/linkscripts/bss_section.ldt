@@ -1,0 +1,24 @@
+/*
+ * Copyright 2022 NXP 
+ *
+ * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ */
+
+<#if configMemory?has_content>
+<#list configMemory as memory>
+<#if memory.RAM && !memory.defaultRAM>
+
+    /* BSS section for ${memory.name} */
+    .bss_${memory.alias} : ALIGN(${bss_align})
+    {
+       PROVIDE(__start_bss_${memory.alias} = .) ;
+       PROVIDE(__start_bss_${memory.name} = .) ;
+<#include "extrasections_bss.ldt">
+<#include "bss.ldt">
+       . = ALIGN (. != 0 ? ${bss_align} : 1) ; /* avoid empty segment */
+       PROVIDE(__end_bss_${memory.alias} = .) ;
+       PROVIDE(__end_bss_${memory.name} = .) ;
+    } > ${memory.name} AT> ${memory.name}
+</#if>
+</#list>
+</#if>

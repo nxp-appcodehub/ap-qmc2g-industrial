@@ -1,0 +1,45 @@
+/*
+ * Copyright 2022 NXP 
+ *
+ * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ */
+
+<#if HEAP_STACK_STYLE?? && HEAP_STACK_STYLE == "sdk">
+    <#if HEAP_LOCATION == "Post Data">
+
+_ucHEAP_SIZE = 0x40000;
+    .ucHeap :
+  	{
+    . = ALIGN(8);
+    __ucHeapBase__ = .;
+    PROVIDE(ucHeap = .);
+    . += _ucHEAP_SIZE;
+  	} > SRAM_OC2
+
+  __ucHeapSize = . - __ucHeapBase__;
+
+    /* Reserve and place Heap within memory map */
+    _HeapSize = ${HEAP_SIZE};
+    .heap :  ALIGN(${bss_align})
+    {
+        ${heap_symbol} = .;
+        . += _HeapSize;
+        . = ALIGN(${bss_align});
+        _pvHeapLimit = .;
+    } > ${HEAP_REGION}
+    </#if>
+    
+
+    <#if STACK_LOCATION == "Post Data">
+
+    /* Reserve and place Stack within memory map */
+    _StackSize = ${STACK_SIZE};
+    .stack :  ALIGN(${bss_align})
+    {
+        _vStackBase = .;
+        . += _StackSize;
+        . = ALIGN(${bss_align});
+        _vStackTop = .;
+    } > ${STACK_REGION}
+    </#if>
+</#if>
