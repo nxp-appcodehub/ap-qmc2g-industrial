@@ -507,28 +507,6 @@ void BOARD_InitEncPins(void);                 /* Function assigned for the Corte
 #define BOARD_INITPOWERSTAGESPISPINS_SPI4_MOSI_FXIO2_D31_SIGNAL               IO   /*!< Signal name */
 #define BOARD_INITPOWERSTAGESPISPINS_SPI4_MOSI_FXIO2_D31_CHANNEL             31U   /*!< Signal channel */
 
-/* GPIO_SNVS_08 (coord N9), SPI_CS_SEL0 */
-/* Routed pin properties */
-#define BOARD_INITPOWERSTAGESPISPINS_SPI_CS_SEL0_SNVS_PERIPHERAL          GPIO13   /*!< Peripheral name */
-#define BOARD_INITPOWERSTAGESPISPINS_SPI_CS_SEL0_SNVS_SIGNAL             gpio_io   /*!< Signal name */
-#define BOARD_INITPOWERSTAGESPISPINS_SPI_CS_SEL0_SNVS_CHANNEL                11U   /*!< Signal channel */
-
-/* Symbols to be used with GPIO driver */
-#define BOARD_INITPOWERSTAGESPISPINS_SPI_CS_SEL0_SNVS_GPIO                GPIO13   /*!< GPIO peripheral base pointer */
-#define BOARD_INITPOWERSTAGESPISPINS_SPI_CS_SEL0_SNVS_GPIO_PIN               11U   /*!< GPIO pin number */
-#define BOARD_INITPOWERSTAGESPISPINS_SPI_CS_SEL0_SNVS_GPIO_PIN_MASK  (1U << 11U)   /*!< GPIO pin mask */
-
-/* GPIO_SNVS_09 (coord R11), SPI_CS_SEL1 */
-/* Routed pin properties */
-#define BOARD_INITPOWERSTAGESPISPINS_SPI_CS_SEL1_SNVS_PERIPHERAL          GPIO13   /*!< Peripheral name */
-#define BOARD_INITPOWERSTAGESPISPINS_SPI_CS_SEL1_SNVS_SIGNAL             gpio_io   /*!< Signal name */
-#define BOARD_INITPOWERSTAGESPISPINS_SPI_CS_SEL1_SNVS_CHANNEL                12U   /*!< Signal channel */
-
-/* Symbols to be used with GPIO driver */
-#define BOARD_INITPOWERSTAGESPISPINS_SPI_CS_SEL1_SNVS_GPIO                GPIO13   /*!< GPIO peripheral base pointer */
-#define BOARD_INITPOWERSTAGESPISPINS_SPI_CS_SEL1_SNVS_GPIO_PIN               12U   /*!< GPIO pin number */
-#define BOARD_INITPOWERSTAGESPISPINS_SPI_CS_SEL1_SNVS_GPIO_PIN_MASK  (1U << 12U)   /*!< GPIO pin mask */
-
 /* GPIO_LPSR_10 (coord R5), SPI_CS_SEL0 */
 /* Routed pin properties */
 #define BOARD_INITPOWERSTAGESPISPINS_SPI_CS_SEL0_I2C6_SDA_PERIPHERAL      GPIO12   /*!< Peripheral name */
@@ -1067,50 +1045,6 @@ void BOARD_InitI2cPins(void);                 /* Function assigned for the Corte
 #define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_3_BOOT_CFG9_SIGNAL       gpio_mux_io   /*!< Signal name */
 #define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_3_BOOT_CFG9_CHANNEL               4U   /*!< Signal channel */
 
-/* GPIO_SNVS_00 (coord R10), DIG_OUT_4 */
-/* Routed pin properties */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_4_SNVS_PERIPHERAL             GPIO13   /*!< Peripheral name */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_4_SNVS_SIGNAL                gpio_io   /*!< Signal name */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_4_SNVS_CHANNEL                    3U   /*!< Signal channel */
-
-/* Symbols to be used with GPIO driver */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_4_SNVS_GPIO                   GPIO13   /*!< GPIO peripheral base pointer */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_4_SNVS_GPIO_PIN                   3U   /*!< GPIO pin number */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_4_SNVS_GPIO_PIN_MASK      (1U << 3U)   /*!< GPIO pin mask */
-
-/* GPIO_SNVS_01 (coord P10), DIG_OUT_5 */
-/* Routed pin properties */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_5_SNVS_PERIPHERAL             GPIO13   /*!< Peripheral name */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_5_SNVS_SIGNAL                gpio_io   /*!< Signal name */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_5_SNVS_CHANNEL                    4U   /*!< Signal channel */
-
-/* Symbols to be used with GPIO driver */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_5_SNVS_GPIO                   GPIO13   /*!< GPIO peripheral base pointer */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_5_SNVS_GPIO_PIN                   4U   /*!< GPIO pin number */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_5_SNVS_GPIO_PIN_MASK      (1U << 4U)   /*!< GPIO pin mask */
-
-/* GPIO_SNVS_02 (coord L9), DIG_OUT_6 */
-/* Routed pin properties */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_6_SNVS_PERIPHERAL             GPIO13   /*!< Peripheral name */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_6_SNVS_SIGNAL                gpio_io   /*!< Signal name */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_6_SNVS_CHANNEL                    5U   /*!< Signal channel */
-
-/* Symbols to be used with GPIO driver */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_6_SNVS_GPIO                   GPIO13   /*!< GPIO peripheral base pointer */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_6_SNVS_GPIO_PIN                   5U   /*!< GPIO pin number */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_6_SNVS_GPIO_PIN_MASK      (1U << 5U)   /*!< GPIO pin mask */
-
-/* GPIO_SNVS_03 (coord M10), DIG_OUT_7 */
-/* Routed pin properties */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_7_SNVS_PERIPHERAL             GPIO13   /*!< Peripheral name */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_7_SNVS_SIGNAL                gpio_io   /*!< Signal name */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_7_SNVS_CHANNEL                    6U   /*!< Signal channel */
-
-/* Symbols to be used with GPIO driver */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_7_SNVS_GPIO                   GPIO13   /*!< GPIO peripheral base pointer */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_7_SNVS_GPIO_PIN                   6U   /*!< GPIO pin number */
-#define BOARD_INITDIGITALOUTPUTPINS_DIG_OUT_7_SNVS_GPIO_PIN_MASK      (1U << 6U)   /*!< GPIO pin mask */
-
 /*!
  * @brief Configures pin routing and optionally pin electrical features.
  *
@@ -1140,50 +1074,6 @@ void BOARD_InitDigitalOutputPins(void);       /* Function assigned for the Corte
 #define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_3_PERIPHERAL                  GPIO4   /*!< Peripheral name */
 #define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_3_SIGNAL                gpio_mux_io   /*!< Signal name */
 #define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_3_CHANNEL                        0U   /*!< Signal channel */
-
-/* GPIO_SNVS_04 (coord N10), DIG_INPUT_4 */
-/* Routed pin properties */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_4_SNVS_PERIPHERAL            GPIO13   /*!< Peripheral name */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_4_SNVS_SIGNAL               gpio_io   /*!< Signal name */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_4_SNVS_CHANNEL                   7U   /*!< Signal channel */
-
-/* Symbols to be used with GPIO driver */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_4_SNVS_GPIO                  GPIO13   /*!< GPIO peripheral base pointer */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_4_SNVS_GPIO_PIN                  7U   /*!< GPIO pin number */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_4_SNVS_GPIO_PIN_MASK     (1U << 7U)   /*!< GPIO pin mask */
-
-/* GPIO_SNVS_05 (coord P9), DIG_INPUT_5 */
-/* Routed pin properties */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_5_SNVS_PERIPHERAL            GPIO13   /*!< Peripheral name */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_5_SNVS_SIGNAL               gpio_io   /*!< Signal name */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_5_SNVS_CHANNEL                   8U   /*!< Signal channel */
-
-/* Symbols to be used with GPIO driver */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_5_SNVS_GPIO                  GPIO13   /*!< GPIO peripheral base pointer */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_5_SNVS_GPIO_PIN                  8U   /*!< GPIO pin number */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_5_SNVS_GPIO_PIN_MASK     (1U << 8U)   /*!< GPIO pin mask */
-
-/* GPIO_SNVS_06 (coord M9), DIG_INPUT_6 */
-/* Routed pin properties */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_6_SNVS_PERIPHERAL            GPIO13   /*!< Peripheral name */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_6_SNVS_SIGNAL               gpio_io   /*!< Signal name */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_6_SNVS_CHANNEL                   9U   /*!< Signal channel */
-
-/* Symbols to be used with GPIO driver */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_6_SNVS_GPIO                  GPIO13   /*!< GPIO peripheral base pointer */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_6_SNVS_GPIO_PIN                  9U   /*!< GPIO pin number */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_6_SNVS_GPIO_PIN_MASK     (1U << 9U)   /*!< GPIO pin mask */
-
-/* GPIO_SNVS_07 (coord R9), DIG_INPUT_7 */
-/* Routed pin properties */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_7_SNVS_PERIPHERAL            GPIO13   /*!< Peripheral name */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_7_SNVS_SIGNAL               gpio_io   /*!< Signal name */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_7_SNVS_CHANNEL                  10U   /*!< Signal channel */
-
-/* Symbols to be used with GPIO driver */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_7_SNVS_GPIO                  GPIO13   /*!< GPIO peripheral base pointer */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_7_SNVS_GPIO_PIN                 10U   /*!< GPIO pin number */
-#define BOARD_INITDIGITALINPUTPINS_DIG_INPUT_7_SNVS_GPIO_PIN_MASK    (1U << 10U)   /*!< GPIO pin mask */
 
 /*!
  * @brief Configures pin routing and optionally pin electrical features.

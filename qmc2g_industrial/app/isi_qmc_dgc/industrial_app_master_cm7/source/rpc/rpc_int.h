@@ -1,7 +1,11 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 /*!
@@ -119,6 +123,11 @@
 #define RPC_RTC_TIMEOUT_TICKS      pdMS_TO_TICKS(5U) /*!< timeout in ms for the RTC RPC processing */
 #define RPC_FWUPDATE_TIMEOUT_TICKS pdMS_TO_TICKS(5U) /*!< timeout in ms for the FW update RPC processing */
 #define RPC_RESET_TIMEOUT_TICKS    pdMS_TO_TICKS(5U) /*!< timeout in ms for the reset RPC processing */
+
+/* gives CM7 time to write logs 
+ * TODO update with remaining run time when powered from super capacitor 
+ */
+#define RPC_WAIT_TICKS_BEFORE_RESET pdMS_TO_TICKS(1000U) /*!< timeout in ms before reset request is send to CM4 */
 
 /*!
  * @brief Bit flags for describing remote call completion. Only used internally.

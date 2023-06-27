@@ -1718,6 +1718,7 @@ CK_RV EcSignatureToRandS(uint8_t *signature, size_t *sigLen)
     if (signature[index++] != 0x30) {
         goto exit;
     }
+    /* NOTE does not work for P521 as there the 2byte ASN.1 length encoding is used! */
     if (signature[index++] != (*sigLen - 2)) {
         goto exit;
     }

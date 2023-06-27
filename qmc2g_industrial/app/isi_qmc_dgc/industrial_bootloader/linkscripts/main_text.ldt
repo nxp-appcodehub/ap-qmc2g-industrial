@@ -1,0 +1,4 @@
+		*(EXCLUDE_FILE(
+						*interrupts.o*
+						*fsl_clock.o*
+		) *.text*)

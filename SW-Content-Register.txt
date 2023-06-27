@@ -1,34 +1,38 @@
 Release Name: i.MX RT Industrial Drive Development Platform - Application Software Pack
-Release Version: 1.0
-Package License: LA_OPT_NXP_Software_License.txt v40 December 2022, license in Section 2.2 applies
+Release Version: 1.1
+Package License: LA_OPT_NXP_Software_License v48 July 2023, license in Section 2.2 applies
+Package License File: License.txt
+Content Type: Application Software Pack (source code)
+Release Location: https://github.com/nxp-appcodehub/ap-qmc2g-industrial
+Origin: NXP (proprietary)
 
 RTCESL                     Name: Real Time Control Embedded Software Motor Control and Power Conversion Libraries 
                            Version: 4.7                                  
                            Outgoing License: BSD-3-Clause                
-                           License File: appswpacks_qmc2g_industrial/examples/COPYING-BSD-3                
+                           License File: 3rd_party_licenses/COPYING-BSD-3                
                            Format: source code, header files                 
                            Description: Source code for running Coremark.
-                           Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/rtcesl
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/rtcesl
                            Origin: NXP (BSD-3-Clause)
 
 FreeMASTER                 Name: FreeMASTER                                    
                            Version: 3.0.4                              
-                           Outgoing License: LA_OPT_NXP_Software_License                             
-                           License File: appswpacks_qmc2g_industrial/examples/License.txt       
+                           Outgoing License: LA_OPT_NXP_Software_License v48 July 2023, license in Section 2.2 applies                             
+                           License File: License.txt       
                            Format: source code, header files                               
                            Description: Run-Time debugging tool for motor control                                           
-                           Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freemaster
-						   Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freemaster_exe 						   
-                           Origin: NXP (LA_OPT_NXP_Software_License)      
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freemaster
+						   Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freemaster_exe 						   
+                           Origin: NXP (LA_OPT_NXP_Software_License v48 July 2023, license in Section 2.2 applies)
 
 GenAVB TSN Stack           Name: GenAVB TSN Stack
                            Version: 4.0.3                               
-                           Outgoing License: LA_OPT_NXP_Software_License                    
-                           License File: appswpacks_qmc2g_industrial/examples/License.txt                     
+                           Outgoing License: LA_OPT_NXP_Software_License v48 July 2023, license in Section 2.2 applies                    
+                           License File: License.txt                     
                            Format: header files, static libraries                 
                            Description: GenAVB TSN Stack libraries and header files
-                           Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/tsn
-                           Origin: NXP (LA_OPT_NXP_Software_License)
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/tsn
+                           Origin: NXP (LA_OPT_NXP_Software_License v48 July 2023, license in Section 2.2 applies)
 
 lwIP			           Name: A Lightweight TCP/IP stack
 						   Version: lwIP git repository (2019-12-12, branch: 
@@ -38,56 +42,58 @@ lwIP			           Name: A Lightweight TCP/IP stack
                            License File: https://lwip.fandom.com/wiki/License                   
                            Format: source code, header files                 
                            Description: A Lightweight TCP/IP stack source code
-                           Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/lwip
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/lwip
                            Origin: Swedish Institute of Computer Science (BSD-3-Clause)
 						   Url: http://savannah.nongnu.org/projects/lwip 
 						   
 mbed TLS			       Name: mbed TLS
                            Version: 2.27.0                               
                            Outgoing License: Apache-2.0                    
-                           License File: appswpacks_qmc2g_industrial/examples/APACHE-LICENSE-2.0.txt                     
+                           License File: 3rd_party_licenses/APACHE-LICENSE-2.0.txt                     
                            Format: source code, header files                  
                            Description: C library that implements cryptographic primitives, X.509 certificate manipulation and the SSL/TLS and DTLS protocols
-                           Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/mbedtls
-						   Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/mbedtls
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/mbedtls
+						   Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/mbedtls
                            Origin: ARM (Apache-2.0)
 						   URL: https://github.com/Mbed-TLS/mbedtls
 						   
 SE_hostlib		           Name: NXP Secure Element Host library
                            Version: 2.12.0                              
-                           Outgoing License: LA_OPT_NXP_Software_License                    
-                           License File: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/se_hostlib/EULA.pdf                      
+                           Outgoing License: LA_OPT_NXP_Software_License v48 July 2023, license in Section 2.2 applies                    
+                           License File: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/se_hostlib/EULA.pdf             
+						   License File: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_bootloader/se_hostlib/EULA.pdf   						   
                            Format: source code, header files                 
                            Description: NXP Secure Element Host library
-                           Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/se_hostlib
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/se_hostlib
+						   Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_bootloader/se_hostlib
                            Origin: NXP (Plug & Trust Middleware License)
 
 FatFs		           	   Name: Generic FAT Filesystem Module
                            Version: 0.14                              
                            Outgoing License: FatFs License                    
-                           License File: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/fatfs/fatfs_license.txt                      
+                           License File: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/fatfs/fatfs_license.txt                      
                            Format: source code, header files                 
                            Description: Generic FAT Filesystem Module
-                           Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/fatfs
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/fatfs
                            Origin: Electronic Lives Mfg. by ChaN of Ageo city, Japan (FatFs License)
 						   Url: http://elm-chan.org/fsw/ff/00index_e.html
 
 SDMMC			           Name: Secure Digital and MultiMediaCard
                            Version: 2.2.7                              
                            Outgoing License: BSD-3-Clause                   
-                           License File: appswpacks_qmc2g_industrial/examples/COPYING-BSD-3                       
+                           License File: 3rd_party_licenses/COPYING-BSD-3                       
                            Format: source code, header files                 
                            Description: Secure Digital and MultiMediaCard OSA Adapter
-                           Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/sdmmc
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/sdmmc
                            Origin: NXP (BSD-3-Clause)
 
 MCMGR		       		   Name: Multicore Manager Library
                            Version: 4.1.1                              
                            Outgoing License: BSD-3-Clause                  
-                           License File: appswpacks_qmc2g_industrial/examples/COPYING-BSD-3                      
+                           License File: 3rd_party_licenses/COPYING-BSD-3                      
                            Format: source code, header files                 
                            Description: Multicore Manager Library
-                           Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/mcmgr
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/mcmgr
                            Origin: NXP (BSD-3-Clause)
 
 Amazon FreeRTOS		       Name: Amazon FreeRTOS
@@ -96,7 +102,7 @@ Amazon FreeRTOS		       Name: Amazon FreeRTOS
                            License File: https://github.com/FreeRTOS/FreeRTOS/blob/main/LICENSE.md               
                            Format: source code, header files                 
                            Description: Real-time operating system for microcontrollers
-                           Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos
                            Origin: Amazon.com (MIT)
 						   URL: https://github.com/FreeRTOS/FreeRTOS
 
@@ -106,65 +112,86 @@ coreMQTT		           Name: coreMQTT Client Library
                            License File: https://github.com/FreeRTOS/coreMQTT/blob/main/LICENSE                      
                            Format: source code, header files                 
                            Description: coreMQTT library that has been optimized for a low memory footprint, compliant with MQTT 3.1.1
-                           Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/coreMQTT
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/coreMQTT
                            Origin: Amazon.com (MIT)
 						   URL: https://github.com/FreeRTOS/coreMQTT
 						   
 corePKCS11		           Name: corePKCS11 Library
                            Outgoing License: MIT                    
-                           License File: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/pkcs11/LICENSE.md                     
+                           License File: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/3rdparty/pkcs11/LICENSE.md                     
                            Format: source code, header files                 
                            Description: corePKCS11 is a standardized and widely used API for manipulating common cryptographic object
-                           Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/pkcs11/
-						   Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/abstractions/pkcs11/
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/pkcs11/
+						   Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/abstractions/pkcs11/
                            Origin: Amazon.com (MIT)
 						   URL: https://github.com/FreeRTOS/corePKCS11
 						   
+coreHTTP                   name: FreeRTOS coreHTTP                           
+                           version: 2.0.0                                    
+                           Outgoing License: MIT                             
+                           License File: https://github.com/FreeRTOS/coreHTTP/blob/main/LICENSE 
+                           Format: source code, header files                 
+                           Description: C language HTTP client library       
+                           designed for embedded platforms                   
+                           Location: rtos/freertos/corehttp                  
+                           Origin: Amazon (MIT)                              
+                           Url: https://github.com/FreeRTOS/coreHTTP 
+						   
+coreJSON                   name: FreeRTOS coreJSON                           
+                           version: 3.0.0                                    
+                           Outgoing License: MIT                             
+                           License File: https://github.com/FreeRTOS/coreJSON/blob/main/LICENSE      
+                           Format: source code, header files                 
+                           Description: JSON parser                          
+                           Location: rtos/freertos/corejson                  
+                           Origin: Amazon (MIT)                              
+                           Url: https://github.com/FreeRTOS/coreJSON      
+						   
 jsmn			           Name: JSMN
                            Outgoing License: MIT                    
-                           License File: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/3rdparty/jsmn/LICENSE.txt                       
+                           License File: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/3rdparty/jsmn/LICENSE.txt                       
                            Format: source code, header files                 
                            Description: Minimalistic JSON parser in C
-                           Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/3rdparty/jsmn
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/3rdparty/jsmn
                            Origin: Serge A. Zaitsev (MIT)
 						   URL: https://github.com/zserge/jsmn		 
 
 backoffAlgorithm		   Name: backoffAlgorithm
                            Outgoing License: MIT                    
-                           License File: appswpacks_qmc2g_industrial/examples/MIT_LICENSE.txt                     
+                           License File: 3rd_party_licenses/MIT_LICENSE.txt                     
                            Format: source code, header files                 
                            Description: Implementation of the backoff algorithm API for a "Full Jitter" exponential backoff with jitter strategy
-                           Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/abstractions/backoff_algorithm/	
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/abstractions/backoff_algorithm/	
                            Origin: Amazon.com (MIT)
 						   URL: https://github.com/FreeRTOS/backoffAlgorithm
 
 CMSIS			           Name: Common Microcontroller Software Interface Standard
                            Version: 5.6.0                              
                            Outgoing License: Apache-2.0                  
-                           License File: appswpacks_qmc2g_industrial/examples/APACHE-LICENSE-2.0.txt                       
+                           License File: 3rd_party_licenses/APACHE-LICENSE-2.0.txt                       
                            Format: source code, header files                 
                            Description: Vendor-independent abstraction layer for microcontrollers that are based on Arm Cortex processors
-                           Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/CMSIS
-						   Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/CMSIS
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/CMSIS
+						   Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/CMSIS
                            Origin: ARM (Apache-2.0)
 						   URL: https://github.com/ARM-software/CMSIS_5/releases/tag/5.6.0
 						   
 LittleVGL/LVGL			   Name: Light and Versatile Graphics Library
                            Version: 8.0.2                             
                            Outgoing License: MIT                    
-                           License File: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/lvgl/LICENSE.txt                    
+                           License File: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/lvgl/LICENSE.txt                    
                            Format: source code, header files                 
                            Description: Light and Versatile Graphics Library
-                           Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/lvgl
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/lvgl
                            Origin: Gabor Kiss-Vamosi - LVGL LLC (MIT)
 						   Url: https://github.com/lvgl/lvgl 
 
 VGLite			           Name: VGLite GPU Driver
                            Version: 3.0.13                             
                            Outgoing License: MIT                    
-                           License File: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/vglite/LICENSE.txt                      
+                           License File: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/vglite/LICENSE.txt                      
                            Format: source code, header files                 
                            Description: VeriSilicon's platform independent VGLite Graphics library
-                           Location: appswpacks_qmc2g_industrial/examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/vglite
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/vglite
                            Origin: VeriSilicon (MIT)
 						   Url: http://www.verisilicon.com/ 

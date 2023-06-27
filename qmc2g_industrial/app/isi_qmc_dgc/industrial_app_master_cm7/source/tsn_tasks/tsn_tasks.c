@@ -1,7 +1,11 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 #include "fsl_device_registers.h"
@@ -88,6 +92,13 @@ static void TSN_main_loop(void *data, int timer_status)
 
     	/*Clear lost frames counter*/
     	context->lost_frames_counter = 0;
+    }
+
+    /*Check the link status, which is passed via task context.
+     *If link status is set, QMC_SYSEVENT_NETWORK_NoLink is cleared*/
+    if(context->c_task->rx_socket[0].stats.link_status)
+    {
+        xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_NETWORK_NoLink);
     }
 
     /*Call MC_GetMotorStatusforTsn function for all four motors. Save motor statuses including
@@ -211,6 +222,9 @@ qmc_status_t TsnInit(void)
 {
 
     struct tsn_app_config *config = NULL;
+
+    /*Initialize network event bits*/
+    xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_NETWORK_TsnSyncLost | QMC_SYSEVENT_NETWORK_NoLink);
 
 
     /*Initialize PHY and ENET_QoS clock*/

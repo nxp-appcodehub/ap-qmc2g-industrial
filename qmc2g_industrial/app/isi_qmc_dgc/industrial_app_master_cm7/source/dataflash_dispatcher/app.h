@@ -1,7 +1,11 @@
 /*
  * Copyright 2022 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
  
 #ifndef _APP_H_
@@ -53,6 +57,9 @@
 
 #define CUSTOM_LUT_LENGTH 64
 
+#define MAKE_EVEN( size) ( ( (size)&1) == 1 ? (size+1) : (size) )
+#define MAKE_NUMBER_ALIGN( value, size) ( value % size ? value + size - value % size : value )
+
 #ifdef FEATURE_DATALOGGER_RECORDER_DBG_PRINT
 #define dbgRecPRINTF(...) PRINTF(__VA_ARGS__)
 #else
@@ -75,6 +82,12 @@
 #define dbgCnfPRINTF(...) PRINTF(__VA_ARGS__)
 #else
 #define dbgCnfPRINTF(...)
+#endif
+
+#ifdef FEATURE_LCRYPT_DBG_PRINT
+#define dbgLcryptPRINTF(...) PRINTF(__VA_ARGS__)
+#else
+#define dbgLcryptPRINTF(...)
 #endif
 
 #endif /* _APP_H_ */

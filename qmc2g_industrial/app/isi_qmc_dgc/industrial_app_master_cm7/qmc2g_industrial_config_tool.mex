@@ -713,16 +713,6 @@
                         <pin_feature name="direction" value="OUTPUT"/>
                      </pin_features>
                   </pin>
-                  <pin peripheral="GPIO13" signal="gpio_io, 11" pin_num="N9" pin_signal="GPIO_SNVS_08">
-                     <pin_features>
-                        <pin_feature name="direction" value="OUTPUT"/>
-                     </pin_features>
-                  </pin>
-                  <pin peripheral="GPIO13" signal="gpio_io, 12" pin_num="R11" pin_signal="GPIO_SNVS_09">
-                     <pin_features>
-                        <pin_feature name="direction" value="OUTPUT"/>
-                     </pin_features>
-                  </pin>
                   <pin peripheral="GPIO12" signal="gpio_io, 10" pin_num="R5" pin_signal="GPIO_LPSR_10">
                      <pin_features>
                         <pin_feature name="direction" value="OUTPUT"/>
@@ -1421,26 +1411,6 @@
                         <pin_feature name="pull_keeper_select" value="Pull"/>
                      </pin_features>
                   </pin>
-                  <pin peripheral="GPIO13" signal="gpio_io, 03" pin_num="R10" pin_signal="GPIO_SNVS_00">
-                     <pin_features>
-                        <pin_feature name="direction" value="OUTPUT"/>
-                     </pin_features>
-                  </pin>
-                  <pin peripheral="GPIO13" signal="gpio_io, 04" pin_num="P10" pin_signal="GPIO_SNVS_01">
-                     <pin_features>
-                        <pin_feature name="direction" value="OUTPUT"/>
-                     </pin_features>
-                  </pin>
-                  <pin peripheral="GPIO13" signal="gpio_io, 05" pin_num="L9" pin_signal="GPIO_SNVS_02">
-                     <pin_features>
-                        <pin_feature name="direction" value="OUTPUT"/>
-                     </pin_features>
-                  </pin>
-                  <pin peripheral="GPIO13" signal="gpio_io, 06" pin_num="M10" pin_signal="GPIO_SNVS_03">
-                     <pin_features>
-                        <pin_feature name="direction" value="OUTPUT"/>
-                     </pin_features>
-                  </pin>
                </pins>
             </function>
             <function name="BOARD_InitDigitalInputPins">
@@ -1490,29 +1460,6 @@
                      <pin_features>
                         <pin_feature name="direction" value="INPUT"/>
                         <pin_feature name="gpio_interrupt" value="kGPIO_IntRisingOrFallingEdge"/>
-                     </pin_features>
-                  </pin>
-                  <pin peripheral="GPIO13" signal="gpio_io, 07" pin_num="N10" pin_signal="GPIO_SNVS_04">
-                     <pin_features>
-                        <pin_feature name="direction" value="INPUT"/>
-                        <pin_feature name="gpio_interrupt" value="kGPIO_NoIntmode"/>
-                     </pin_features>
-                  </pin>
-                  <pin peripheral="GPIO13" signal="gpio_io, 08" pin_num="P9" pin_signal="GPIO_SNVS_05">
-                     <pin_features>
-                        <pin_feature name="direction" value="INPUT"/>
-                        <pin_feature name="gpio_interrupt" value="kGPIO_NoIntmode"/>
-                     </pin_features>
-                  </pin>
-                  <pin peripheral="GPIO13" signal="gpio_io, 09" pin_num="M9" pin_signal="GPIO_SNVS_06">
-                     <pin_features>
-                        <pin_feature name="direction" value="INPUT"/>
-                        <pin_feature name="gpio_interrupt" value="kGPIO_NoIntmode"/>
-                     </pin_features>
-                  </pin>
-                  <pin peripheral="GPIO13" signal="gpio_io, 10" pin_num="R9" pin_signal="GPIO_SNVS_07">
-                     <pin_features>
-                        <pin_feature name="direction" value="INPUT"/>
                      </pin_features>
                   </pin>
                </pins>

@@ -1,78 +1,106 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
  
 #include "main_cm7.h"
 #include "app.h"
+#include "flash_recorder.h"
 #include "api_board.h"
 #include <api_logging.h>
 #include <dispatcher.h>
 
-//#include <sha256.h>
+//#define FLASH_RECORDER_POSITIVE_DEBUG
 
+AT_NONCACHEABLE_SECTION_ALIGN( mbedtls_sha256_context g_flash_recorder_sha256_ctx, 32);
+AT_NONCACHEABLE_SECTION_ALIGN( lcrypto_aes_ctx_t g_flash_recorder_ctx1, 32);
+AT_NONCACHEABLE_SECTION_ALIGN( lcrypto_aes_ctx_t g_flash_recorder_ctx2, 32);
 
+/*
+ * Function checks the hash value stored in first DATALOGGER_HASH_SIZE bytes of input data pointed by *pt
+ * and checks it against hash of remaining data started at offset DATALOGGER_HASH_SIZE.
+ * Return value:
+ * kStatus_QMC_Ok                   hash equals to hash of data
+ * kStatus_QMC_ErrSignatureInvalid  hash does not equal hash of data
+ * kStatus_QMC_ErrMem               cannot allocate memory on heap, no checks done
+ * kStatus_QMC_ErrBusy              cannot get CAAM mutex
+ * kStatus_QMC_Err                  cannot give back CAAM mutex
+ */
 static qmc_status_t HashRecordCheck( void *pt, recorder_t *prec)
 {
-#ifdef DATALOGGER_FLASH_RECORDER_USE_HASH
-    uint8_t buf[ prec->RecordSize];
-    memcpy( buf, pt, prec->RecordSize);
-#if 0
-    mbedtls_sha256_starts( &flash_recorder_ctx_sha256, 0);
-    mbedtls_sha256_update( &flash_recorder_ctx_sha256, (uint8_t*)pt + FLASH_RECORDER_HASH_SIZE, prec->RecordSize - FLASH_RECORDER_HASH_SIZE);
-    mbedtls_sha256_finish( &flash_recorder_ctx_sha256, (uint8_t*)output);
-#else
-    mbedtls_sha256_starts( prec->flash_recorder_ctx, 0);
-    mbedtls_sha256_update( prec->flash_recorder_ctx, buf + FLASH_RECORDER_HASH_SIZE, prec->RecordSize - FLASH_RECORDER_HASH_SIZE);
-    mbedtls_sha256_finish( prec->flash_recorder_ctx, buf);
-#endif
-    uint32_t *pt_dst = (uint32_t*)pt;
-    uint32_t *pt_src = (uint32_t*)buf;
-    uint32_t *pt_src_e = pt_src + (FLASH_RECORDER_HASH_SIZE/4);
-    while( pt_src < pt_src_e)
-    {
-    	if( *pt_src != *pt_dst)
-    		return kStatus_QMC_Err;
-    	pt_src++;
-    	pt_dst++;
-    }
-#else
-    uint8_t *ptb = (uint8_t*)pt;
-    ptb += FLASH_RECORDER_HASH_SIZE;
-    uint32_t sum = 0;
-    int i;
-    for( i=0; i<prec->RecordSize - FLASH_RECORDER_HASH_SIZE; i++)
-    {
-    	sum += *ptb++;
-    }
-    if( *(uint32_t*)pt != sum)
-    	return kStatus_QMC_Err;
-#endif
+	qmc_status_t retv;
+	const TickType_t xDelayms = pdMS_TO_TICKS( DATALOGGER_MUTEX_XDELAYS_MS);
+	const int dsize = prec->RecordSize - DATALOGGER_HASH_SIZE;
+
+	uint8_t *shabuff = pvPortMalloc( 2*DATALOGGER_HASH_SIZE + dsize + 32);
+	if( shabuff == NULL)
+	{
+		dbgRecPRINTF("dec HRC Cannot alloc mem.\n\r");
+		return kStatus_QMC_ErrMem;
+	}
+	uint8_t *shabuff32 = (uint8_t *)MAKE_NUMBER_ALIGN( (uint32_t)shabuff, 32);
+
+	memcpy( shabuff32 + DATALOGGER_HASH_SIZE, pt, prec->RecordSize);
+	retv = LCRYPTO_get_sha256( shabuff32, shabuff32 + (2*DATALOGGER_HASH_SIZE) , dsize, &g_flash_recorder_sha256_ctx, xDelayms);
+	if( retv != kStatus_QMC_Ok)
+	{
+		dbgRecPRINTF("dec HRC Err:%d\n\r", retv);
+		vPortFree( shabuff);
+		return retv;
+	}
+
+	SCB_InvalidateDCache_by_Addr ( shabuff32, DATALOGGER_HASH_SIZE);
+	if( memcmp( shabuff32, shabuff32 + DATALOGGER_HASH_SIZE, DATALOGGER_HASH_SIZE) != 0)
+	{
+		vPortFree( shabuff);
+		return kStatus_QMC_ErrSignatureInvalid;
+	}
+	vPortFree( shabuff);
+
 	return kStatus_QMC_Ok;
 }
 
-static void HashRecordUpdate( void *pt, recorder_t *prec)
+/*
+ * Function calculate hash of data started at offset DATALOGGER_HASH_SIZE
+ * and updates the hash value in first DATALOGGER_HASH_SIZE bytes of input data pointed by *pt.
+ * Return value:
+ * kStatus_QMC_Ok                   hash equals to hash of data
+ * kStatus_QMC_ErrSignatureInvalid  hash does not equal hash of data
+ * kStatus_QMC_ErrMem               cannot allocate memory on heap, no checks done
+ * kStatus_QMC_ErrBusy              cannot get CAAM mutex
+ * kStatus_QMC_Err                  cannot give back CAAM mutex
+ */
+static qmc_status_t HashRecordUpdate( void *pt, recorder_t *prec)
 {
-#ifdef DATALOGGER_FLASH_RECORDER_USE_HASH
-	uint8_t buf[ prec->RecordSize];
-    memcpy( buf, pt, prec->RecordSize);
+	qmc_status_t retv;
+	const TickType_t xDelayms = pdMS_TO_TICKS( DATALOGGER_MUTEX_XDELAYS_MS);
+	const int dsize = prec->RecordSize - DATALOGGER_HASH_SIZE;
+	uint8_t *shabuff = pvPortMalloc( prec->RecordSize +32);
+	if( shabuff == NULL)
+	{
+		dbgRecPRINTF("dec HRU Cannot alloc mem.\n\r");
+		return kStatus_QMC_ErrMem;
+	}
+	uint8_t *shabuff32 = (uint8_t *)MAKE_NUMBER_ALIGN( (uint32_t)shabuff, 32);
+	memcpy( shabuff32 + DATALOGGER_HASH_SIZE, pt + DATALOGGER_HASH_SIZE, dsize);
 
-    mbedtls_sha256_starts( prec->flash_recorder_ctx, 0);
-    mbedtls_sha256_update( prec->flash_recorder_ctx, buf + FLASH_RECORDER_HASH_SIZE, prec->RecordSize - FLASH_RECORDER_HASH_SIZE);
-    mbedtls_sha256_finish( prec->flash_recorder_ctx, buf);
-    memcpy( pt, buf, FLASH_RECORDER_HASH_SIZE);
-#else
-    uint8_t *ptb = (uint8_t*)pt;
-    ptb += FLASH_RECORDER_HASH_SIZE;
-    uint32_t sum = 0;
-    int i;
-    for( i=0; i<prec->RecordSize - FLASH_RECORDER_HASH_SIZE; i++)
-    {
-    	sum += *ptb++;
-    }
-    *(uint32_t*)pt = sum;
-#endif
+	retv = LCRYPTO_get_sha256( shabuff32, shabuff32 + DATALOGGER_HASH_SIZE, dsize, &g_flash_recorder_sha256_ctx, xDelayms);
+	if( retv != kStatus_QMC_Ok)
+	{
+		dbgRecPRINTF("dec HRU Err:%d\n\r", retv);
+		vPortFree( shabuff);
+		return retv;
+	}
+	SCB_InvalidateDCache_by_Addr ( shabuff32, DATALOGGER_HASH_SIZE);
+    memcpy( pt, shabuff32, DATALOGGER_HASH_SIZE);
+    vPortFree( shabuff);
+
+    return kStatus_QMC_Ok;
 }
 
 /*
@@ -103,62 +131,131 @@ static int FlashAlignPt( uint32_t *pt, recorder_t *prec)
 }
 
 /*
- * Function writes record into the recorder.
- * uuid, timestamp_s, timestamp_ms are updated.
- * This function needs to be reetrant!
+ * Function writes record into the recorder. * uuid, timestamp_s, timestamp_ms are updated.
+ * if *prec->flag is 1 recod data are ecrypted by AES256-CTR.
+ * if *prec->inf points to inf recorder function updates and write the inf record.
+ * Return value:
+ * kStatus_QMC_ErrMem               cannot allocate memory on heap, no write done
+ * kStatus_QMC_ErrBusy              cannot get dispatcher mutex or CAAM mutex
+ * kStatus_QMC_Err                  general error
+ * kStatus_QMC_Ok                   write succesfuly done
  */
 qmc_status_t FlashWriteRecord( void *pt, recorder_t *prec)
 {
 	qmc_status_t retv;
+	int state;
+
 	record_head_t *h=( record_head_t *)pt;
 	h->uuid=prec->Idr;
 	h->uuid++;
 	if( h->uuid==0xFFFFFFFF)	//0xFFFFFFFF is reserved for "clear space"
 		h->uuid=0;
 
-	//TODO need implementation of BOARD_GetTime
-#if 1
     qmc_timestamp_t	ts = {0,0};
 	retv = BOARD_GetTime( &ts);
 	if( retv!= kStatus_QMC_Ok)
 	{
-		//dbgRecPRINTF("FlashWriteRecord TS Err:%d\n\r", retv);
+		dbgRecPRINTF("FlashWriteRecord. Cannot read BOARD_GetTime(): %d:%d retv:%d\n\r", ts.seconds, ts.milliseconds, retv);
 	}
-	else
-	{
-		//dbgRecPRINTF("FlashWriteRecord TS:%d:%d\n\r", ts.seconds, ts.milliseconds);
-	}
+
 	h->ts = ts;
-#else
-	h->ts.seconds=0;
-	h->ts.milliseconds=0;
-#endif
 
 	HashRecordUpdate( pt, prec);
 
-	uint32_t flash_pt = prec->Pt;
-	int state = FlashAlignPt( &flash_pt, prec);
-	if( state != 0)
+	if( prec->Flags & 0x1)
 	{
-		//Erase page
-		retv=dispatcher_erase_sectors( (uint8_t *)flash_pt, 1, portMAX_DELAY);
-		dbgRecPRINTF("Erase %x\n\r", flash_pt);
-		if( retv!= kStatus_QMC_Ok)
+		const TickType_t xDelayms = pdMS_TO_TICKS( CONFIG_MUTEX_XDELAYS_MS);
+		const size_t rsize16 = MAKE_NUMBER_ALIGN( prec->RecordSize, 16);
+
+		uint8_t *rbuff = pvPortMalloc( 2*rsize16 + 16);
+		if( rbuff == NULL)
 		{
-			dbgRecPRINTF("FlashWriteRecord erase Err:%d\n\r", retv);
-			return retv;	//error
+			dbgRecPRINTF("dec HRC Cannot alloc mem.\n\r");
+			return kStatus_QMC_ErrMem;
 		}
-	}
+		uint8_t *rbuff16 = (uint8_t *)MAKE_NUMBER_ALIGN( (uint32_t)rbuff, 16);
+		memcpy( rbuff16 + rsize16, pt, prec->RecordSize);
 
-	retv=dispatcher_write_memory( (uint8_t *)flash_pt, pt, prec->RecordSize, portMAX_DELAY);
-	if( retv != kStatus_QMC_Ok)
+		uint32_t flash_pt = prec->Pt;
+		state = FlashAlignPt( &flash_pt, prec);
+		if( state != 0)
+		{
+			//volatile uint32_t xxxx = (uint32_t)&state;
+
+			//Erase page
+			retv=dispatcher_erase_sectors( (uint8_t *)flash_pt, 1, portMAX_DELAY);
+#ifdef FLASH_RECORDER_POSITIVE_DEBUG
+			dbgRecPRINTF("Erase %x\n\r", flash_pt);
+#endif
+			if( retv!= kStatus_QMC_Ok)
+			{
+				dbgRecPRINTF("FlashWriteRecord erase Err:%d\n\r", retv);
+				vPortFree( rbuff);
+				return retv;	//error
+			}
+			if( state == 2)
+			{
+				prec->RotNumber++;
+			}
+		}
+
+		//Credentials IV
+#ifdef NO_SBL
+		memset( g_flash_recorder_ctx1.iv, 0, sizeof(g_flash_recorder_ctx1.iv));
+#else
+		memcpy( g_flash_recorder_ctx1.iv, (void *)g_sbl_prov_keys.nonceLog, sizeof(g_flash_recorder_ctx1.iv));
+#endif
+		*((uint32_t*)g_flash_recorder_ctx1.iv+3) = flash_pt;
+		*((uint32_t*)g_flash_recorder_ctx1.iv+2) = prec->RotNumber;
+
+		retv = LCRYPTO_crypt_aes256_ctr( rbuff16, rbuff16 + rsize16, rsize16 , &g_flash_recorder_ctx1, xDelayms);
+		if( retv != kStatus_QMC_Ok)
+		{
+			dbgRecPRINTF("WR enc Err:%d\n\r", retv);
+			vPortFree( rbuff);
+			return retv;
+		}
+		SCB_InvalidateDCache_by_Addr ( rbuff16, rsize16);
+
+		retv=dispatcher_write_memory( (uint8_t *)flash_pt, rbuff16, prec->RecordSize, portMAX_DELAY);
+		vPortFree( rbuff);
+		if( retv != kStatus_QMC_Ok)
+		{
+			dbgRecPRINTF("FlashWriteRecord Err:%d uuid:%d\n\r", retv, h->uuid);
+			return retv;
+		}
+
+		prec->Pt = flash_pt + prec->RecordSize;
+		prec->Idr=h->uuid;
+	}
+	else
 	{
-		dbgRecPRINTF("FlashWriteRecord Err:%d uuid:%d\n\r", retv, h->uuid);
-		return retv;
-	}
+		uint32_t flash_pt = prec->Pt;
+		state = FlashAlignPt( &flash_pt, prec);
+		if( state != 0)
+		{
+			//Erase page
+			retv=dispatcher_erase_sectors( (uint8_t *)flash_pt, 1, portMAX_DELAY);
+#ifdef FLASH_RECORDER_POSITIVE_DEBUG
+			dbgRecPRINTF("Erase %x\n\r", flash_pt);
+#endif
+			if( retv!= kStatus_QMC_Ok)
+			{
+				dbgRecPRINTF("FlashWriteRecord erase Err:%d\n\r", retv);
+				return retv;	//error
+			}
+		}
 
-	prec->Pt = flash_pt + prec->RecordSize;
-	prec->Idr=h->uuid;
+		retv=dispatcher_write_memory( (uint8_t *)flash_pt, pt, prec->RecordSize, portMAX_DELAY);
+		if( retv != kStatus_QMC_Ok)
+		{
+			dbgRecPRINTF("FlashWriteRecord Err:%d uuid:%d\n\r", retv, h->uuid);
+			return retv;
+		}
+
+		prec->Pt = flash_pt + prec->RecordSize;
+		prec->Idr=h->uuid;
+	}
 
 	if( state == 2 )
 	{
@@ -174,15 +271,18 @@ qmc_status_t FlashWriteRecord( void *pt, recorder_t *prec)
 			}
 			else
 			{
-				inf.RotationNumber++;
+				inf.RotationNumber = prec->RotNumber;
 			}
 			inf.RecordOrigin = 1;
 
+			prec->RotNumber = inf.RotationNumber;
 			retv = FlashWriteRecord ( &inf, (recorder_t *)prec->InfRec);
 			if( retv!= kStatus_QMC_Ok)
 			{
 				//OK, try once to format InfRecorder
+#ifdef FLASH_RECORDER_POSITIVE_DEBUG
 				dbgRecPRINTF("FlashWriteRecord format inf\n\r");
+#endif
 				retv = FlashRecorderFormat( (recorder_t *)prec->InfRec);
 				if( retv != kStatus_QMC_Ok)
 				{
@@ -196,63 +296,165 @@ qmc_status_t FlashWriteRecord( void *pt, recorder_t *prec)
 					return retv;	//error
 				}
 			}
-#if 1
-			recorder_status_t rstat;
-			FlashGetStatusInfo( &rstat, (recorder_t *)prec->InfRec);
-			dbgRecPRINTF("InfStat uuid:%x cnt:%d Pt:%x\n\r", rstat.Idr, rstat.cnt, rstat.Pt);
-#endif
-
-
 		}
 	}
 	return retv;
 }
 
-/*
- * Function gets the record by idr (uuid) key.
- * Hleda record struktury FLASH_RECORD *x ve flash podle x->idr.
- * retv: 0 - record is found and return pointer value points to record located in recorder!!!
- *      -1 - record hasn't been found
+/* Function reads and decrypts recorder data stored at *Pt. Data are copied in *record.
+ * AES256-CTR is used for decryption.
+ *
+ * Return value:
+ * kStatus_QMC_ErrMem               cannot allocate memory on heap, no read done
+ * kStatus_QMC_ErrBusy              cannot get CAAM mutex
+ * kStatus_QMC_Err                  general error
+ * kStatus_QMC_Ok                   read succesfuly done
  */
-void *FlashGetRecord( uint32_t idr, recorder_t *prec, void* record, TickType_t ticks)
+void *FlashReadRecord( void *Pt, recorder_t *prec, void *record, TickType_t ticks)
 {
-	uint32_t ptf=prec->Pt;
-	uint32_t size=prec->AreaLength;
-
 	//First of all we need to obtain flash_lock to be sure nobody is using flash now
 	if( dispatcher_get_flash_lock( ticks) == kStatus_QMC_Ok)
 	{
-		while( size >= prec->RecordSize)
+		const size_t rsize16 = MAKE_NUMBER_ALIGN( prec->RecordSize, 16);
+		if( prec->Flags & 0x1)
 		{
-			size-=prec->RecordSize;
-			ptf-=prec->RecordSize;
-			if( ptf < prec->AreaBegin)	//when we cross the begin
-				ptf=prec->AreaBegin + prec->AreaLength - prec->RecordSize;
+			uint8_t *rbuff = pvPortMalloc( 2*rsize16 + 16);
+			if( rbuff == NULL)
+			{
+				dbgRecPRINTF("dec FRR Cannot alloc mem.\n\r");
+				dispatcher_release_flash_lock();
+				return NULL;
+			}
+			uint8_t *rbuff16 = (uint8_t *)MAKE_NUMBER_ALIGN( (uint32_t)rbuff, 16);
+			memcpy( rbuff16 + rsize16, Pt, prec->RecordSize);
 
-			uint32_t off=ptf % prec->PageSize % prec->RecordSize;	//Align for sizeof(FLASH_RECORD) since the begin of the sector
-			size-=off;
-			ptf-=off;
+			//Credentials IV
+#ifdef NO_SBL
+			memset( g_flash_recorder_ctx2.iv, 0, sizeof(g_flash_recorder_ctx2.iv));
+#else
+			memcpy( g_flash_recorder_ctx2.iv, (void *)g_sbl_prov_keys.nonceLog, sizeof(g_flash_recorder_ctx2.iv));
+#endif
+			*((uint32_t*)g_flash_recorder_ctx2.iv+3) = (uint32_t)Pt;
+			if( prec->Pt < (uint32_t)Pt)
+			{
+				*((uint32_t*)g_flash_recorder_ctx2.iv+2) = prec->RotNumber - 1;
+			}
+			else
+			{
+				*((uint32_t*)g_flash_recorder_ctx2.iv+2) = prec->RotNumber;
+			}
 
-			record_head_t *hf=( record_head_t *)ptf;
-			if( hf->uuid == 0xFFFFFFFF )	//when not found
-				break;
+			qmc_status_t retv = LCRYPTO_crypt_aes256_ctr( rbuff16, rbuff16 + rsize16, rsize16 , &g_flash_recorder_ctx2, ticks);
+			if( retv != kStatus_QMC_Ok)
+			{
+				dbgRecPRINTF("FRR dec Err:%d\n\r", retv);
+				vPortFree( rbuff);
+				dispatcher_release_flash_lock();
+				return NULL;
+			}
+			SCB_InvalidateDCache_by_Addr ( rbuff16, rsize16);
+
+			if( HashRecordCheck( rbuff16, prec) == kStatus_QMC_Ok)
+			{
+				if( record != NULL)
+					memcpy( record, rbuff16, prec->RecordSize);
+				vPortFree( rbuff);
+				dispatcher_release_flash_lock();
+				return Pt;
+			}
+			vPortFree( rbuff);
+			dispatcher_release_flash_lock();
+			return NULL;
+		}
+		else
+		{
+			if( record != NULL)
+				memcpy( record, Pt, prec->RecordSize);
+			dispatcher_release_flash_lock();
+			return Pt;
+		}
+	}
+	return NULL;
+}
+
+/* Function calculates and returns the address to recorded data based on idr (uuid).
+ * Return value:
+ * NULL    cannot return pointer to requested idr data
+ * !=NULL  pointer to requested data
+ */
+void *FlashGetAddress( uint32_t idr, recorder_t *prec)
+{
+	if( prec==NULL)
+		return NULL;
+	if ( prec->Idr == 0)
+		return NULL;
+	if( idr > prec->Idr)
+		return NULL;
+
+	//Efective Len of required record record L = L1 + L2 + L3
+	uint32_t L1, L2, L3;
+	uint32_t IL, IL1, IL2, IL3, IL1p;
+	uint32_t NIL2;
+	const uint32_t LPSS = prec->PageSize % prec->RecordSize;
+	const uint32_t NPS  = prec->PageSize / prec->RecordSize;
+
+	IL = prec->Idr - idr + 1;
+
+	IL1p = prec->Pt % prec->PageSize / prec->RecordSize;
+	IL1 = (IL > IL1p) ? IL1p : IL;
+	L1 = IL1 * prec->RecordSize + ((IL > IL1p) ? LPSS : 0);
+
+	NIL2 = ((IL > IL1) ? (IL - IL1 - 1) : (IL - IL1)) / NPS;
+	IL2 = NIL2 * NPS;
+	L2 = NIL2 * prec->PageSize;
+
+	IL3 = IL - (IL1 + IL2);
+	L3 = IL3 * prec->RecordSize;
+
+	uint32_t Size = L1 + L2 + L3;
+	uint32_t Asize = prec->Pt - prec->AreaBegin;
+	if( Size <= Asize)
+	{
+		return  (void *)(prec->Pt - Size);
+	}
+	Size = Size - Asize;
+	uint32_t AreaEnd = prec->AreaBegin + prec->AreaLength;
+	uint32_t Bsize = AreaEnd - prec->Pt - ( prec->PageSize - prec->Pt % prec->PageSize);
+	if( Size <= Bsize)
+	{
+		return (void *)(AreaEnd - Size);
+	}
+	return NULL;
+}
+
+/*
+ * Function gets the record by idr (uuid) key.
+ * Hleda record struktury FLASH_RECORD *x ve flash podle x->idr.
+ * retv:
+ * != NULL  - record data is found and return pointer value points to record located in recorder!!! Data are copied to *record if != NULL
+ * NULL     - record data not found
+ */
+void *FlashGetRecord( uint32_t idr, recorder_t *prec, void* record, TickType_t ticks)
+{
+	void *pt = FlashGetAddress( idr, prec);
+	if( !pt) return NULL;
+
+	pt = FlashReadRecord( pt, prec, record, ticks);
+	if( pt)
+	{
+		if( record)
+		{
+			record_head_t *hf=( record_head_t *)record;
+			if( hf->uuid != 0xFFFFFFFF )
 			if( hf->uuid == idr )
 			{
-				//if( hf->chksum == SumMem( (uint8_t*)&((record_head_t*)ptf)->uuid, prec->RecordSize-sizeof(((record_head_t*)ptf)->hash)) )
-				if( HashRecordCheck( (void*)ptf, prec) == kStatus_QMC_Ok)
-				{
-					if( record != NULL)
-						memcpy( record, (void*)ptf, prec->RecordSize);
-					dispatcher_release_flash_lock();
-					return (void*)ptf;	//Pointer to record in recorder.
-				}
-				else
-				{
-					break;	//Chksum error. NULL returned.
-				}
+				return pt;
 			}
 		}
-		dispatcher_release_flash_lock();
+		else
+		{
+			return pt;
+		}
 	}
 	return NULL;
 }
@@ -272,15 +474,15 @@ int FlashGetStatusInfo( recorder_status_t *rstat, recorder_t *prec)
 	rstat->ts.milliseconds=0;
 
 	//Let's count all records.
-	uint32_t idr = FlashGetLastIdr( prec);
-	uint32_t LastIdr = idr;
-	while( FlashGetRecord( idr, prec, NULL, portMAX_DELAY) != NULL) { idr--; }
-	rstat->cnt = LastIdr-idr;
+	uint32_t LastIdr = FlashGetLastIdr( prec);
+	uint32_t FirstIdr = FlashGetFirstIdr( prec);
+	rstat->cnt = LastIdr-FirstIdr;
 	return 0;
 }
 
 /*
  * Format recorder. Erase all recorder sectors.
+ * if prec->inf != NULL updates and writes the inf record.
  */
 qmc_status_t FlashRecorderFormat( recorder_t *prec)
 {
@@ -304,6 +506,7 @@ qmc_status_t FlashRecorderFormat( recorder_t *prec)
 		}
 		inf.RecordOrigin = 0;	//Format record
 
+		prec->RotNumber = inf.RotationNumber;
 		retv = FlashWriteRecord ( &inf, (recorder_t *)prec->InfRec);
 		if( retv!= kStatus_QMC_Ok)
 		{
@@ -339,21 +542,48 @@ FlashRecorderInit needs to evaluate start and end of the data area from the each
 */
 qmc_status_t FlashRecorderInit( recorder_t *prec)
 {
-	qmc_status_t retv;
+	qmc_status_t retv=kStatus_QMC_Err;
 	uint32_t pt=prec->AreaBegin;
 	prec->Idr=0;
 	
-#ifdef DATALOGGER_FLASH_RECORDER_USE_HASH
-	prec->flash_recorder_ctx = pvPortMalloc( sizeof( mbedtls_sha256_context ));
-	if( prec->flash_recorder_ctx == NULL)
+	const TickType_t xDelayms = pdMS_TO_TICKS( CONFIG_MUTEX_XDELAYS_MS);
+	const size_t rsize16 = MAKE_NUMBER_ALIGN( prec->RecordSize, 16);
+	uint8_t *rbuff16 = NULL, *rbuff = NULL;
+
+	if( prec->Flags & 0x1)
 	{
-		dbgPRINTF("FlashRecorderInit: Cannot alloc heap memory for handler. S;%d\n\r", sizeof( mbedtls_sha256_context));
-		return kStatus_QMC_Err;
+		rbuff = pvPortMalloc( 2*rsize16 + 16);
+		if( rbuff == NULL)
+		{
+			dbgRecPRINTF("dec FRI Cannot alloc mem.\n\r");
+			return kStatus_QMC_ErrMem;
+		}
+		rbuff16 = (uint8_t *)MAKE_NUMBER_ALIGN( (uint32_t)rbuff, 16);
+
+		//First get the last inf record if exists to get RotationNumber
+		if( prec->InfRec)
+		{
+			recorder_info_t inf;
+			uint32_t lastid = FlashGetLastIdr( (recorder_t *)prec->InfRec);
+			if( FlashGetRecord( lastid, (recorder_t *)prec->InfRec, &inf, xDelayms) == NULL)
+			{
+				dbgRecPRINTF("dec FRI Cannot read recorder_t record.\n\r");
+				vPortFree( rbuff);
+				return kStatus_QMC_Err;
+			}
+			prec->RotNumber = inf.RotationNumber;
+		}
 	}
-	mbedtls_sha256_init( prec->flash_recorder_ctx);
+
+#ifdef NO_SBL
+	memset( g_flash_recorder_ctx1.key, 0, sizeof(g_flash_recorder_ctx1.key));
+	memset( g_flash_recorder_ctx2.key, 0, sizeof(g_flash_recorder_ctx2.key));
+#else
+	memcpy( g_flash_recorder_ctx1.key, (void *)g_sbl_prov_keys.aesKeyLog, sizeof(g_flash_recorder_ctx1.key));
+	memcpy( g_flash_recorder_ctx2.key, (void *)g_sbl_prov_keys.aesKeyLog, sizeof(g_flash_recorder_ctx2.key));
 #endif
 
-	//First of all let's try to go through block of 0xFFFFs.
+//First of all let's try to go through block of 0xFFFFs.
 	for(;;)
 	{
 		if( FlashAlignPt( &pt, prec) == 2)	//When we crossed last address of last sector in recorder.
@@ -371,20 +601,55 @@ qmc_status_t FlashRecorderInit( recorder_t *prec)
 			retv=kStatus_QMC_Ok;
 			break;
 		}
+
 		if( ((record_head_t *)pt)->uuid == 0xFFFFFFFF)	//When there are no data anymore.
 		{
 			retv=kStatus_QMC_Ok;
 			break;
 		}
-		if( HashRecordCheck( (void*)pt, prec) != kStatus_QMC_Ok ) //Record validation.
-		{
-			retv=kStatus_QMC_Err;
-			break;
-		}
 
-		prec->Idr=(( record_head_t *)pt)->uuid;
+		if( prec->Flags & 0x1)
+		{
+			//Compose nonce
+#ifdef NO_SBL
+			memset( g_flash_recorder_ctx2.iv, 0, sizeof(g_flash_recorder_ctx2.iv));
+#else
+			memcpy( g_flash_recorder_ctx2.iv, (void *)g_sbl_prov_keys.nonceLog, sizeof(g_flash_recorder_ctx2.iv));
+#endif
+			*((uint32_t*)g_flash_recorder_ctx2.iv+3) = (uint32_t)pt;	//modify the IV
+			*((uint32_t*)g_flash_recorder_ctx2.iv+2) = prec->RotNumber;
+
+			memcpy( rbuff16 + rsize16, (void *)pt, prec->RecordSize);
+
+			retv = LCRYPTO_crypt_aes256_ctr( rbuff16, rbuff16 + rsize16, rsize16 , &g_flash_recorder_ctx2, xDelayms);
+			if( retv != kStatus_QMC_Ok)
+			{
+				dbgRecPRINTF("FRI dec Err:%d\n\r", retv);
+				break;
+			}
+			SCB_InvalidateDCache_by_Addr ( rbuff16, rsize16);
+			retv = HashRecordCheck( rbuff16, prec);
+			if( retv != kStatus_QMC_Ok ) //Record validation.
+			{
+				dbgRecPRINTF("FRI XXX:%p\n\r", pt);
+				break;
+			}
+			prec->Idr=(( record_head_t *)rbuff16)->uuid;
+		}
+		else
+		{
+			retv = HashRecordCheck( (void*)pt, prec);
+			if( retv != kStatus_QMC_Ok ) //Record validation.
+			{
+				dbgRecPRINTF("FRI XXX1:%p\n\r", pt);
+				break;
+			}
+			prec->Idr=(( record_head_t *)pt)->uuid;
+		}
 		pt+=prec->RecordSize;
 	}
+	if( prec->Flags & 0x1)
+		vPortFree( rbuff);
 	prec->Pt=(uint32_t)pt;
 	return retv;
 }
@@ -392,4 +657,26 @@ qmc_status_t FlashRecorderInit( recorder_t *prec)
 uint32_t FlashGetLastIdr( recorder_t *prec)
 {
 	return prec->Idr;
+}
+
+uint32_t FlashGetFirstIdr( recorder_t *prec)
+{
+	const TickType_t xDelayms = pdMS_TO_TICKS( DATALOGGER_MUTEX_XDELAYS_MS);
+	uint8_t record[ prec->RecordSize];
+	uint32_t PtSecBegin = prec->Pt - prec->Pt % OCTAL_FLASH_SECTOR_SIZE;
+	uint32_t PtSec = PtSecBegin;
+	for(;;)
+	{
+		PtSec += OCTAL_FLASH_SECTOR_SIZE;
+		FlashAlignPt( &PtSec, prec);
+		if( PtSecBegin == PtSec)
+			break;
+		if( FlashReadRecord( (void *)PtSec, prec, record, xDelayms) != NULL)
+		{
+			record_head_t *hf=( record_head_t *)record;
+			if( hf->uuid != 0xFFFFFFFF )
+				return hf->uuid;
+		}
+	}
+	return 0;
 }

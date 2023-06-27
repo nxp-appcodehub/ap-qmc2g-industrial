@@ -1,7 +1,11 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 #include <math.h>
@@ -15,7 +19,7 @@
 #include "helper_flexio_spi.h"
 #include "mlib_types.h"
 #include "qmc_features_config.h"
-
+#include "se_session.h"
 #include "fsl_debug_console.h"
 
 /*******************************************************************************
@@ -195,7 +199,11 @@ double g_PSBTemps[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 float g_MCUTemp = 0;
 float g_DBTemp = 0;
 
+bool gs_BSInitialized = false;
+
 TaskHandle_t g_board_service_task_handle;
+
+extern EventGroupHandle_t g_systemStatusEventGroupHandle;
 
 /*******************************************************************************
  * Code
@@ -232,6 +240,7 @@ qmc_status_t BoardServiceInit()
 	TMPSNS_DisableInterrupt(TMPSNS, kTEMPSENSOR_PanicTempInterruptStatusEnable);
 	DisableIRQ(TMPSNS_LOW_HIGH_IRQn);
 
+	gs_BSInitialized = true;
 	return kStatus_QMC_Ok;
 }
 
@@ -495,3 +504,82 @@ static double CalculateTemperatureFromVoltage(double V)
 	return T_out;
 }
 #endif /* #if (MC_HAS_AFE_ANY_MOTOR != 0) */
+
+qmc_status_t SelfTest(void)
+{
+	uint32_t systemStatus = xEventGroupGetBits(g_systemStatusEventGroupHandle);
+
+	/* Check the system status - BEGIN */
+	if ((systemStatus & QMC_SYSEVENT_FAULT_Motor1) ||
+		(systemStatus & QMC_SYSEVENT_FAULT_Motor2) ||
+		(systemStatus & QMC_SYSEVENT_FAULT_Motor3) ||
+		(systemStatus & QMC_SYSEVENT_FAULT_Motor4) ||
+		(systemStatus & QMC_SYSEVENT_FAULT_System)||
+		(systemStatus & QMC_SYSEVENT_NETWORK_NoLink)||
+		(systemStatus & QMC_SYSEVENT_LOG_FlashError)||
+		(systemStatus & QMC_SYSEVENT_LOG_LowMemory))
+	{
+		return kStatus_QMC_Err;
+	}
+	/* Check the system status - END */
+
+	/* Check if the BoardServiceInit() function was successfully executed - BEGIN */
+	if (!gs_BSInitialized)
+	{
+		return kStatus_QMC_Err;
+	}
+	/* Check if the BoardServiceInit() function was successfully executed - END */
+
+	/*
+	 * GD3000 cannot be checked in current implementation
+	 */
+
+	/* Check the AFEs - BEGIN */
+#if (MC_HAS_AFE_ANY_MOTOR != 0)
+    RPC_SelectPowerStageBoardSpiDevice(kQMC_SpiAfe);
+	helper_FLEXIO_SPI_Set_TIMCTL(AFE_ON_PSB, gs_FlexioSPIHandle);
+	for (unsigned int motorId = ((unsigned int) kMC_Motor1); motorId <= MC_MAX_MOTORS; motorId++)
+	{
+		if (!MC_PSBx_HAS_AFE(motorId))
+			continue;
+		gs_DevHdl[motorId].sysConfig->enabledChnMask = 0x0003;
+
+		qmc_status_t status = (qmc_status_t) NAFE_init(&gs_DevHdl[motorId], &gs_XferHdl);
+
+		if (status != kStatus_QMC_Ok)
+		{
+			return kStatus_QMC_Err;
+		}
+	}
+	RPC_SelectPowerStageBoardSpiDevice(kQMC_SpiMotorDriver);
+	helper_FLEXIO_SPI_Set_TIMCTL(GD3000_ON_PSB, gs_FlexioSPIHandle);
+#endif  /* #if (MC_HAS_AFE_ANY_MOTOR != 0) */
+	/* Check the AFEs - END */
+
+	/* Check the DB Temp Sens - BEGIN */
+    float DBTemp = 0;
+    if (BOARD_GetDbTemperature(&DBTemp) != kStatus_QMC_Ok)
+    {
+    	return kStatus_QMC_Err;
+    }
+    /* Check the DB Temp Sens - END */
+
+    /* Check the secure element - BEGIN */
+    if(!SE_IsInitialized())
+    {
+    	return kStatus_QMC_Err;
+    }
+    else
+    {
+		const char *uid = SE_GetUid();
+		if(strlen(uid) <= 2)
+		{
+
+			return kStatus_QMC_Err;
+		}
+    }
+    /* Check the secure element - END */
+
+    return kStatus_QMC_Ok;
+}
+

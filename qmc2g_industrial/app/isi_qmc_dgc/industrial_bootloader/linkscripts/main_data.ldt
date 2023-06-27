@@ -1,0 +1,5 @@
+		*interrupts.o*(*.rodata*)
+		*interrupts.o*(*.constdata*)
+		*fsl_clock.o*(*.rodata*)
+		*fsl_clock.o*(*.constdata*)		
+		*(.data.*)

@@ -810,8 +810,6 @@ BOARD_InitPowerStageSPIsPins:
   - {pin_num: M17, peripheral: FLEXIO2, signal: 'IO, 29', pin_signal: GPIO_AD_29, direction: INPUT}
   - {pin_num: K17, peripheral: FLEXIO2, signal: 'IO, 30', pin_signal: GPIO_AD_30, direction: OUTPUT}
   - {pin_num: J17, peripheral: FLEXIO2, signal: 'IO, 31', pin_signal: GPIO_AD_31, direction: OUTPUT}
-  - {pin_num: N9, peripheral: GPIO13, signal: 'gpio_io, 11', pin_signal: GPIO_SNVS_08, direction: OUTPUT}
-  - {pin_num: R11, peripheral: GPIO13, signal: 'gpio_io, 12', pin_signal: GPIO_SNVS_09, direction: OUTPUT}
   - {pin_num: R5, peripheral: GPIO12, signal: 'gpio_io, 10', pin_signal: GPIO_LPSR_10, direction: OUTPUT}
   - {pin_num: T5, peripheral: GPIO12, signal: 'gpio_io, 11', pin_signal: GPIO_LPSR_11, direction: OUTPUT, pull_up_down_config: Pull_Up, pull_keeper_select: Pull}
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS ***********
@@ -844,24 +842,6 @@ void BOARD_InitPowerStageSPIsPins(void) {
   };
   /* Initialize GPIO functionality on IOMUXC_LPSR_SW_MUX_CTL_PAD_GPIO_LPSR_11 (pin T5) */
   GPIO_PinInit(GPIO12, 11U, &SPI_CS_SEL1_I2C6_SCL_SWO_config);
-
-  /* GPIO configuration of SPI_CS_SEL0_SNVS on GPIO_SNVS_08_DIG (pin N9) */
-  gpio_pin_config_t SPI_CS_SEL0_SNVS_config = {
-      .direction = kGPIO_DigitalOutput,
-      .outputLogic = 0U,
-      .interruptMode = kGPIO_NoIntmode
-  };
-  /* Initialize GPIO functionality on GPIO_SNVS_08_DIG (pin N9) */
-  GPIO_PinInit(GPIO13, 11U, &SPI_CS_SEL0_SNVS_config);
-
-  /* GPIO configuration of SPI_CS_SEL1_SNVS on GPIO_SNVS_09_DIG (pin R11) */
-  gpio_pin_config_t SPI_CS_SEL1_SNVS_config = {
-      .direction = kGPIO_DigitalOutput,
-      .outputLogic = 0U,
-      .interruptMode = kGPIO_NoIntmode
-  };
-  /* Initialize GPIO functionality on GPIO_SNVS_09_DIG (pin R11) */
-  GPIO_PinInit(GPIO13, 12U, &SPI_CS_SEL1_SNVS_config);
 
   IOMUXC_SetPinMux(
       IOMUXC_GPIO_AD_04_FLEXIO2_D04,          /* GPIO_AD_04 is configured as FLEXIO2_D04 */
@@ -916,12 +896,6 @@ void BOARD_InitPowerStageSPIsPins(void) {
       0U);                                    /* Software Input On Field: Input Path is determined by functionality */
   IOMUXC_SetPinMux(
       IOMUXC_GPIO_LPSR_11_GPIO12_IO11,        /* GPIO_LPSR_11 is configured as GPIO12_IO11 */
-      0U);                                    /* Software Input On Field: Input Path is determined by functionality */
-  IOMUXC_SetPinMux(
-      IOMUXC_GPIO_SNVS_08_DIG_GPIO13_IO11,    /* GPIO_SNVS_08_DIG is configured as GPIO13_IO11 */
-      0U);                                    /* Software Input On Field: Input Path is determined by functionality */
-  IOMUXC_SetPinMux(
-      IOMUXC_GPIO_SNVS_09_DIG_GPIO13_IO12,    /* GPIO_SNVS_09_DIG is configured as GPIO13_IO12 */
       0U);                                    /* Software Input On Field: Input Path is determined by functionality */
   IOMUXC_SetPinConfig(
       IOMUXC_GPIO_AD_26_FLEXIO2_D26,          /* GPIO_AD_26 PAD functional properties : */
@@ -1920,10 +1894,6 @@ BOARD_InitDigitalOutputPins:
   - {pin_num: F8, peripheral: GPIO5, signal: 'gpio_mux_io, 02', pin_signal: GPIO_DISP_B2_01, direction: OUTPUT, pull_up_down_config: Pull_Up, pull_keeper_select: Pull}
   - {pin_num: E9, peripheral: GPIO5, signal: 'gpio_mux_io, 03', pin_signal: GPIO_DISP_B2_02, direction: OUTPUT, pull_up_down_config: Pull_Up, pull_keeper_select: Pull}
   - {pin_num: D7, peripheral: GPIO5, signal: 'gpio_mux_io, 04', pin_signal: GPIO_DISP_B2_03, direction: OUTPUT, pull_up_down_config: Pull_Up, pull_keeper_select: Pull}
-  - {pin_num: R10, peripheral: GPIO13, signal: 'gpio_io, 03', pin_signal: GPIO_SNVS_00, direction: OUTPUT}
-  - {pin_num: P10, peripheral: GPIO13, signal: 'gpio_io, 04', pin_signal: GPIO_SNVS_01, direction: OUTPUT}
-  - {pin_num: L9, peripheral: GPIO13, signal: 'gpio_io, 05', pin_signal: GPIO_SNVS_02, direction: OUTPUT}
-  - {pin_num: M10, peripheral: GPIO13, signal: 'gpio_io, 06', pin_signal: GPIO_SNVS_03, direction: OUTPUT}
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS ***********
  */
 
@@ -1972,42 +1942,6 @@ void BOARD_InitDigitalOutputPins(void) {
   /* Initialize GPIO functionality on GPIO_DISP_B2_03 (pin D7) */
   GPIO_PinInit(GPIO5, 4U, &DIG_OUT_3_BOOT_CFG9_config);
 
-  /* GPIO configuration of DIG_OUT_4_SNVS on GPIO_SNVS_00_DIG (pin R10) */
-  gpio_pin_config_t DIG_OUT_4_SNVS_config = {
-      .direction = kGPIO_DigitalOutput,
-      .outputLogic = 0U,
-      .interruptMode = kGPIO_NoIntmode
-  };
-  /* Initialize GPIO functionality on GPIO_SNVS_00_DIG (pin R10) */
-  GPIO_PinInit(GPIO13, 3U, &DIG_OUT_4_SNVS_config);
-
-  /* GPIO configuration of DIG_OUT_5_SNVS on GPIO_SNVS_01_DIG (pin P10) */
-  gpio_pin_config_t DIG_OUT_5_SNVS_config = {
-      .direction = kGPIO_DigitalOutput,
-      .outputLogic = 0U,
-      .interruptMode = kGPIO_NoIntmode
-  };
-  /* Initialize GPIO functionality on GPIO_SNVS_01_DIG (pin P10) */
-  GPIO_PinInit(GPIO13, 4U, &DIG_OUT_5_SNVS_config);
-
-  /* GPIO configuration of DIG_OUT_6_SNVS on GPIO_SNVS_02_DIG (pin L9) */
-  gpio_pin_config_t DIG_OUT_6_SNVS_config = {
-      .direction = kGPIO_DigitalOutput,
-      .outputLogic = 0U,
-      .interruptMode = kGPIO_NoIntmode
-  };
-  /* Initialize GPIO functionality on GPIO_SNVS_02_DIG (pin L9) */
-  GPIO_PinInit(GPIO13, 5U, &DIG_OUT_6_SNVS_config);
-
-  /* GPIO configuration of DIG_OUT_7_SNVS on GPIO_SNVS_03_DIG (pin M10) */
-  gpio_pin_config_t DIG_OUT_7_SNVS_config = {
-      .direction = kGPIO_DigitalOutput,
-      .outputLogic = 0U,
-      .interruptMode = kGPIO_NoIntmode
-  };
-  /* Initialize GPIO functionality on GPIO_SNVS_03_DIG (pin M10) */
-  GPIO_PinInit(GPIO13, 6U, &DIG_OUT_7_SNVS_config);
-
   IOMUXC_SetPinMux(
       IOMUXC_GPIO_DISP_B2_00_GPIO_MUX5_IO01,  /* GPIO_DISP_B2_00 is configured as GPIO_MUX5_IO01 */
       0U);                                    /* Software Input On Field: Input Path is determined by functionality */
@@ -2019,18 +1953,6 @@ void BOARD_InitDigitalOutputPins(void) {
       0U);                                    /* Software Input On Field: Input Path is determined by functionality */
   IOMUXC_SetPinMux(
       IOMUXC_GPIO_DISP_B2_03_GPIO_MUX5_IO04,  /* GPIO_DISP_B2_03 is configured as GPIO_MUX5_IO04 */
-      0U);                                    /* Software Input On Field: Input Path is determined by functionality */
-  IOMUXC_SetPinMux(
-      IOMUXC_GPIO_SNVS_00_DIG_GPIO13_IO03,    /* GPIO_SNVS_00_DIG is configured as GPIO13_IO03 */
-      0U);                                    /* Software Input On Field: Input Path is determined by functionality */
-  IOMUXC_SetPinMux(
-      IOMUXC_GPIO_SNVS_01_DIG_GPIO13_IO04,    /* GPIO_SNVS_01_DIG is configured as GPIO13_IO04 */
-      0U);                                    /* Software Input On Field: Input Path is determined by functionality */
-  IOMUXC_SetPinMux(
-      IOMUXC_GPIO_SNVS_02_DIG_GPIO13_IO05,    /* GPIO_SNVS_02_DIG is configured as GPIO13_IO05 */
-      0U);                                    /* Software Input On Field: Input Path is determined by functionality */
-  IOMUXC_SetPinMux(
-      IOMUXC_GPIO_SNVS_03_DIG_GPIO13_IO06,    /* GPIO_SNVS_03_DIG is configured as GPIO13_IO06 */
       0U);                                    /* Software Input On Field: Input Path is determined by functionality */
   IOMUXC_SetPinConfig(
       IOMUXC_GPIO_DISP_B2_00_GPIO_MUX5_IO01,  /* GPIO_DISP_B2_00 PAD functional properties : */
@@ -2080,10 +2002,6 @@ BOARD_InitDigitalInputPins:
   - {pin_num: J2, peripheral: GPIO2, signal: 'gpio_mux_io, 07', pin_signal: GPIO_EMC_B1_39, direction: INPUT, gpio_interrupt: kGPIO_IntRisingOrFallingEdge}
   - {pin_num: T2, peripheral: GPIO2, signal: 'gpio_mux_io, 27', pin_signal: GPIO_EMC_B2_17, direction: INPUT, gpio_interrupt: kGPIO_IntRisingOrFallingEdge}
   - {pin_num: H17, peripheral: GPIO4, signal: 'gpio_mux_io, 00', pin_signal: GPIO_AD_33, direction: INPUT, gpio_interrupt: kGPIO_IntRisingOrFallingEdge}
-  - {pin_num: N10, peripheral: GPIO13, signal: 'gpio_io, 07', pin_signal: GPIO_SNVS_04, direction: INPUT, gpio_interrupt: kGPIO_NoIntmode}
-  - {pin_num: P9, peripheral: GPIO13, signal: 'gpio_io, 08', pin_signal: GPIO_SNVS_05, direction: INPUT, gpio_interrupt: kGPIO_NoIntmode}
-  - {pin_num: M9, peripheral: GPIO13, signal: 'gpio_io, 09', pin_signal: GPIO_SNVS_06, direction: INPUT, gpio_interrupt: kGPIO_NoIntmode}
-  - {pin_num: R9, peripheral: GPIO13, signal: 'gpio_io, 10', pin_signal: GPIO_SNVS_07, direction: INPUT}
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS ***********
  */
 
@@ -2140,42 +2058,6 @@ void BOARD_InitDigitalInputPins(void) {
   /* Enable GPIO pin interrupt on GPIO_AD_33 (pin H17) */
   GPIO_PortEnableInterrupts(GPIO4, 1U << 0U);
 
-  /* GPIO configuration of DIG_INPUT_4_SNVS on GPIO_SNVS_04_DIG (pin N10) */
-  gpio_pin_config_t DIG_INPUT_4_SNVS_config = {
-      .direction = kGPIO_DigitalInput,
-      .outputLogic = 0U,
-      .interruptMode = kGPIO_NoIntmode
-  };
-  /* Initialize GPIO functionality on GPIO_SNVS_04_DIG (pin N10) */
-  GPIO_PinInit(GPIO13, 7U, &DIG_INPUT_4_SNVS_config);
-
-  /* GPIO configuration of DIG_INPUT_5_SNVS on GPIO_SNVS_05_DIG (pin P9) */
-  gpio_pin_config_t DIG_INPUT_5_SNVS_config = {
-      .direction = kGPIO_DigitalInput,
-      .outputLogic = 0U,
-      .interruptMode = kGPIO_NoIntmode
-  };
-  /* Initialize GPIO functionality on GPIO_SNVS_05_DIG (pin P9) */
-  GPIO_PinInit(GPIO13, 8U, &DIG_INPUT_5_SNVS_config);
-
-  /* GPIO configuration of DIG_INPUT_6_SNVS on GPIO_SNVS_06_DIG (pin M9) */
-  gpio_pin_config_t DIG_INPUT_6_SNVS_config = {
-      .direction = kGPIO_DigitalInput,
-      .outputLogic = 0U,
-      .interruptMode = kGPIO_NoIntmode
-  };
-  /* Initialize GPIO functionality on GPIO_SNVS_06_DIG (pin M9) */
-  GPIO_PinInit(GPIO13, 9U, &DIG_INPUT_6_SNVS_config);
-
-  /* GPIO configuration of DIG_INPUT_7_SNVS on GPIO_SNVS_07_DIG (pin R9) */
-  gpio_pin_config_t DIG_INPUT_7_SNVS_config = {
-      .direction = kGPIO_DigitalInput,
-      .outputLogic = 0U,
-      .interruptMode = kGPIO_NoIntmode
-  };
-  /* Initialize GPIO functionality on GPIO_SNVS_07_DIG (pin R9) */
-  GPIO_PinInit(GPIO13, 10U, &DIG_INPUT_7_SNVS_config);
-
   IOMUXC_SetPinMux(
       IOMUXC_GPIO_AD_33_GPIO_MUX4_IO00,       /* GPIO_AD_33 is configured as GPIO_MUX4_IO00 */
       0U);                                    /* Software Input On Field: Input Path is determined by functionality */
@@ -2196,18 +2078,6 @@ void BOARD_InitDigitalInputPins(void) {
     (~(IOMUXC_GPR_GPR41_GPIO_MUX2_GPIO_SEL_HIGH_MASK))) /* Mask bits to zero which are setting */
       | IOMUXC_GPR_GPR41_GPIO_MUX2_GPIO_SEL_HIGH(0x00U) /* GPIO2 and CM7_GPIO2 share same IO MUX function, GPIO_MUX2 selects one GPIO function: 0x00U */
     );
-  IOMUXC_SetPinMux(
-      IOMUXC_GPIO_SNVS_04_DIG_GPIO13_IO07,    /* GPIO_SNVS_04_DIG is configured as GPIO13_IO07 */
-      0U);                                    /* Software Input On Field: Input Path is determined by functionality */
-  IOMUXC_SetPinMux(
-      IOMUXC_GPIO_SNVS_05_DIG_GPIO13_IO08,    /* GPIO_SNVS_05_DIG is configured as GPIO13_IO08 */
-      0U);                                    /* Software Input On Field: Input Path is determined by functionality */
-  IOMUXC_SetPinMux(
-      IOMUXC_GPIO_SNVS_06_DIG_GPIO13_IO09,    /* GPIO_SNVS_06_DIG is configured as GPIO13_IO09 */
-      0U);                                    /* Software Input On Field: Input Path is determined by functionality */
-  IOMUXC_SetPinMux(
-      IOMUXC_GPIO_SNVS_07_DIG_GPIO13_IO10,    /* GPIO_SNVS_07_DIG is configured as GPIO13_IO10 */
-      0U);                                    /* Software Input On Field: Input Path is determined by functionality */
 }
 
 

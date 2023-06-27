@@ -24,7 +24,7 @@
  */
 
 /*
- * Copyright (C) NXP 2017-2018.
+ * Copyright (C) NXP 2017-2018, 2023.
  */
 
 /* Define _SECURE_SOCKETS_WRAPPER_NOT_REDEFINE to prevent secure sockets functions
@@ -315,7 +315,8 @@ uint32_t SOCKETS_GetHostByName( const char * pcHostName )
 {
     uint32_t addr = 0;
     int ret = netconn_gethostbyname(pcHostName, (ip_addr_t*)&addr);
-    configASSERT(ret == ERR_OK);
+    if(ERR_OK != ret)
+    	return 0;
 
     return addr;
 }

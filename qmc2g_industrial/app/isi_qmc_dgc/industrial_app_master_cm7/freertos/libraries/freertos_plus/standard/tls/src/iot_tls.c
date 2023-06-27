@@ -404,6 +404,7 @@ static int prvPrivateKeySigningCallback( void * pvContext,
 
     if( ( xResult == CKR_OK ) && ( CKK_EC == pxTLSContext->xKeyType ) )
     {
+        /* NOTE hardcoded check for P256, does not work as is for P521! */
         /* PKCS #11 for P256 returns a 64-byte signature with 32 bytes for R and 32 bytes for S.
          * This must be converted to an ASN.1 encoded array. */
         if( *pxSigLen != pkcs11ECDSA_P256_SIGNATURE_LENGTH )

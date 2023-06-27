@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 NXP
+ * Copyright 2019, 2023 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -145,10 +145,14 @@ static void cyclic_net_receive(struct cyclic_task *c_task)
         if (status == NET_NO_FRAME && !rx_frame)
         {
             sock->stats.err_underflow++;
-
         }
         if (status != NET_OK) {
-            sock->stats.link_status = 0;
+            if (status == NET_ERR) {
+                sock->stats.link_status = 0;
+            }
+            else {
+                sock->stats.link_status = 1;
+            }
             continue;
         }
 

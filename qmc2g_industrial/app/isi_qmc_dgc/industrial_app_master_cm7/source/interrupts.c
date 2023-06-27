@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013 - 2015, Freescale Semiconductor, Inc.
- * Copyright 2022 NXP
+ * Copyright 2022-2023 NXP
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -42,12 +42,14 @@
 #include "api_qmc_common.h"
 #include "api_rpc_internal.h"
 #include "qmc_features_config.h"
+#include "task.h"
 
 /* module definitions                                                         */
 
 /* module function prototypes                                                 */
 
 /* module variables                                                           */
+extern TaskHandle_t g_datalogger_task_handle;
    
 /* module Function definitions                                                */
 
@@ -63,6 +65,7 @@ void NMI_Handler(void)
 #ifdef DEBUG
   __asm("BKPT #0x01");
 #endif
+  NVIC_SystemReset();
 }
 
 /***************************************************************************//*!
@@ -70,14 +73,16 @@ void NMI_Handler(void)
  * @details It will stop application in debug mode with software breakpoint
  *          when hard fault event occur.
  ******************************************************************************/
-/* Defined in semihost_hardfault.c
+#ifdef __SEMIHOST_HARDFAULT_DISABLE
+
 void HardFault_Handler(void)
 {
 #ifdef DEBUG
   __asm("BKPT #0x02");
 #endif
+  NVIC_SystemReset();
 }
-*/
+#endif
 
 /***************************************************************************//*!
  * @brief   MemManage exception handler
@@ -89,6 +94,7 @@ void MemManage_Handler(void)
 #ifdef DEBUG
   __asm("BKPT #0x03");
 #endif
+  NVIC_SystemReset();
 }
 
 /***************************************************************************//*!
@@ -101,6 +107,7 @@ void BusFault_Handler(void)
 #ifdef DEBUG
   __asm("BKPT #0x03");
 #endif
+  NVIC_SystemReset();
 }
 
 /***************************************************************************//*!
@@ -113,6 +120,7 @@ void UsageFault_Handler(void)
 #ifdef DEBUG
   __asm("BKPT #0x03");
 #endif
+  NVIC_SystemReset();
 }
 
 //TODO: Consider a combined handler that sets/clears all event bits in one go
@@ -220,16 +228,20 @@ void BOARD_DIG_IN0_IRQ_HANDLER(void)
 	/* User input 0 state */
 	if(GPIO_GetPinsInterruptFlags(BOARD_DIG_IN0_GPIO)&( 1U << BOARD_DIG_IN0_GPIO_PIN))
 	{
-    	if(GPIO_PinRead(BOARD_DIG_IN0_GPIO, BOARD_DIG_IN0_GPIO_PIN))
-    	{
-    		setBits   |= QMC_IOEVENT_INPUT0_HIGH;
-    		clearBits |= QMC_IOEVENT_INPUT0_LOW;
+#if FEATURE_DETECT_POWER_LOSS
+		xTaskNotifyFromISR(g_datalogger_task_handle, kDLG_SHUTDOWN_PowerLoss, eSetBits, NULL);
+#endif /* FEATURE_DETECT_POWER_LOSS */
+
+		if(GPIO_PinRead(BOARD_DIG_IN0_GPIO, BOARD_DIG_IN0_GPIO_PIN))
+		{
+			setBits   |= QMC_IOEVENT_INPUT0_HIGH;
+			clearBits |= QMC_IOEVENT_INPUT0_LOW;
 #if FEATURE_ENABLE_GPIO_SW_DEBOUNCING
-    		buttonPressedTime[0] = currentTicks;
+			buttonPressedTime[0] = currentTicks;
 #endif /* FEATURE_ENABLE_GPIO_SW_DEBOUNCING */
-    	} else {
+		} else {
 #if FEATURE_ENABLE_GPIO_SW_DEBOUNCING
-    		if ((currentTicks - buttonPressedTime[0]) >= pdMS_TO_TICKS(GPIO_SW_DEBOUNCE_MS))
+			if ((currentTicks - buttonPressedTime[0]) >= pdMS_TO_TICKS(GPIO_SW_DEBOUNCE_MS))
 			{
 				setBits   |= QMC_IOEVENT_INPUT0_LOW;
 				clearBits |= QMC_IOEVENT_INPUT0_HIGH;
@@ -238,7 +250,8 @@ void BOARD_DIG_IN0_IRQ_HANDLER(void)
 			setBits   |= QMC_IOEVENT_INPUT0_LOW;
 			clearBits |= QMC_IOEVENT_INPUT0_HIGH;
 #endif /* FEATURE_ENABLE_GPIO_SW_DEBOUNCING */
-    	}
+		}
+
 		GPIO_PortClearInterruptFlags(BOARD_DIG_IN0_GPIO, 1U << BOARD_DIG_IN0_GPIO_PIN);
 	}
 

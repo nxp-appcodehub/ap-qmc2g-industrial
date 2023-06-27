@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2018-2020 NXP
+ * Copyright 2018-2020, 2023 NXP
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -471,7 +471,7 @@
  * e.g. Major part of the mebdTLS SSS layer is purely used for
  * testing of Secure Element implementation, and can be avoided
  * fully during many production scenarios. */
-#define SSSFTR_SW_TESTCOUNTERPART 0
+#define SSSFTR_SW_TESTCOUNTERPART 1
 
 /* ====================================================================== *
  * == Computed Options ================================================== *

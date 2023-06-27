@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 NXP
+ * Copyright 2019-2023 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -21,6 +21,7 @@
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
+//#define SDCARD_POSITIVE_DEBUG
 
 /*******************************************************************************
  * Prototypes
@@ -61,7 +62,7 @@ qmc_status_t SDCard_MountVolume(void)
 }
 
 //void FileAccessTask1(void *pvParameters)
-qmc_status_t SDCard_WriteRecord( const char *dir_path, const char *file_path, char *buf)
+qmc_status_t SDCard_WriteRecord( const char *dir_path, const char *file_path, uint8_t *buf, size_t buf_len)
 {
     UINT bytesWritten   = 0U;
     FRESULT error;
@@ -109,9 +110,8 @@ qmc_status_t SDCard_WriteRecord( const char *dir_path, const char *file_path, ch
 		return kStatus_QMC_Err;
 	}
 
-	int cnt = strlen( buf);
-	error = f_write(&g_fileObject1, buf, cnt, &bytesWritten);
-	if ((error) || (bytesWritten != cnt))
+	error = f_write(&g_fileObject1, buf, buf_len, &bytesWritten);
+	if ((error) || (bytesWritten != buf_len))
 	{
 		dbgSDcPRINTF("Write file failed.\r\n");
 		return kStatus_QMC_Err;
@@ -132,13 +132,15 @@ qmc_status_t Handle_file( const char * dir_path, const char *file_path)
 		dbgSDcPRINTF("fstat file failed.\r\n");
 		return kStatus_QMC_Err;
 	}
+#ifdef SDCARD_POSITIVE_DEBUG
 	dbgSDcPRINTF("fsize:%d\n\r", fno.fsize);
+#endif
 	if( fno.fsize >= DATALOGGER_SDCARD_MAX_FILESIZE)
 	{
 		memset( &dt, 0, sizeof(qmc_datetime_t));
 		if( BOARD_GetTime( &ts) == kStatus_QMC_Ok)
 			BOARD_ConvertTimestamp2Datetime( &ts, &dt);	//return status currently doesn't care
-		sprintf( buf, "%s/%02d%02d%02d%02d.txt", dir_path, dt.year&0xff, dt.month, dt.day, dt.hour );
+		sprintf( buf, "%s/%02d%02d%02d%02d.bin", dir_path, dt.year&0xff, dt.month, dt.day, dt.hour );
 		if( f_rename( _T( file_path), buf) != FR_OK)
 		{
 			if( f_unlink ( _T( buf)) != FR_OK)
@@ -152,7 +154,9 @@ qmc_status_t Handle_file( const char * dir_path, const char *file_path)
 				return kStatus_QMC_Err;
 			}
 		}
+#ifdef SDCARD_POSITIVE_DEBUG
 		dbgSDcPRINTF("Renamed file %s to %s\n\r", file_path, buf);
+#endif
 	}
 	return kStatus_QMC_Ok;
 }

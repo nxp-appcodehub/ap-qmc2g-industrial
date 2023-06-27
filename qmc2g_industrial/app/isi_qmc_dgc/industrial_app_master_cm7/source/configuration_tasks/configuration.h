@@ -1,7 +1,11 @@
 /*
  * Copyright 2022 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 #ifndef _CONFIGURATION_H_
@@ -10,14 +14,15 @@
 #include "api_qmc_common.h"
 #include "stdbool.h"
 #include "api_configuration.h"
-//#include "lcrypto.h"
 
 
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
 
-#define CONFIGURATION_HASH_SIZE                 (32U)
+#define CONFIGURATION_HASH_SIZE                 LCRYPTO_HASH_SIZE
+#define CONFIGURATION_AES_KEY_SIZE              LCRYPTO_AES_KEY_SIZE
+#define CONFIGURATION_AES_IV_SIZE               LCRYPTO_AES_IV_SIZE
 
 typedef struct {
 	config_id_t		id;

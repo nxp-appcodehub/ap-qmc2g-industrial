@@ -1,0 +1,18 @@
+<DataBase>
+  <!--                 -->
+  <!-- NXP (iMXRT117x FlexSPI2) -->
+  <!--                 -->
+  <Device>
+    <ChipInfo      Vendor="NXP"
+                   Name="MIMXRT1170_FLEXSPI2_UFL"
+                   WorkRAMAddr="0x00000000"
+                   WorkRAMSize="0x00080000"
+                   Core="JLINK_CORE_CORTEX_M7"
+                   Aliases="MIMXRT1176DVMAA" />
+    <FlashBankInfo Name="QSPI Flash" 
+                   BaseAddr="0x60000000"
+                   MaxSize="0x08000000"
+                   Loader="MIMXRT_FLEXSPI2_UFL.FLM"
+                   LoaderType="FLASH_ALGO_TYPE_OPEN" />
+  </Device>
+</DataBase>

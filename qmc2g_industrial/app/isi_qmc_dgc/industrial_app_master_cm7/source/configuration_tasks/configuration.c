@@ -1,11 +1,16 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2023 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 #include "main_cm7.h"
 #include "app.h"
+#include "lcrypto.h"
 #include "configuration.h"
 #include "dispatcher.h"
 
@@ -14,9 +19,6 @@
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
-#ifdef FEATURE_CONFIG_USE_CRYPTO
-#define AES256_CBC_KEY_SIZE (32)
-#endif
 
 /*******************************************************************************
  * Prototypes
@@ -25,6 +27,8 @@
 /*******************************************************************************
  * Globals
  ******************************************************************************/
+extern uint32_t  __FWU_STORAGE_START[];
+extern uint32_t  __FWU_STORAGE_SIZE[];
 
 static StaticSemaphore_t gs_configMutex;
 SemaphoreHandle_t g_config_xSemaphore = NULL;
@@ -44,10 +48,14 @@ static const cnf_data_t gs_cnf_data_default = {{
 		{ kCONFIG_Key_TSN_TX_STREAM_MAC_ADDR, "TSN_TX_Stream_MAC", {0x91, 0xe0, 0xf0, 0x00, 0xfe, 0x71}},
 }};
 
-static cnf_struct_t gs_cnf_struct_data __ALIGNED(16);
-static cnf_struct_t *gs_cnf_struct = &gs_cnf_struct_data;
-//mbedtls_sha256_context cnf_sha256_context __ALIGNED(32);
-//lcrypto_aes_ctx_t cnf_aes_context;
+AT_NONCACHEABLE_SECTION_ALIGN(static cnf_struct_t gs_cnf_struct_data, 16);
+
+mbedtls_sha256_context g_cnf_sha256_ctx __ALIGNED(32);
+
+AT_NONCACHEABLE_SECTION_ALIGN(static uint8_t gs_shabuf[CONFIGURATION_HASH_SIZE], 16);
+AT_NONCACHEABLE_SECTION_ALIGN(static uint8_t gs_in_buf[OCTAL_FLASH_SECTOR_SIZE], 16);
+AT_NONCACHEABLE_SECTION_ALIGN(static uint8_t gs_out_buf[OCTAL_FLASH_SECTOR_SIZE], 16);
+AT_NONCACHEABLE_SECTION_ALIGN(lcrypto_aes_ctx_t g_config_aes_ctx, 16);
 
 /*******************************************************************************
  * Code
@@ -73,29 +81,16 @@ static qmc_status_t config_release_lock()
 	return kStatus_QMC_Ok;
 }
 
-static void CONFIG_get_sum( uint8_t *value)
+static void CONFIG_get_sum( uint8_t *value, TickType_t ticks)
 {
-#ifdef FEATURE_CONFIG_USE_HASH
-
-	LCRYPTO_get_sha256( value, (uint8_t*)gs_cnf_struct->cnf_data, sizeof( gs_cnf_struct->cnf_data), &cnf_sha256_context);
-
-#else
-
-	uint8_t *ptb = (uint8_t*)gs_cnf_struct->cnf_data;
-	uint8_t *pte = ptb + sizeof( gs_cnf_struct->cnf_data);
-	uint32_t chksum = 0;
-	while( ptb < pte)
-		chksum += *ptb++;
-
-	*(uint32_t*)value = chksum;
-#endif
+	LCRYPTO_get_sha256( gs_shabuf, (uint8_t*)gs_cnf_struct_data.cnf_data, sizeof( gs_cnf_struct_data.cnf_data), &g_cnf_sha256_ctx, ticks);
+	memcpy( value, gs_shabuf, CONFIGURATION_HASH_SIZE);
 }
 
 qmc_status_t CONFIG_UpdateFlash( )
 {
-	qmc_status_t retv;
+	qmc_status_t retv = kStatus_QMC_Err;
 	const TickType_t xDelayms = pdMS_TO_TICKS( CONFIG_MUTEX_XDELAYS_MS);
-
 	if( config_get_lock( xDelayms) == kStatus_QMC_Ok)
 	{
 
@@ -108,64 +103,91 @@ qmc_status_t CONFIG_UpdateFlash( )
 			return retv;	//error
 		}
 
-#ifdef FEATURE_CONFIG_USE_HASH
-		CONFIG_get_sum( gs_cnf_struct->hash);
+		CONFIG_get_sum( gs_cnf_struct_data.hash, xDelayms);
+
+#ifdef NO_SBL
+		memset( g_config_aes_ctx.iv, 0, sizeof( g_config_aes_ctx.iv));
 #else
-		CONFIG_get_sum( (uint8_t *)&gs_cnf_struct->chksum);
+		memcpy( g_config_aes_ctx.iv, (void *)g_sbl_prov_keys.nonceConfig, sizeof( g_config_aes_ctx.iv));
 #endif
 
-#ifdef FEATURE_CONFIG_USE_CRYPTO
-		uint8_t *base_buf = pvPortMalloc( sizeof(cnf_struct_t) + 32);
-		if( base_buf == NULL)
+		const size_t bsize = sizeof(gs_in_buf);
+		size_t size = sizeof(cnf_struct_t);
+		uint8_t *psrc = (uint8_t*)&gs_cnf_struct_data;
+		uint8_t *pdst = (uint8_t *)RECORDER_REC_CONFIG_AREABEGIN;
+
+		while( size)
 		{
-			dbgCnfPRINTF("Err. Cannot alloc memory on heap %d.\n\r", sizeof(cnf_struct_t) + 32);
-			config_release_lock();
-			return kStatus_QMC_Err;
-		}
-		uint8_t *crypt_buf = base_buf + ((uint32_t)base_buf % 32);	//allign to 32
-
-
-		LCRYPTO_encrypt_aes256_cbc( crypt_buf, (uint8_t *)gs_cnf_struct, sizeof( cnf_struct_t), &cnf_aes_context);
-
-
-		retv = dispatcher_write_memory( (uint8_t *)RECORDER_REC_CONFIG_AREABEGIN, crypt_buf, sizeof( cnf_struct_t), portMAX_DELAY);
-		vPortFree( base_buf);
-#else
-		retv = dispatcher_write_memory( (uint8_t *)RECORDER_REC_CONFIG_AREABEGIN, gs_cnf_struct, sizeof( cnf_struct_t), portMAX_DELAY);
-#endif
-		if( retv != kStatus_QMC_Ok)
-		{
-			dbgCnfPRINTF("WR Err:%d\n\r", retv);
-			config_release_lock();
-			return retv;
+			memcpy( gs_in_buf, psrc, bsize);
+			retv = LCRYPTO_encrypt_aes256_cbc( gs_out_buf, gs_in_buf, bsize, &g_config_aes_ctx, xDelayms);
+			if( retv != kStatus_QMC_Ok)
+			{
+				dbgCnfPRINTF("enc Err:%d\n\r", retv);
+				break;
+			}
+			retv = dispatcher_write_memory( pdst, gs_out_buf, bsize, portMAX_DELAY);
+			pdst += bsize;
+			psrc += bsize;
+			size = size > bsize ? size-bsize : 0;
+			if( retv != kStatus_QMC_Ok)
+			{
+				dbgCnfPRINTF("WR Err:%d\n\r", retv);
+				break;
+			}
 		}
 		config_release_lock();
-		return kStatus_QMC_Ok;
+		return retv;
 	}
 	return kStatus_QMC_Err;
 }
 
+
 static qmc_status_t CONFIG_ReadFlash()
 {
-#ifdef FEATURE_CONFIG_USE_CRYPTO
-		uint8_t *base_buf = pvPortMalloc( sizeof(cnf_struct_t) + 32);
-		if( base_buf == NULL)
-		{
-			dbgCnfPRINTF("Err. Cannot alloc memory on heap %d.\n\r", sizeof(cnf_struct_t) + 32);
-			return kStatus_QMC_Err;
-		}
-		uint8_t *crypt_buf = base_buf + ((uint32_t)base_buf % 32);	//allign to 32
+	qmc_status_t retv = kStatus_QMC_Err;
 
-		if( dispatcher_read_memory( crypt_buf, (uint8_t *)RECORDER_REC_CONFIG_AREABEGIN, sizeof( cnf_struct_t), portMAX_DELAY) != kStatus_QMC_Ok)
-			return kStatus_QMC_Err;
+	const TickType_t xDelayms = pdMS_TO_TICKS( CONFIG_MUTEX_XDELAYS_MS);
 
-		LCRYPTO_decrypt_aes256_cbc( (uint8_t *)gs_cnf_struct, crypt_buf, sizeof( cnf_struct_t), &cnf_aes_context);
-		vPortFree( base_buf);
+#ifdef NO_SBL
+	memset( g_config_aes_ctx.iv, 0, sizeof( g_config_aes_ctx.iv));
 #else
-		if( dispatcher_read_memory( gs_cnf_struct, (uint8_t *)RECORDER_REC_CONFIG_AREABEGIN, sizeof( cnf_struct_t), portMAX_DELAY) != kStatus_QMC_Ok)
-			return kStatus_QMC_Err;
+	memcpy( g_config_aes_ctx.iv, g_sbl_prov_keys.nonceConfig, sizeof( g_config_aes_ctx.iv));
 #endif
-		return kStatus_QMC_Ok;
+
+	const size_t bsize = sizeof(gs_in_buf);
+	size_t size = sizeof(cnf_struct_t);
+	uint8_t *pdst = (uint8_t *)&gs_cnf_struct_data;
+	uint8_t *psrc = (uint8_t *)RECORDER_REC_CONFIG_AREABEGIN;
+
+	while( size)
+	{
+		retv = dispatcher_read_memory( gs_in_buf, psrc, bsize, portMAX_DELAY);
+		if( retv != kStatus_QMC_Ok)
+		{
+			dbgCnfPRINTF("RD Err:%d Configuration.\n\r", retv);
+			return retv;
+		}
+		retv = LCRYPTO_decrypt_aes256_cbc( gs_out_buf, gs_in_buf, bsize, &g_config_aes_ctx, xDelayms);
+		if( retv != kStatus_QMC_Ok)
+		{
+			dbgCnfPRINTF("dec Err:%d Configuration.\n\r", retv);
+			return retv;
+		}
+
+		if( size > bsize)
+		{
+			memcpy( pdst, gs_out_buf, bsize );
+			size-=bsize;
+		}
+		else
+		{
+			memcpy( pdst, gs_out_buf, size);
+			size=0;
+		}
+		pdst += bsize;
+		psrc += bsize;
+	}
+	return kStatus_QMC_Ok;
 }
 
 qmc_status_t CONFIG_Init()
@@ -189,17 +211,12 @@ qmc_status_t CONFIG_Init()
 		return kStatus_QMC_Err;
 	}
 
-	if( dispatcher_init() != kStatus_QMC_Ok)
-	{
-		dbgCnfPRINTF("Dispatcher_init fail. Configuration.\r\n");
-		config_release_lock();
-		return kStatus_QMC_Err;
-	}
-
-#ifdef FEATURE_CONFIG_USE_CRYPTO
-	uint8_t key[AES256_CBC_KEY_SIZE];
-	memset( key, 0, sizeof(key));
-	LCRYPTO_init_aes256_cbc( cnf_aes_context.iv , key, &cnf_aes_context.ctx);
+#ifdef NO_SBL
+	memset( g_config_aes_ctx.key, 0, sizeof( g_config_aes_ctx.key));
+	memset( g_config_aes_ctx.iv, 0, sizeof( g_config_aes_ctx.iv));
+#else
+	memcpy( g_config_aes_ctx.key, (void *)g_sbl_prov_keys.aesKeyConfig, sizeof( g_config_aes_ctx.key));
+	memcpy( g_config_aes_ctx.iv, (void *)g_sbl_prov_keys.nonceConfig, sizeof( g_config_aes_ctx.iv));
 #endif
 
 	if( CONFIG_ReadFlash() != kStatus_QMC_Ok)
@@ -208,29 +225,15 @@ qmc_status_t CONFIG_Init()
 		return kStatus_QMC_Err;
 	}
 
-#ifdef FEATURE_CONFIG_USE_HASH
-	//pcnf_sha256_context = pvPortMalloc( sizeof( mbedtls_sha256_context));
-	//if( pcnf_sha256_context == NULL)
-	//{
-	//	dbgCnfPRINTF("Cannot alloc %d memory on heap. Configuration\n\r", sizeof(mbedtls_sha256_context));
-	//	return kStatus_QMC_Err;
-	//}
-
-	uint8_t hash[CONFIGURATION_HASH_SIZE];
-	CONFIG_get_sum( hash);
-	if( memcmp( gs_cnf_struct->hash, hash, sizeof( hash)) != 0 )
-#else
-	uint32_t chksum;
-	CONFIG_get_sum( (uint8_t*)&chksum);
-	if( chksum != gs_cnf_struct->chksum)
-#endif
+	CONFIG_get_sum( gs_shabuf, xDelayms);
+	if( memcmp( gs_shabuf, gs_cnf_struct_data.hash, CONFIGURATION_HASH_SIZE) != 0)
 	{
-		dbgCnfPRINTF("Read flash chksum fail. Using defaults. Configuration.\r\n");
-		memcpy( gs_cnf_struct->cnf_data, &gs_cnf_data_default, sizeof( cnf_data_t) );
+		dbgCnfPRINTF("Read flash hash fail. Using defaults. Configuration.\r\n");
+		memcpy( gs_cnf_struct_data.cnf_data, &gs_cnf_data_default, sizeof( cnf_data_t) );
 	}
 	else
 	{
-		dbgCnfPRINTF("Read flash chksum match. Configuration.\n\r");
+		dbgCnfPRINTF("Read flash hash match. Configuration.\n\r");
 	}
 
 	config_release_lock();
@@ -243,7 +246,7 @@ static qmc_status_t CONFIG_GetIndexByKey(const unsigned char *key, int *index)
 	int cnt = sizeof( cnf_data_t)/sizeof( cnf_record_t);
 	for( i=0; i < cnt; i++)
 	{
-		if( strncmp( (const char *)gs_cnf_struct->cnf_data[i].key, (const char *)key, CONFIG_MAX_KEY_LEN) == 0)
+		if( strncmp( (const char *)gs_cnf_struct_data.cnf_data[i].key, (const char *)key, CONFIG_MAX_KEY_LEN) == 0)
 		{
 			*index = i;
 			return kStatus_QMC_Ok;
@@ -258,7 +261,7 @@ static qmc_status_t CONFIG_GetIndexById( config_id_t id, int *index)
 	int cnt = sizeof( cnf_data_t)/sizeof( cnf_record_t);
 	for( i=0; i < cnt; i++)
 	{
-		if( gs_cnf_struct->cnf_data[i].id == id)
+		if( gs_cnf_struct_data.cnf_data[i].id == id)
 		{
 			*index = i;
 			return kStatus_QMC_Ok;
@@ -283,7 +286,7 @@ qmc_status_t CONFIG_GetStrValue(const unsigned char* key, unsigned char* value)
 			return kStatus_QMC_ErrRange;
 		}
 
-		strncpy( (char *)value, (const char *)gs_cnf_struct->cnf_data[i].value, sizeof(gs_cnf_struct->cnf_data[i].value));
+		strncpy( (char *)value, (const char *)gs_cnf_struct_data.cnf_data[i].value, sizeof(gs_cnf_struct_data.cnf_data[i].value));
 		config_release_lock();
 		return kStatus_QMC_Ok;
 	}
@@ -307,7 +310,7 @@ qmc_status_t CONFIG_GetStrValueById(config_id_t id, unsigned char* value)
 			return kStatus_QMC_ErrRange;
 		}
 
-		strncpy( (char *)value, (const char *)gs_cnf_struct->cnf_data[i].value, sizeof(gs_cnf_struct->cnf_data[i].value));
+		strncpy( (char *)value, (const char *)gs_cnf_struct_data.cnf_data[i].value, sizeof(gs_cnf_struct_data.cnf_data[i].value));
 		config_release_lock();
 		return kStatus_QMC_Ok;
 	}
@@ -331,7 +334,7 @@ qmc_status_t CONFIG_SetStrValue(const unsigned char* key, const unsigned char* v
 			return kStatus_QMC_ErrRange;
 		}
 
-		strncpy( (char *)gs_cnf_struct->cnf_data[i].value, (const char *)value, sizeof(gs_cnf_struct->cnf_data[i].value));
+		strncpy( (char *)gs_cnf_struct_data.cnf_data[i].value, (const char *)value, sizeof(gs_cnf_struct_data.cnf_data[i].value));
 		config_release_lock();
 		return kStatus_QMC_Ok;
 	}
@@ -355,7 +358,7 @@ qmc_status_t CONFIG_SetStrValueById(config_id_t id, const unsigned char* value)
 			return kStatus_QMC_ErrRange;
 		}
 
-		strncpy( (char *)gs_cnf_struct->cnf_data[i].value, (const char *)value, sizeof(gs_cnf_struct->cnf_data[i].value));
+		strncpy( (char *)gs_cnf_struct_data.cnf_data[i].value, (const char *)value, sizeof(gs_cnf_struct_data.cnf_data[i].value));
 		config_release_lock();
 		return kStatus_QMC_Ok;
 	}
@@ -382,7 +385,7 @@ qmc_status_t CONFIG_GetBinValue(const unsigned char* key, unsigned char* value, 
 			return kStatus_QMC_ErrRange;
 		}
 
-		memcpy( (char *)value, (const char *)gs_cnf_struct->cnf_data[i].value, length);
+		memcpy( (char *)value, (const char *)gs_cnf_struct_data.cnf_data[i].value, length);
 		config_release_lock();
 		return kStatus_QMC_Ok;
 	}
@@ -409,7 +412,7 @@ qmc_status_t CONFIG_GetBinValueById(config_id_t id, unsigned char* value, const 
 			return kStatus_QMC_ErrRange;
 		}
 
-		memcpy( (char *)value, (const char *)gs_cnf_struct->cnf_data[i].value, length);
+		memcpy( (char *)value, (const char *)gs_cnf_struct_data.cnf_data[i].value, length);
 		config_release_lock();
 		return kStatus_QMC_Ok;
 	}
@@ -436,7 +439,7 @@ qmc_status_t CONFIG_SetBinValue(const unsigned char* key, const unsigned char* v
 			return kStatus_QMC_ErrRange;
 		}
 
-		memcpy( (char *)gs_cnf_struct->cnf_data[i].value, (const char *)value, length);
+		memcpy( (char *)gs_cnf_struct_data.cnf_data[i].value, (const char *)value, length);
 		config_release_lock();
 		return kStatus_QMC_Ok;
 	}
@@ -463,7 +466,7 @@ qmc_status_t CONFIG_SetBinValueById(config_id_t id, const unsigned char* value, 
 			return kStatus_QMC_ErrRange;
 		}
 
-		memcpy( (char *)gs_cnf_struct->cnf_data[i].value, (const char *)value, length);
+		memcpy( (char *)gs_cnf_struct_data.cnf_data[i].value, (const char *)value, length);
 		config_release_lock();
 		return kStatus_QMC_Ok;
 	}
@@ -488,7 +491,7 @@ config_id_t CONFIG_GetIdfromKey(const unsigned char* key)
 		}
 
 		config_release_lock();
-		return gs_cnf_struct->cnf_data[i].id;
+		return gs_cnf_struct_data.cnf_data[i].id;
 	}
 	dbgCnfPRINTF("CONFIG_GetIdfromKey mutex Err.\n\r");
 	return kCONFIG_KeyNone;
@@ -561,4 +564,99 @@ qmc_status_t CONFIG_SetBooleanAsValue(bool boolean, size_t valueLen, unsigned ch
 		strncpy( (char *)value, str_true, sizeof( str_true));
 
 	return kStatus_QMC_Ok;
+}
+
+/*!
+ * @brief Write a chunk of data to the firmware update location.
+ *
+ * @param[in] offset Position to write the chunk of data to
+ * @param[in] data Pointer to the data to write
+ * @param[in] dataLen Length of the data to write
+ */
+qmc_status_t CONFIG_WriteFwUpdateChunk(size_t offset, const uint8_t* data, size_t dataLen)
+{
+	qmc_status_t retv = kStatus_QMC_Err;
+	const TickType_t xDelayms = pdMS_TO_TICKS( CONFIG_MUTEX_XDELAYS_MS);
+
+	if( dataLen == 0)
+		return kStatus_QMC_Ok;
+
+	if( dataLen & 0x1) //Invalid dataLen. dataLen must be aligned with 16bits.
+	{
+		dbgCnfPRINTF("Invalid even dataLen: 0x%x. CONFIG_WriteFwUpdateChunk. Configuration.\r\n", dataLen);
+		return kStatus_QMC_ErrArgInvalid;
+	}
+	uint32_t flashAddr = (uint32_t)__FWU_STORAGE_START + offset;
+	uint32_t fwsize = (uint32_t)__FWU_STORAGE_SIZE;
+
+	if( (offset > fwsize) || (dataLen > fwsize) || ((offset+dataLen) > fwsize))
+	{
+		dbgCnfPRINTF("Invalid space requirement. dataLen: 0x%x  offset: 0x%x  FW_STORAGE_SIZE: 0x%x\r\n. CONFIG_WriteFwUpdateChunk. Configuration.\r\n", dataLen, offset, fwsize);
+		return kStatus_QMC_ErrRange;
+	}
+
+	if( config_get_lock( xDelayms) == kStatus_QMC_Ok)
+	{
+		size_t size = dataLen;
+		uint8_t *p_data = (uint8_t *)data;
+
+		while( size)
+		{
+			//get sector address in OCTAL FLASH
+			uint32_t sectorDataOffset = flashAddr % OCTAL_FLASH_SECTOR_SIZE;
+			uint32_t sectorAddr = flashAddr - sectorDataOffset;
+
+			//read content of sector
+			retv = dispatcher_read_memory( gs_in_buf, (void *)sectorAddr, OCTAL_FLASH_SECTOR_SIZE, xDelayms);
+			if( retv != kStatus_QMC_Ok)
+			{
+				dbgCnfPRINTF("CONFIG_WriteFwUpdateChunk. Read Err:%d\n\r", retv);
+				config_release_lock();
+				return retv;	//error
+			}
+
+			//get size of data within the sector
+			size_t s;
+			if( size > OCTAL_FLASH_SECTOR_SIZE - sectorDataOffset)
+			{
+				s = OCTAL_FLASH_SECTOR_SIZE - sectorDataOffset;
+			}
+			else
+			{
+				s = size;
+			}
+
+			//modify sector content by incoming data
+			memcpy( gs_in_buf + sectorDataOffset, p_data, s);
+
+			//erase sector in Octal flash
+			retv = dispatcher_erase_sectors( (void *)sectorAddr, 1, portMAX_DELAY);
+			dbgCnfPRINTF("CONFIG_WriteFwUpdateChunk. Erase %x\n\r", sectorAddr);
+			if( retv != kStatus_QMC_Ok)
+			{
+				dbgCnfPRINTF("CONFIG_WriteFwUpdateChunk. Erase Err:%d\n\r", retv);
+				config_release_lock();
+				return retv;	//error
+			}
+
+			//write former + modified data back to flash sector
+			retv = dispatcher_write_memory( (void *)sectorAddr, gs_in_buf, s + sectorDataOffset, xDelayms);
+			if( retv != kStatus_QMC_Ok)
+			{
+				dbgCnfPRINTF("CONFIG_WriteFwUpdateChunk. Write Err %x\n\r", retv);
+			}
+
+			size-=s;
+			flashAddr+=s;
+			p_data+=s;
+		}
+
+		if( config_release_lock() != kStatus_QMC_Ok)
+		{
+			dbgCnfPRINTF("CONFIG_WriteFwUpdateChunk. config_release_lock() err\n\r");
+			return kStatus_QMC_Err;
+		}
+	}
+
+	return retv;
 }

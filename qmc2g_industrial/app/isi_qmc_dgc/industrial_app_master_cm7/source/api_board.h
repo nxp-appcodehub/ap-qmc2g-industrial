@@ -1,7 +1,11 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 #ifndef _API_BOARD_H_
@@ -90,6 +94,13 @@ qmc_status_t BOARD_ConvertDatetime2Timestamp(const qmc_datetime_t* dt, qmc_times
  * @param[out] timestamp Pointer to write the retrieved timestamp to
  */
 qmc_status_t BOARD_GetTime(qmc_timestamp_t* timestamp);
+
+/*!
+* @brief Set a callback function that shall be called whenever RPC_SetTimeToRTC(timestamp : qmc_timestamp_t*) : qmc_status_t successfully changed the system time
+*
+* @param[in] callback Pointer the callback function; passing NULL deactivates the callback
+*/
+void BOARD_SetTimeChangedCallback(void (*callback)(void));
 
 /*!
 * @brief Set the lifecycle of the QMC system

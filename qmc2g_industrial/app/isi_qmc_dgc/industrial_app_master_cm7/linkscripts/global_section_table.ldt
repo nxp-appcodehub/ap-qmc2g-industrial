@@ -1,0 +1,55 @@
+/*
+ * Copyright 2023 NXP 
+ *
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
+ */
+
+<#if configMemory?has_content>
+        /* Global Section Table */
+        . = ALIGN(4) ;
+        __section_table_start = .;
+  <#assign section_items = [ "data", "bss" ] >
+  <#list section_items as section>
+        __${section}_section_table = .;
+    <#list configMemory as memory>
+      <#if memory.RAM>
+        <#if memory.defaultRAM>
+          <#assign memory_alias=".${section}">
+        <#else>
+           <#assign memory_alias=".${section}_${memory.alias}">
+        </#if>
+<#if slaves?has_content>
+  <#list slaves as slave>
+    <#if (slave.linkSection == memory.name) || (slave.linkSection == memory.alias)>
+        <#if section="data">
+          <#assign slave_section_types = [ "text", "ARM_extab", "ARM_exidx", "data" ] >
+        </#if>
+    </#if>
+  </#list>
+</#if>
+        <#if section="data">
+<#if (PLAIN_LOAD_IMAGE) >
+        LONG((LOADADDR(${memory_alias}) - LOADADDR(.text)) + __base_${CODEX});
+<#else>
+        LONG(LOADADDR(${memory_alias}));
+</#if>
+        </#if>
+        LONG(    ADDR(${memory_alias}));
+        LONG(  SIZEOF(${memory_alias}));
+      </#if>
+    </#list>
+  <#if section="bss">
+     <#if MemUtils.exists('USBROM_RAM') == true >
+        LONG(    ADDR(.m_usb_data));
+        LONG(  SIZEOF(.m_usb_data));
+     </#if>
+  </#if>
+<#include "section_table_end.ldt">
+  </#list>
+<#include "global_section_table_end.ldt">
+        /* End of Global Section Table */
+</#if>

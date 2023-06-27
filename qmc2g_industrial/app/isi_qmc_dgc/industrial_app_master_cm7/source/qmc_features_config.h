@@ -1,7 +1,11 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 /**
@@ -27,7 +31,7 @@
 #define FEATURE_FREEMASTER_ENABLE         (1)   // TODO: Disable freemaster in the final release
 #define FEATURE_GET_MOTOR_STATUS_FROM_DATA_HUB    (1) // TODO: Disable it in the final release because freemaster is disabled
 #define FEATURE_TOOGLE_USER_LED_ENABLE    (1) // TODO: Disable it in the final release because user led is reserved for users
-#define FEATURE_HANDLE_BUTTON_PRESS_EVENTS (0) /* Buttons should be disabled in this release. */
+#define FEATURE_HANDLE_BUTTON_PRESS_EVENTS (0) /* When no lid is installed over the buttons, pressing a button will be detected as a tampering event */
 
 /* CONFIGURATION */
 #define MC_MAX_MOTORS        (4)          /* Number of supported motors */
@@ -99,9 +103,10 @@
  * Configurations
  ******************************************************************************/
 #define FEATURE_CONFIG_DBG_PRINT
-
-//#define FEATURE_CONFIG_USE_HASH
-//#define FEATURE_CONFIG_USE_CRYPTO
+#define FEATURE_LCRYPT_DBG_PRINT
+#define FEATURE_DATALOGGER_RECORDER_DBG_PRINT
+#define FEATURE_DATALOGGER_DISPATCHER_DBG_PRINT
+#define FEATURE_DATALOGGER_SDCARD_DBG_PRINT
 
 //Time to wait for grant access by mutex
 #define CONFIG_MUTEX_XDELAYS_MS (800)
@@ -125,12 +130,9 @@
 /*******************************************************************************
  * Datalogger
  ******************************************************************************/
-#define FEATURE_DATALOGGER_RECORDER_DBG_PRINT
-#define FEATURE_DATALOGGER_DISPATCHER_DBG_PRINT
-#define FEATURE_DATALOGGER_SDCARD_DBG_PRINT
 
-//Use CAAM SHA256 for flash_recorder records
-//#define DATALOGGER_FLASH_RECORDER_USE_HASH
+//Time to wait for grant access by mutex
+#define DATALOGGER_MUTEX_XDELAYS_MS (800)
 
 //Depth of receiving datalogger task queue
 #define DATALOGGER_RCV_QUEUE_DEPTH 3U
@@ -148,7 +150,7 @@
 //SDCARD implementation
 #define FEATURE_DATALOGGER_SDCARD
 #define DATALOGGER_SDCARD_DIRPATH "/dat"
-#define DATALOGGER_SDCARD_FILEPATH "/dat/datfile.txt"
+#define DATALOGGER_SDCARD_FILEPATH "/dat/datfile.bin"
 #define DATALOGGER_SDCARD_MAX_FILESIZE (10000000U)
 
 //Octal flash start address of recorder
@@ -165,12 +167,17 @@
  * Input signal interrupts configuration
  ******************************************************************************/
 #define FEATURE_ENABLE_GPIO_SW_DEBOUNCING (1)
+#define FEATURE_DETECT_POWER_LOSS (1)
 #define GPIO_SW_DEBOUNCE_MS (5U)
 
 /*******************************************************************************
  * Cyber Resilience 
  ******************************************************************************/
 #define FEATURE_SECURE_WATCHDOG (0) /* Enables the secure watchdog timer */
+#define SECURE_WATCHDOG_HOST "api.awdt.local" /* URL of the secure watchdog ticket server */
+#define SECURE_WATCHDOG_KICK_INTERVAL_S (60)  /* Kick interval of the secure watchdog in seconds */
+#define SECURE_WATCHDOG_KICK_RETRY_S (30) /* Retry interval in case kicking the secure watchdog failed in seconds */
+#define SECURE_WATCHDOG_SOCKET_TIMEOUT_MS (1000U) /* timeout for network operations with the SW server in ms */
 
 /*******************************************************************************
  * Local Service
@@ -191,8 +198,8 @@
 #define GUI_MAX_MESSAGE_LENGTH 33
 #define GUI_MAX_TIMESTAMP_LENGTH 20
 
-#define QMC_IOEVENT_EMERGENCY_PRESSED QMC_IOEVENT_INPUT0_HIGH
-#define QMC_IOEVENT_EMERGENCY_RELEASED QMC_IOEVENT_INPUT0_LOW
+#define QMC_IOEVENT_EMERGENCY_PRESSED QMC_IOEVENT_INPUT3_HIGH
+#define QMC_IOEVENT_EMERGENCY_RELEASED QMC_IOEVENT_INPUT3_LOW
 #define QMC_IOEVENT_LID_OPEN_SD QMC_IOEVENT_INPUT1_HIGH
 #define QMC_IOEVENT_LID_CLOSE_SD QMC_IOEVENT_INPUT1_LOW
 #define QMC_IOEVENT_LID_OPEN_BUTTON QMC_IOEVENT_INPUT2_HIGH

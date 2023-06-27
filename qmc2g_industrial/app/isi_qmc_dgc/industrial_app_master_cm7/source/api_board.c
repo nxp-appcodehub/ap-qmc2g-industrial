@@ -1,7 +1,11 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 #include "qmc_features_config.h"
@@ -13,6 +17,8 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "board.h"
+#include "se_session.h"
+#include "main_cm7.h"
 
 
 
@@ -49,12 +55,15 @@ const static uint16_t gs_daysInYearPerMonth[]        = {0, 31, 59, 90, 120, 151,
 const static uint8_t  gs_modularDaysInYearPerMonth[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4}; /* t[] for Sakamoto's method */
 
 bool g_needsRefresh_getTime = false;
+void (*g_TimeChangedCallback)(void) = NULL;
 
 static bool              gs_isInitialized_getTime = false;
 static TimerHandle_t     gs_getTime_OverflowProtectionTimerHandle;
 static StaticTimer_t     gs_getTime_OverflowProtectionTimer;
 static SemaphoreHandle_t gs_getTimeMutexHandle;
 static StaticSemaphore_t gs_getTimeMutex;
+static SemaphoreHandle_t gs_getDevIdMutexHandle;
+static StaticSemaphore_t gs_getDevIdMutex;
 static SemaphoreHandle_t gs_SnvsAccessMutexHandle;
 static StaticSemaphore_t gs_SnvsAccessMutex;
 static qmc_timestamp_t   gs_getTimeOffset;
@@ -63,6 +72,7 @@ static TickType_t        gs_getTimeLastRefresh;
 extern SemaphoreHandle_t gSmComlock;
 extern double g_PSBTemps[8];
 extern EventGroupHandle_t g_systemStatusEventGroupHandle;
+extern const header_t fw_hdr;
 
 
 /*******************************************************************************
@@ -82,7 +92,8 @@ qmc_status_t BOARD_Init()
 	/* initialize mutexes */
 	gs_getTimeMutexHandle    = xSemaphoreCreateMutexStatic(&gs_getTimeMutex);
 	gs_SnvsAccessMutexHandle = xSemaphoreCreateMutexStatic(&gs_SnvsAccessMutex);
-    if( (NULL == gs_getTimeMutexHandle) || (NULL == gs_SnvsAccessMutexHandle) )
+	gs_getDevIdMutexHandle   = xSemaphoreCreateMutexStatic(&gs_getDevIdMutex);
+    if( (NULL == gs_getTimeMutexHandle) || (NULL == gs_SnvsAccessMutexHandle) || (NULL == gs_getDevIdMutexHandle) )
     	return kStatus_QMC_Err;
 
 
@@ -444,6 +455,11 @@ qmc_status_t BOARD_GetTime(qmc_timestamp_t* timestamp)
     return kStatus_QMC_Ok;
 }
 
+void BOARD_SetTimeChangedCallback(void (*callback)(void))
+{
+	g_TimeChangedCallback = callback;
+}
+
 /*!
 * @brief Set the lifecycle of the QMC system
 *
@@ -487,66 +503,93 @@ qmc_status_t BOARD_SetLifecycle(qmc_lifecycle_t lc)
 		detectedLifecycleStates++;
 	}
 
-	if (detectedLifecycleStates != 1)
+	if ((detectedLifecycleStates > 1) || (detectedLifecycleStates < 0))
 	{
-		/* More than one lifecycle bit is set. */
+		/* Wrong amount of lifecycle bits is set. */
 		xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Operational | QMC_SYSEVENT_LIFECYCLE_Maintenance\
 				| QMC_SYSEVENT_LIFECYCLE_Commissioning | QMC_SYSEVENT_LIFECYCLE_Decommissioning | QMC_SYSEVENT_LIFECYCLE_Error);
 		xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Error);
 
 		return kStatus_QMC_Err;
 	}
-
-	switch (lc)
+	else if (detectedLifecycleStates == 0)
 	{
-	case kQMC_LcOperational:
-		if (currentLc == kQMC_LcMaintenance || currentLc == kQMC_LcError)
+		if (lc == kQMC_LcCommissioning)
 		{
-			xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Maintenance | QMC_SYSEVENT_LIFECYCLE_Error);
-			xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Operational);
-			return kStatus_QMC_Ok;
-		}
-		break;
-
-	case kQMC_LcMaintenance:
-		if (currentLc == kQMC_LcOperational || currentLc == kQMC_LcError || currentLc == kQMC_LcCommissioning)
-		{
-			xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Operational || QMC_SYSEVENT_LIFECYCLE_Error\
-					|| QMC_SYSEVENT_LIFECYCLE_Commissioning);
-			xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Maintenance);
-			return kStatus_QMC_Ok;
-		}
-		break;
-
-	case kQMC_LcCommissioning:
-		if (currentLc == kQMC_LcDecommissioning)
-		{
-			xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Decommissioning);
 			xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Commissioning);
 			return kStatus_QMC_Ok;
 		}
-		break;
-
-	case kQMC_LcDecommissioning:
-		if (currentLc == kQMC_LcMaintenance)
+		else if (lc == kQMC_LcMaintenance)
 		{
-			xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Maintenance);
-			xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Decommissioning);
+			xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Maintenance);
 			return kStatus_QMC_Ok;
 		}
-		break;
-
-	case kQMC_LcError:
-		if (currentLc == kQMC_LcOperational)
+		else
 		{
-			xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Operational);
 			xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Error);
+			return kStatus_QMC_Err;
+		}
+	}
+	else /* detectedLifecycleStates == 1 */
+	{
+		/* The requested lifecycle is already active. */
+		if (currentLc == lc)
+		{
 			return kStatus_QMC_Ok;
 		}
-		break;
 
-	default:
-		break;
+		/* A different lifecycle was requested */
+		switch (lc)
+		{
+		case kQMC_LcOperational:
+			if (currentLc == kQMC_LcMaintenance || currentLc == kQMC_LcError)
+			{
+				xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Maintenance | QMC_SYSEVENT_LIFECYCLE_Error);
+				xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Operational);
+				return kStatus_QMC_Ok;
+			}
+			break;
+
+		case kQMC_LcMaintenance:
+			if (currentLc == kQMC_LcOperational || currentLc == kQMC_LcError || currentLc == kQMC_LcCommissioning)
+			{
+				xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Operational || QMC_SYSEVENT_LIFECYCLE_Error\
+						|| QMC_SYSEVENT_LIFECYCLE_Commissioning);
+				xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Maintenance);
+				return kStatus_QMC_Ok;
+			}
+			break;
+
+		case kQMC_LcCommissioning:
+			if (currentLc == kQMC_LcDecommissioning)
+			{
+				xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Decommissioning);
+				xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Commissioning);
+				return kStatus_QMC_Ok;
+			}
+			break;
+
+		case kQMC_LcDecommissioning:
+			if (currentLc == kQMC_LcMaintenance)
+			{
+				xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Maintenance);
+				xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Decommissioning);
+				return kStatus_QMC_Ok;
+			}
+			break;
+
+		case kQMC_LcError:
+			if (currentLc == kQMC_LcOperational)
+			{
+				xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Operational);
+				xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Error);
+				return kStatus_QMC_Ok;
+			}
+			break;
+
+		default:
+			break;
+		}
 	}
 
 	/* Either a wrong value was given as the lc argument or a forbidden transition was requested */
@@ -697,6 +740,88 @@ qmc_status_t BOARD_ConvertDatetime2Timestamp(const qmc_datetime_t* dt, qmc_times
 	timestamp->milliseconds = dt->millisecond;
 
 	return kStatus_QMC_Ok;
+}
+
+qmc_fw_version_t BOARD_GetFwVersion()
+{
+	qmc_fw_version_t version;
+
+	version.bugfix = (fw_hdr.version      ) & 0xff;
+	version.minor  = (fw_hdr.version >>  8) & 0xff;
+	version.major  = (fw_hdr.version >> 16) & 0xff;
+	return version;
+}
+
+#define HASH_SIZE (32)    /* SHA2-256 */
+#define PUBKEY_SIZE (180) /* Key sizes ~158 bytes are expected */
+const char* BOARD_GetDeviceIdentifier()
+{
+	static char identifierString[HASH_SIZE*2 + 1/*null termination*/];
+	static bool isRetrievedFromSe = false;
+	static const char *hexStringSymbols = "0123456789ABCDEF";
+
+	/* take mutex */
+	xSemaphoreTake(gs_getDevIdMutexHandle, portMAX_DELAY);
+
+	if(!isRetrievedFromSe)
+	{
+		sss_session_t *seSessionHost;
+		sss_key_store_t *seKeyStore;
+		sss_object_t devicePubKey;
+		sss_digest_t digest_ctx;
+		uint8_t publicKeyData[PUBKEY_SIZE], deviceIdentifier[HASH_SIZE];
+		size_t  i, publicKeyDataSize = PUBKEY_SIZE, publicKeyDataSizeBit = 8*PUBKEY_SIZE, deviceIdentifierSize = HASH_SIZE;
+
+		/* SE and Board API need to be initialized */
+		if(!SE_IsInitialized() || !gs_isInitialized_getTime)
+			goto error_cleanup;
+
+		seSessionHost = SE_GetHostSession();
+		seKeyStore    = SE_GetKeystore();
+
+		/* retrieve device's public key from secure element */
+		if(kStatus_SSS_Success != sss_key_object_init(&devicePubKey, seKeyStore))
+			goto error_cleanup;
+		if(kStatus_SSS_Success != sss_key_object_get_handle(&devicePubKey, idDevIdKeyPair))
+		{
+			sss_key_object_free(&devicePubKey);
+			goto error_cleanup;
+		}
+		if(kStatus_SSS_Success != sss_key_store_get_key(seKeyStore, &devicePubKey, publicKeyData, &publicKeyDataSize, &publicKeyDataSizeBit))
+		{
+			sss_key_object_free(&devicePubKey);
+			goto error_cleanup;
+		}
+		sss_key_object_free(&devicePubKey);
+
+		/* compute the hash */
+		if(kStatus_SSS_Success != sss_digest_context_init(&digest_ctx, seSessionHost, kAlgorithm_SSS_SHA256, kMode_SSS_Digest))
+			goto error_cleanup;
+		if(kStatus_SSS_Success != sss_digest_one_go(&digest_ctx, publicKeyData, publicKeyDataSize, deviceIdentifier, &deviceIdentifierSize))
+		{
+			sss_digest_context_free(&digest_ctx);
+			goto error_cleanup;
+		}
+		sss_digest_context_free(&digest_ctx);
+
+		/* convert binary identifier to hex string */
+		for(i=0; i<HASH_SIZE; i++)
+		{
+			identifierString[2*i]   = hexStringSymbols[(deviceIdentifier[i] >> 4) & 0x0f];
+			identifierString[2*i+1] = hexStringSymbols[ deviceIdentifier[i]       & 0x0f];
+		}
+		identifierString[2*HASH_SIZE] = '\0';
+		isRetrievedFromSe = true;
+	}
+
+	/* return mutex */
+	xSemaphoreGive(gs_getDevIdMutexHandle);
+
+	return identifierString;
+
+error_cleanup:
+	xSemaphoreGive(gs_getDevIdMutexHandle);
+	return NULL;
 }
 
 static bool isLeapYear(uint16_t year)

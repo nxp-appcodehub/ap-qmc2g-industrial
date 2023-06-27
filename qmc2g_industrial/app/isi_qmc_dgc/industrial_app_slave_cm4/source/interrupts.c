@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013 - 2015, Freescale Semiconductor, Inc.
- * Copyright 2022 NXP
+ * Copyright 2022-2023 NXP
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -62,6 +62,7 @@ void NMI_Handler(void)
 #ifdef DEBUG
   __asm("BKPT #0x01");
 #endif
+  NVIC_SystemReset();
 }
 
 /***************************************************************************//*!
@@ -69,14 +70,16 @@ void NMI_Handler(void)
  * @details It will stop application in debug mode with software breakpoint
  *          when hard fault event occur.
  ******************************************************************************/
-/* Defined in semihost_hardfault.c
+#ifdef __SEMIHOST_HARDFAULT_DISABLE
+
 void HardFault_Handler(void)
 {
 #ifdef DEBUG
   __asm("BKPT #0x02");
 #endif
+  NVIC_SystemReset();
 }
-*/
+#endif
 
 /***************************************************************************//*!
  * @brief   MemManage exception handler
@@ -88,6 +91,7 @@ void MemManage_Handler(void)
 #ifdef DEBUG
   __asm("BKPT #0x03");
 #endif
+  NVIC_SystemReset();
 }
 
 /***************************************************************************//*!
@@ -100,6 +104,7 @@ void BusFault_Handler(void)
 #ifdef DEBUG
   __asm("BKPT #0x03");
 #endif
+  NVIC_SystemReset();
 }
 
 /***************************************************************************//*!
@@ -112,6 +117,7 @@ void UsageFault_Handler(void)
 #ifdef DEBUG
   __asm("BKPT #0x03");
 #endif
+  NVIC_SystemReset();
 }
 
 /***************************************************************************//*!

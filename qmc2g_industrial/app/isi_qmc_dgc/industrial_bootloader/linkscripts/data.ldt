@@ -1,0 +1,11 @@
+<#if memory.name=="SRAM_ITC_cm7">
+	    KEEP(*(CodeQuickAccess))
+	    *(RamFunction)
+	    /* default project */
+	    *interrupts.o*(*.text*)
+	    *fsl_clock.o*(*.text*)
+</#if>
+        *(.data.$${memory.alias})
+        *(.data.$${memory.name})
+        *(.data.$${memory.alias}.*)
+        *(.data.$${memory.name}.*)

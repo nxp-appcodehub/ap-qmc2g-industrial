@@ -1,7 +1,11 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 #ifndef _API_QMC_COMMON_H_
@@ -70,6 +74,7 @@
 #define QMC_SYSEVENT_NETWORK_NoLink              (1 << 19)
 #define QMC_SYSEVENT_LOG_FlashError              (1 << 20)
 #define QMC_SYSEVENT_LOG_LowMemory               (1 << 21)
+#define QMC_SYSEVENT_LOG_MessageLost             (1 << 22)
 
 /*******************************************************************************
  * Definitions => Enumerations
@@ -222,6 +227,16 @@ typedef enum _qmc_psb_temperature_id
 	kQMC_Psb3Sensor2 = 0x22U, /*!< Second temperature sensor on PSB 3 */
 	kQMC_Psb4Sensor2 = 0x23U, /*!< Second temperature sensor on PSB 4 */
 } qmc_psb_temperature_id_t;
+
+/*!
+ * @brief  Enumeration of Datalogger wake up notification types.
+ */
+typedef enum
+{
+	kDLG_LOG_Queued		  		= 0x01U, /*!< Notification of a new log request being triggered */
+	kDLG_SHUTDOWN_PowerLoss   	= 0x02U, /*!< Notification of a power loss event */
+	kDLG_SHUTDOWN_WatchdogReset = 0x04U, /*!< Notification of a watchdog reset event */
+} qmc_dlg_notification_t;
 
 /*******************************************************************************
  * Definitions => Structures

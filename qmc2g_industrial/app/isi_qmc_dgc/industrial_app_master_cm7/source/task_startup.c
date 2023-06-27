@@ -1,7 +1,11 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 #include "FreeRTOS.h"
@@ -21,6 +25,7 @@
 #include "se_secure_sockets.h"
 #include "freemaster_tasks.h"
 #include "tsn_tasks_config.h"
+#include "qmc_features_config.h"
 
 extern qmc_status_t DataHubInit();
 
@@ -29,6 +34,7 @@ extern qmc_status_t DataHubInit();
  ******************************************************************************/
 
 extern EventGroupHandle_t g_inputButtonEventGroupHandle;
+extern EventGroupHandle_t g_systemStatusEventGroupHandle;
 extern mc_motor_command_t g_sMotorCmdTst; /* Motor commands from command queue */
 
 extern TaskHandle_t g_fault_handling_task_handle;
@@ -36,6 +42,7 @@ extern TaskHandle_t g_board_service_task_handle;
 extern TaskHandle_t g_datahub_task_handle;
 extern TaskHandle_t g_local_service_task_handle;
 extern TaskHandle_t g_getMotorStatus_task_handle;
+extern TaskHandle_t g_awdg_connection_service_task_handle;
 
 /*******************************************************************************
  * Code
@@ -56,7 +63,17 @@ void StartupTask(void *pvParameters)
     NVIC_SetPriority(BOARD_DIG_IN3_IRQ, 15);      //TODO: adjust priority
     EnableIRQ(BOARD_DIG_IN3_IRQ);
 
-    DataloggerInit();
+    if (kStatus_QMC_Ok != BOARD_SetLifecycle(kQMC_LcMaintenance))
+    {
+    	goto error_task_init_failed;
+    }
+
+	/* Create secure element session */
+    if(kStatus_QMC_Ok != SE_Initialize())
+		goto error_task_init_failed;
+
+    if(kStatus_QMC_Ok != DataloggerInit())
+		goto error_task_init_failed;
 
     /*Initialize network addresses*/
     if(kStatus_QMC_Ok != Init_network_addresses())
@@ -103,10 +120,6 @@ void StartupTask(void *pvParameters)
     if(kStatus_QMC_Ok != BoardServiceInit())
         goto error_task_init_failed;
 
-	/* Create secure element session */
-    if(kStatus_QMC_Ok != SE_Initialize())
-		goto error_task_init_failed;
-		
 	/* Initialize IOT SDK with SE enablement */
     if(kStatus_QMC_Ok != SE_InitSecureSockets())
         goto error_task_init_failed;
@@ -127,10 +140,47 @@ void StartupTask(void *pvParameters)
 
     g_sMotorCmdTst.uSpeed_pos.sPosParam.bIsRandomPosition = false;
     g_sMotorCmdTst.eAppSwitch = kMC_App_Off;
-    g_sMotorCmdTst.eMotorId = kMC_Motor3;
+    g_sMotorCmdTst.eMotorId = kMC_Motor1;
     g_sMotorCmdTst.eControlMethodSel = kMC_ScalarControl;
     g_sMotorCmdTst.uSpeed_pos.sScalarParam.fltScalarControlFrequency = 20;
     g_sMotorCmdTst.uSpeed_pos.sScalarParam.fltScalarControlVHzGain = 0.08;
+
+    qmc_fw_update_state_t fwUpdateState = 0;
+
+	if (kStatus_QMC_Ok != RPC_GetFwUpdateState(&fwUpdateState))
+	{
+		goto error_task_init_failed;
+	}
+
+    if (fwUpdateState & kFWU_VerifyFw)
+    {
+    	xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_FWUPDATE_VerifyMode);
+    	if (kStatus_QMC_Ok == SelfTest())
+    	{
+    		if (kStatus_QMC_Ok != RPC_CommitFwUpdate())
+			{
+				xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_FWUPDATE_VerifyMode);
+				goto error_task_init_failed;
+			}
+    	}
+    	else
+    	{
+    		if (kStatus_QMC_Ok != RPC_RevertFwUpdate())
+			{
+				xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_FWUPDATE_VerifyMode);
+				goto error_task_init_failed;
+			}
+    	}
+    	xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_FWUPDATE_VerifyMode);
+
+    	/* Reset the device to apply the FW changes */
+    	while (RPC_Reset(kQMC_ResetRequest) != kStatus_QMC_Ok){}
+    }
+
+    if (kStatus_QMC_Ok != BOARD_SetLifecycle(kQMC_LcOperational))
+    {
+    	goto error_task_init_failed;
+    }
 
     vTaskResume(g_fault_handling_task_handle);
     vTaskResume(g_board_service_task_handle);
@@ -138,6 +188,9 @@ void StartupTask(void *pvParameters)
     vTaskResume(g_local_service_task_handle);
 #if FEATURE_GET_MOTOR_STATUS_FROM_DATA_HUB
     vTaskResume(g_getMotorStatus_task_handle);
+#endif
+#if FEATURE_SECURE_WATCHDOG
+    vTaskResume(g_awdg_connection_service_task_handle);
 #endif
 
     vTaskDelete(NULL);

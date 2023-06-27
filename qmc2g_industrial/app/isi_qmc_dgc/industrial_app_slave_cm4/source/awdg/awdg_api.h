@@ -1,7 +1,11 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 /*!
@@ -31,7 +35,7 @@
  * signature and key have to be in the ASN.1 DER format defined in www.secg.org/sec1-v2.pdf
  * Appendix C. The ticket is a binary blob with the following content:
  *  | new timeout (u32 LE) | ASN.1 DER 512 bit ECDSA signature |
- *   0                    3 4                               139 (max)
+ *   0                    3 4                               140 (max)
  *
  * The external requirements for the QMC2G project are:
  *  - The AWDG should be ticked every millisecond. This allows timeout periods
@@ -93,8 +97,8 @@
 /* stackoverflow.com/questions/17269238/ecdsa-signature-length
  * superuser.com/questions/1023167/can-i-extract-r-and-s-from-an-ecdsa-signature-in-bit-form-and-vica-versa */
 #define AWDG_TICKET_MAX_SIGNATURE_LENGTH \
-    (AWDG_EXPECTED_CURVE_SIZE_BIT / 4U + \
-     8U) /*!< Maximum length of the ASN.1 DER encoded signature (ECDSA with a 512 bit curve) in the ticket data. */
+    ((AWDG_EXPECTED_CURVE_SIZE_BIT + 3U) / 4U + \
+     9U) /*!< Maximum length of the ASN.1 DER encoded signature (ECDSA with a 512 bit curve) in the ticket data. */
 #define AWDG_RNG_SEED_LENGTH (48U) /*!< Length of the random seed. */
 #define AWDG_HASH_LENGTH     (64U) /*!< Length of the hash buffer (SHA512). */
 #define AWDG_MAX_TICKET_LENGTH \
@@ -174,7 +178,7 @@ typedef enum
  *
  * Note that setting up a heap allocator for mbedtls must be done by the user
  * before calling this function. AWDG_MBEDTLS_HEAP_MIN_STATIC_BUFFER_SIZE defines
- * the minimun necessary heap memory.
+ * the minimum necessary heap memory.
  *
  * If wasRunning is true, the savedTicksToTimeout value is used for
  * restoring the previous watchdog state. Note that the restoring assumes that
@@ -231,16 +235,16 @@ typedef enum
  * stop
  * @enduml
  *
- * @param initialTimeoutMs Time period in milliseconds after which the AWDG expires if no valid ticket was provided.
- * @param gracePeriodTimeoutMs Grace period in milliseconds, equals time after the watchdog expiry until system reset.
- * @param tickFrequencyHz Frequency at which the AWDG is ticked.
- * @param savedTicksToTimeout Previous counter value. Assumes that the tick frequency stayed the same!
- * @param wasRunning Informs the module that the AWDG was running previously. If so, its internal state is restored
+ * @param[in] initialTimeoutMs Time period in milliseconds after which the AWDG expires if no valid ticket was provided.
+ * @param[in] gracePeriodTimeoutMs Grace period in milliseconds, equals time after the watchdog expiry until system reset.
+ * @param[in] tickFrequencyHz Frequency at which the AWDG is ticked.
+ * @param[in] savedTicksToTimeout Previous counter value. Assumes that the tick frequency stayed the same!
+ * @param[in] wasRunning Informs the module that the AWDG was running previously. If so, its internal state is restored
  * using the savedTicksToTimeout value.
- * @param pRngSeed Pointer to a byte array containing the RNG seed.
- * @param rngSeedLen Length of the RNG seed.
- * @param pEccPublicKey Pointer to a byte array containing the ECC public key.
- * @param keyLen Length of the ECC public key.
+ * @param[in] pRngSeed Pointer to a byte array containing the RNG seed.
+ * @param[in] rngSeedLen Length of the RNG seed.
+ * @param[in] pEccPublicKey Pointer to a byte array containing the ECC public key.
+ * @param[in] keyLen Length of the ECC public key.
  * @return An awdg_init_status_t status code.
  * @retval kStatus_AWDG_InitInitializedNew
  * The AWDG was started successfully and the timeout was freshly initialized.
@@ -315,7 +319,7 @@ lwdg_tick_status_t AWDG_Tick(void);
  * stop
  * @enduml
  *
- * @param pNonce Pointer to result buffer for nonce (must be at least AWDG_NONCE_LENGTH bytes long).
+ * @param[out] pNonce Pointer to result buffer for nonce (must be at least AWDG_NONCE_LENGTH bytes long).
  * @return size_t Number of bytes written to nonce. 0 if the RNG is disabled or a given pointer was invalid (NULL).
  */
 size_t AWDG_GetNonce(uint8_t *const pNonce);

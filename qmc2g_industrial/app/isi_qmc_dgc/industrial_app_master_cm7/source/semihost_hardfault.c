@@ -1,7 +1,11 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 // ****************************************************************************
@@ -62,8 +66,11 @@
 // Allow handler to be removed by setting a define (via command line)
 #if !defined (__SEMIHOST_HARDFAULT_DISABLE)
 
+#include "MIMXRT1176_cm7.h"
+
 __attribute__((naked))
 void HardFault_Handler(void){
+#if defined (DEBUG)
     __asm(  ".syntax unified\n"
         // Check which stack is in use
             "MOVS   R0, #4  \n"
@@ -98,6 +105,9 @@ void HardFault_Handler(void){
     	// Return from hard fault handler to application
             "BX LR \n"
         ".syntax divided\n") ;
+#endif
+
+    NVIC_SystemReset();
 }
 
 #endif

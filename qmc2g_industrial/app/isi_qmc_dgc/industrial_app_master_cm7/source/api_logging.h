@@ -1,7 +1,11 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 #ifndef _API_LOGGING_H_
@@ -10,6 +14,8 @@
 #include "api_qmc_common.h"
 #include "stdbool.h"
 #include "FreeRTOS.h"
+#include "app.h"
+#include "lcrypto.h"
 #include "flash_recorder.h"
 
 #define LOG_ENCRYPTED_RECORD_MAX_SIZE (64U)
@@ -31,6 +37,7 @@ typedef enum _log_record_type_id
     kLOG_DefaultData        = 0x01U, /*!< Identifier for log_recorddata_default_t. */
 	kLOG_FaultDataWithID	= 0x02U, /*!< Identifier for log_recorddata_fault_with_id_t. */
 	kLOG_FaultDataWithoutID = 0x03U, /*!< Identifier for log_recorddata_fault_without_id_t. */
+	kLOG_SystemData         = 0x04U  /*!< Identifier for log_recorddata_system_t. */
 } log_record_type_id_t;
 
 /*!
@@ -171,6 +178,16 @@ typedef struct _log_recorddata_fault_without_id_t
     log_event_code_t  eventCode;
 } log_recorddata_fault_without_id_t;
 
+/*!
+ * @brief Structure that defines a system log entry.
+ */
+typedef struct _log_recorddata_system_t
+{
+    log_source_id_t   source;
+    log_category_id_t category;
+    log_event_code_t  eventCode;
+} log_recorddata_system_t;
+
  /*!
  * @brief Union that groups all available log data formats.
  *
@@ -181,6 +198,7 @@ typedef union _log_recorddata
     log_recorddata_default_t defaultData;
     log_recorddata_fault_with_id_t faultDataWithID;
     log_recorddata_fault_without_id_t faultDataWithoutID;
+    log_recorddata_system_t systemData;
 } log_recorddata_t;
 
 /*!
@@ -196,10 +214,15 @@ typedef struct _log_record
 /*!
  * @brief An encrypted log record
  */
-typedef struct _log_encrypted_record
-{
-    uint8_t data[LOG_ENCRYPTED_RECORD_MAX_SIZE]; /*!< Encrypted and signed log data */
-    size_t  length;                              /*!< Length of the data */
+typedef struct __attribute__((__packed__)) _log_enc_data {
+	uint8_t keyiv_enc[LCRYPTO_EX_RSA_KEY_SIZE];
+	uint8_t lr_enc[ MAKE_EVEN(sizeof(log_record_t))];
+} log_enc_data;
+
+typedef struct __attribute__((__packed__)) _log_encrypted_record {
+	size_t length;
+	log_enc_data data;
+	uint8_t data_signature[LCRYPTO_EX_SIGN_SIZE];
 } log_encrypted_record_t;
 
 typedef struct {

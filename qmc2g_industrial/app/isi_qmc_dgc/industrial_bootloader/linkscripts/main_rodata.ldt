@@ -1,0 +1,8 @@
+       *(EXCLUDE_FILE(
+						*interrupts.o*
+						*fsl_clock.o*
+		) *.rodata*)
+		*(EXCLUDE_FILE(
+						*interrupts.o*
+						*fsl_clock.o*
+		) *.constdata*)

@@ -284,6 +284,7 @@ void BOARD_BootClockOverDriveRUN(void)
 {
     clock_root_config_t rootCfg = {0};
 
+
     /* Set DCDC to DCM mode to improve the efficiency for light loading in run mode and transient performance with a big loading step. */
     DCDC_BootIntoDCM(DCDC);
 

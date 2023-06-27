@@ -1,7 +1,11 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 /*!
@@ -78,6 +82,8 @@
  */
 #include "rpc/rpc_int.h"
 
+#include <stdbool.h>
+
 #include "MIMXRT1176_cm7.h"
 
 #include "FreeRTOS.h"
@@ -85,6 +91,8 @@
 #include "event_groups.h"
 
 #include "api_qmc_common.h"
+#include "api_logging.h"
+#include "api_usermanagement.h"
 #include "main_cm7.h"
 
 #include "utils/mem.h"
@@ -101,6 +109,8 @@
  ******************************************************************************/
 
 extern bool g_needsRefresh_getTime;
+extern void (*g_TimeChangedCallback)(void);
+extern TaskHandle_t g_datalogger_task_handle;
 
 /*!
  * @brief Cross-core shared memory, referenced by section name.
@@ -125,14 +135,15 @@ STATIC_TEST_VISIBLE volatile rpc_shm_t gs_rpcSHM __attribute__((section(".data.$
 #else
 #error "gs_rpcSHM: Please provide your definition of gs_rpcSHM!"
 #endif
-#else 
+#else
 #if defined(__ICCARM__) /* IAR Workbench */
 #pragma location = RPC_SHM_SECTION_NAME
 STATIC_TEST_VISIBLE volatile rpc_shm_t gs_rpcSHM;
 #elif defined(__CC_ARM) || defined(__ARMCC_VERSION) /* Keil MDK */
 STATIC_TEST_VISIBLE volatile rpc_shm_t gs_rpcSHM __attribute__((section(RPC_SHM_SECTION_NAME)));
 #elif defined(__GNUC__)
-STATIC_TEST_VISIBLE volatile rpc_shm_t gs_rpcSHM __attribute__((section(".noinit.$" RPC_SHM_SECTION_NAME)));
+/* This structure must be aligned with CM4 implementation - both size and address. Details can be found in noinit_section.ltd file.*/
+STATIC_TEST_VISIBLE volatile rpc_shm_t gs_rpcSHM __attribute__((section(".noinit_RAM5_RPC_API")));
 #else
 #error "gs_rpcSHM: Please provide your definition of gs_rpcSHM!"
 #endif
@@ -151,15 +162,15 @@ STATIC_TEST_VISIBLE rpc_call_data_t gs_secWdCallData = {&gs_rpcSHM.secWd.status,
                                                         RPC_SECWD_TIMEOUT_TICKS}; /*!< Sec WD PRC data. */
 #endif
 STATIC_TEST_VISIBLE rpc_call_data_t gs_funcWdCallData   = {&gs_rpcSHM.funcWd.status, kRPC_EventFuncWdDone,
-                                                         RPC_FUNCWD_TIMEOUT_TICKS}; /*!< Func WD RPC data. */
+                                                           RPC_FUNCWD_TIMEOUT_TICKS}; /*!< Func WD RPC data. */
 STATIC_TEST_VISIBLE rpc_call_data_t gs_gpioOutCallData  = {&gs_rpcSHM.gpioOut.status, kRPC_EventGpioOutDone,
-                                                          RPC_GPIOOUT_TIMEOUT_TICKS}; /*!< GPIO out RPC data. */
+                                                           RPC_GPIOOUT_TIMEOUT_TICKS}; /*!< GPIO out RPC data. */
 STATIC_TEST_VISIBLE rpc_call_data_t gs_rtcCallData      = {&gs_rpcSHM.rtc.status, kRPC_EventRtcDone,
-                                                      RPC_RTC_TIMEOUT_TICKS}; /*!< RTC RPC data. */
+                                                           RPC_RTC_TIMEOUT_TICKS}; /*!< RTC RPC data. */
 STATIC_TEST_VISIBLE rpc_call_data_t gs_fwUpdateCallData = {&gs_rpcSHM.fwUpdate.status, kRPC_EventFwUpdateDone,
                                                            RPC_FWUPDATE_TIMEOUT_TICKS}; /*!< FWU RPC data. */
 STATIC_TEST_VISIBLE rpc_call_data_t gs_resetCallData    = {&gs_rpcSHM.reset.status, kRPC_EventResetDone,
-                                                        RPC_RESET_TIMEOUT_TICKS}; /*!< Reset RPC data. */
+                                                           RPC_RESET_TIMEOUT_TICKS}; /*!< Reset RPC data. */
 /*!
  * @brief Pointers to information about all available RPCs.
  *
@@ -310,10 +321,18 @@ __RAMFUNC(SRAM_ITC_cm7) void RPC_HandleISR(void)
         gs_rpcSHM.events.isResetProcessed = true;
         /* must latch event data atomically */
         resetCauseLatched = gs_rpcSHM.events.resetCause;
-
         /* NOTE: reset cause value is currently not used (should only be watchdog reset)!
          *       we also do not clear this event flag as anyhow a reset will happen soon */
         assert((kQMC_ResetSecureWd == resetCauseLatched) || (kQMC_ResetFunctionalWd == resetCauseLatched));
+        (void) resetCauseLatched;
+
+        /* watchdog reset direct-to-task notification to logging service */
+        xResult = xTaskNotifyFromISR(g_datalogger_task_handle, kDLG_SHUTDOWN_WatchdogReset, eSetBits, &xHigherPriorityTaskWoken);
+        /* according to documentation can not fail with action eSetBits
+         * and even if it would reset would be anyhow performed, however logs may be lost */
+        assert(pdPASS == xResult);
+        (void) xResult;
+
         xResult = xEventGroupSetBitsFromISR(g_systemStatusEventGroupHandle, QMC_SYSEVENT_SHUTDOWN_WatchdogReset,
                                             &xHigherPriorityTaskWoken);
 #ifdef DEBUG
@@ -324,6 +343,7 @@ __RAMFUNC(SRAM_ITC_cm7) void RPC_HandleISR(void)
             DEBUG_LOG_E(DEBUG_M7_TAG "Timer service queue full - lost event!\r\n");
         }
 #endif
+        (void) xResult;
     }
 
     /* ensure all writes retired */
@@ -538,8 +558,8 @@ static qmc_status_t PrepareCall(const rpc_call_data_t *const pRpcCallData)
      * so wait for the max. amount of time the processing might take before timeout
      * (consistency check + processing time)
      */
-    if (pdTRUE == xSemaphoreTake(pRpcCallData->mutex, 2 * (pRpcCallData->timeoutTicks +
-            RPC_TRIGGER_IRQ_MUTEX_TIMEOUT_TICKS)))
+    if (pdTRUE ==
+        xSemaphoreTake(pRpcCallData->mutex, 2 * (pRpcCallData->timeoutTicks + RPC_TRIGGER_IRQ_MUTEX_TIMEOUT_TICKS)))
     {
         /* critical section entered */
 
@@ -729,7 +749,7 @@ qmc_status_t RPC_KickFunctionalWatchdog(rpc_watchdog_id_t id)
     const rpc_call_data_t *const pRpcCallData = &gs_funcWdCallData;
 
     /* check arguments */
-    if((id >= kRPC_FunctionalWatchdog1) && (id <= kRPC_FunctionalWatchdogLast))
+    if ((id >= kRPC_FunctionalWatchdog1) && (id <= kRPC_FunctionalWatchdogLast))
     {
         /* valid -> prepare remote call */
         ret = PrepareCall(pRpcCallData);
@@ -742,7 +762,7 @@ qmc_status_t RPC_KickFunctionalWatchdog(rpc_watchdog_id_t id)
 
     if (kStatus_QMC_Ok == ret)
     {
-        /* call specific data preperation */
+        /* call specific data preparation */
         gs_rpcSHM.funcWd.watchdog = id;
 
         /* notify CM4 and wait for result */
@@ -777,7 +797,7 @@ qmc_status_t RPC_KickSecureWatchdog(const uint8_t *data, const size_t dataLen)
     /* process if no errors occurred */
     if (kStatus_QMC_Ok == ret)
     {
-        /* call specific data preperation */
+        /* call specific data preparation */
         (void)vmemcpy(gs_rpcSHM.secWd.data, data, dataLen);
         gs_rpcSHM.secWd.dataLen        = dataLen;
         gs_rpcSHM.secWd.isNonceNotKick = false;
@@ -813,7 +833,7 @@ qmc_status_t RPC_RequestNonceFromSecureWatchdog(uint8_t *nonce, size_t *length)
     /* process if no errors occurred */
     if (kStatus_QMC_Ok == ret)
     {
-        /* call specific data preperation */
+        /* call specific data preparation */
         gs_rpcSHM.secWd.isNonceNotKick = true;
 
         /* notify CM4 and wait for result */
@@ -850,7 +870,7 @@ qmc_status_t RPC_SetSnvsOutput(uint16_t gpioState)
     ret = PrepareCall(pRpcCallData);
     if (kStatus_QMC_Ok == ret)
     {
-        /* call specific data preperation */
+        /* call specific data preparation */
         gs_rpcSHM.gpioOut.gpioState = gpioState;
 
         /* notify CM4 and wait for result */
@@ -918,7 +938,7 @@ qmc_status_t RPC_GetTimeFromRTC(qmc_timestamp_t *timestamp)
     /* process if no errors occurred */
     if (kStatus_QMC_Ok == ret)
     {
-        /* call specific data preperation */
+        /* call specific data preparation */
         gs_rpcSHM.rtc.isSetNotGet = false;
 
         /* notify CM4 and wait for result */
@@ -960,7 +980,7 @@ qmc_status_t RPC_SetTimeToRTC(const qmc_timestamp_t *timestamp)
     /* process if no errors occurred */
     if (kStatus_QMC_Ok == ret)
     {
-        /* call specific data preperation */
+        /* call specific data preparation */
         gs_rpcSHM.rtc.timestamp   = *timestamp;
         gs_rpcSHM.rtc.isSetNotGet = true;
 
@@ -972,6 +992,10 @@ qmc_status_t RPC_SetTimeToRTC(const qmc_timestamp_t *timestamp)
 
         /* make sure BOARD_GetTime synchronizes its internal timestamp with the RTC */
         g_needsRefresh_getTime = true;
+
+        /* run callback function if it is registered */
+        if(g_TimeChangedCallback)
+        	g_TimeChangedCallback();
     }
 
     return ret;
@@ -983,18 +1007,16 @@ qmc_status_t RPC_Reset(qmc_reset_cause_id_t cause)
     const rpc_call_data_t *const pRpcCallData = &gs_resetCallData;
 
     /* check for invalid arguments */
-    if((kQMC_ResetNone != cause) && (kQMC_ResetRequest != cause) &&
-       (kQMC_ResetFunctionalWd != cause) && (kQMC_ResetSecureWd != cause))
+    if ((kQMC_ResetNone != cause) && (kQMC_ResetRequest != cause) && (kQMC_ResetFunctionalWd != cause) &&
+        (kQMC_ResetSecureWd != cause))
     {
         cause = kQMC_ResetSecureWd;
-        ret = kStatus_QMC_Ok;
+        ret   = kStatus_QMC_Ok;
     }
     else
     {
         ret = kStatus_QMC_Ok;
     }
-
-    /* TODO create log entry */
 
     /* valid arguments */
     if (kStatus_QMC_Ok == ret)
@@ -1006,7 +1028,18 @@ qmc_status_t RPC_Reset(qmc_reset_cause_id_t cause)
     /* process if no errors occurred */
     if (kStatus_QMC_Ok == ret)
     {
-        /* call specific data preperation */
+        /* issue log entry if reset is about to be performed */
+        log_record_t resetLogEntry              = {0};
+        resetLogEntry.type                      = kLOG_SystemData;
+        resetLogEntry.data.systemData.source    = LOG_SRC_SecureWatchdog;
+        resetLogEntry.data.systemData.category  = LOG_CAT_General;
+        resetLogEntry.data.systemData.eventCode = LOG_EVENT_ResetRequest;
+        /* logging is best effort, even if it would fail, we still want to perform the reset */
+        LOG_QueueLogEntry(&resetLogEntry, true);
+        /* wait a bit so that log entries can be written (best effort not ensured) */
+        vTaskDelay(RPC_WAIT_TICKS_BEFORE_RESET);
+
+        /* call specific data preparation */
         gs_rpcSHM.reset.cause = cause;
 
         /* notify CM4 and wait for result */
@@ -1039,7 +1072,7 @@ qmc_status_t RPC_GetFwUpdateState(qmc_fw_update_state_t *state)
     /* process if no errors occurred */
     if (kStatus_QMC_Ok == ret)
     {
-        /* call specific data preperation */
+        /* call specific data preparation */
         gs_rpcSHM.fwUpdate.isReadNotWrite            = true;
         gs_rpcSHM.fwUpdate.isStatusBitsNotResetCause = true;
 
@@ -1079,7 +1112,7 @@ qmc_status_t RPC_GetResetCause(qmc_reset_cause_id_t *cause)
     /* process if no errors occurred */
     if (kStatus_QMC_Ok == ret)
     {
-        /* call specific data preperation */
+        /* call specific data preparation */
         gs_rpcSHM.fwUpdate.isReadNotWrite            = true;
         gs_rpcSHM.fwUpdate.isStatusBitsNotResetCause = false;
 
@@ -1108,7 +1141,7 @@ qmc_status_t RPC_CommitFwUpdate(void)
     ret = PrepareCall(pRpcCallData);
     if (kStatus_QMC_Ok == ret)
     {
-        /* call specific data preperation */
+        /* call specific data preparation */
         gs_rpcSHM.fwUpdate.isReadNotWrite    = false;
         gs_rpcSHM.fwUpdate.isCommitNotRevert = true;
 
@@ -1131,7 +1164,7 @@ qmc_status_t RPC_RevertFwUpdate(void)
     ret = PrepareCall(pRpcCallData);
     if (kStatus_QMC_Ok == ret)
     {
-        /* call specific data preperation */
+        /* call specific data preparation */
         gs_rpcSHM.fwUpdate.isReadNotWrite    = false;
         gs_rpcSHM.fwUpdate.isCommitNotRevert = false;
 

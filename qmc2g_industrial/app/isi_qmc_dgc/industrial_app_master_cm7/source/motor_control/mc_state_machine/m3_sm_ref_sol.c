@@ -1,7 +1,11 @@
 /*
  * Copyright 2022 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 #include "m3_sm_ref_sol.h"
@@ -559,7 +563,7 @@ RAM_FUNC_CRITICAL static void M3_StateStopFast(void)
     g_sM3Drive.sFocPMSM.fltUDcBusFilt =
         GDFLIB_FilterIIR1_FLT(g_sM3Drive.sFocPMSM.fltUDcBus, &g_sM3Drive.sFocPMSM.sUDcBusFilter);
 
-    /* If the user switches on or set non-zero speed*/
+    /* If the user switches on */
     if (g_bM3SwitchAppOnOff != 0)
     {
     	if(FAULT_GetImmediateStopConfiguration_fromISR(kMC_Motor1,kMC_Motor3) == true)

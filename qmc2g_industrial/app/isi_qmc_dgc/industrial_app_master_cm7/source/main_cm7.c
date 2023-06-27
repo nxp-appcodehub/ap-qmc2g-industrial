@@ -1,7 +1,11 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 /**
@@ -16,9 +20,30 @@
 
 #include "fsl_soc_src.h"
 
+#if defined(__CC_ARM) || defined(__ARMCC_VERSION) || defined(__GNUC__)
+__attribute__((section(".fw_hdr"), used))
+#elif defined(__ICCARM__)
+#pragma location = ".fw_hdr"
+#endif
+/*************************************
+ *  FW's Header Data
+ *************************************/
+const header_t fw_hdr = {
+    MAIN_FW_HEADER_MAGIC,
+    (uint32_t)MAIN_FW_VERSION,
+    FW_DATA_ADDRESS,
+    FW_DATA_SIZE,
+    FW_SIGN_ADDRESS,
+    FW_DATA_CM4_ADDRESS,
+    FW_DATA_CM4_SIZE,
+    CM4_CORE_BOOT_ADDRESS,
+    CM7_VECTOR_TABLE_ADDRESS,
+    FW_CFGDATA_ADDRESS,
+    FW_CFGDATA_SIZE,
+};
+
 /* TODO: insert other definitions and declarations here. */
 __RAMFUNC(SRAM_ITC_cm7) void SoftwareHandler(void);
-static void cm4Release(void);
 void flexspi1_octal_bus_init();
 
 static StaticEventGroup_t gs_inputButtonEventGroup;
@@ -67,6 +92,7 @@ extern TaskHandle_t g_board_service_task_handle;
 extern TaskHandle_t g_datahub_task_handle;
 extern TaskHandle_t g_local_service_task_handle;
 extern TaskHandle_t g_getMotorStatus_task_handle;
+extern TaskHandle_t g_awdg_connection_service_task_handle;
 
 /*
  * @brief   Application entry point.
@@ -91,13 +117,19 @@ int main(void) {
      * debugger may not reset the display, then the behavior
      * is not right.
      */
+#ifdef NO_SBL
     SRC_AssertSliceSoftwareReset(SRC, kSRC_DisplaySlice);
     while (kSRC_SliceResetInProcess == SRC_GetSliceResetState(SRC, kSRC_DisplaySlice))
     {
     }
-
+#endif
     BOARD_InitBootPins(); // TODO: exclude BOARD_InitLogFlexSPI1Pins after SBL integrated
+#ifdef NO_SBL
+    /* If this function must be used along with SBL, be aware that access to the DCDC is blocked by RDC configuration done in SBL.
+     * Any access to DCDC peripheral must be avoided.
+     *  */
     BOARD_InitBootClocks();
+#endif
     BOARD_InitBootPeripherals();
 
     ui32ClkADC = CLOCK_GetFreqFromObs(CCM_OBS_ADC1_CLK_ROOT);
@@ -109,10 +141,11 @@ int main(void) {
 
     PRINTF("QMC2G code started \r\n");
 
+#ifdef NO_SBL
     /* Initialize Flexspi1 interface to enable access to OctalFlash and OctalRam. */
     /* Must be executed after the Debug console initialization. */
     flexspi1_octal_bus_init();
-	
+#endif
 	/* Initialize I2C interface for secure element and temperature sensor */
 	LPI2C_MasterInit(BOARD_GENERAL_I2C_BASEADDR, &LPI2C3_masterConfig, BOARD_GENERAL_I2C_CLOCK_FREQ);
 
@@ -184,12 +217,26 @@ int main(void) {
     	return -1;
     }
 	
+#if FEATURE_SECURE_WATCHDOG
+    /* theoretical analysis shows stack requirement of 9880 bytes (mostly in TLS code)
+     * experimental verification showed a stack usage of 11020 bytes, plus 10% that would be 12120 / 4 words */
+    if (pdPASS != xTaskCreate(AwdgConnectionServiceTask, "AwdgConnectionServiceTask", 12120 / 4, NULL,
+    		                  ((tskIDLE_PRIORITY+1)), &g_awdg_connection_service_task_handle))
+    {
+    	PRINTF("Failed to create task: AwdgConnectionServiceTask.\r\n");
+    	return -1;
+    }
+#endif
+
 	vTaskSuspend(g_fault_handling_task_handle);
 	vTaskSuspend(g_board_service_task_handle);
 	vTaskSuspend(g_datahub_task_handle);
 	vTaskSuspend(g_local_service_task_handle);
 #if FEATURE_GET_MOTOR_STATUS_FROM_DATA_HUB
 	vTaskSuspend(g_getMotorStatus_task_handle);
+#endif
+#if FEATURE_SECURE_WATCHDOG
+    vTaskSuspend(g_awdg_connection_service_task_handle);
 #endif
 
     vTaskStartScheduler();
@@ -199,16 +246,4 @@ int main(void) {
 
 void SoftwareHandler(void)
 {
-}
-
-
-
-static void cm4Release(void)
-{
-  PRINTF("Releasing CM4\r\n");
-  IOMUXC_LPSR_GPR->GPR0 = ((uint32_t)(0x0000FFFF&(uint32_t)CORE1_REAL_BOOT_ADDRESS));
-  IOMUXC_LPSR_GPR->GPR1 = IOMUXC_LPSR_GPR_GPR1_CM4_INIT_VTOR_HIGH((uint32_t)CORE1_REAL_BOOT_ADDRESS >> 16);
-
-  SRC->CTRL_M4CORE = SRC_CTRL_M4CORE_SW_RESET_MASK;
-  SRC->SCR |= SRC_SCR_BT_RELEASE_M4_MASK;
 }

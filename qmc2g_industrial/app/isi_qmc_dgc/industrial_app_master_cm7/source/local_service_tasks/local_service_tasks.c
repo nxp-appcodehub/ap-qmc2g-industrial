@@ -1,7 +1,11 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 #include "local_service_tasks.h"
@@ -1734,11 +1738,6 @@ static void update_LogLabels(log_record_t *lastLogs, int activeLogLabels)
 				setColor_LogLabel(i, kLST_Color_Error);
 				break;
 
-			case LOG_EVENT_ResetRequest:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Watchdog: Reset Request");
-				setColor_LogLabel(i, kLST_Color_Off);
-				break;
-
 			case LOG_EVENT_ResetWatchdog:
 				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Watchdog: Reset Watchdog");
 				setColor_LogLabel(i, kLST_Color_Off);
@@ -1965,6 +1964,26 @@ static void update_LogLabels(log_record_t *lastLogs, int activeLogLabels)
 				break;
 			}
 
+			break;
+
+		case kLOG_SystemData:
+			switch (lastLogs[i].data.systemData.eventCode)
+			{
+			case LOG_EVENT_ResetRequest:
+				snprintf(message, GUI_MAX_MESSAGE_LENGTH, "Watchdog: Reset Request");
+				setColor_LogLabel(i, kLST_Color_Off);
+				break;
+
+			case LOG_EVENT_InvalidArgument:
+				snprintf(message, GUI_MAX_MESSAGE_LENGTH, "Invalid arguments used.");
+				setColor_LogLabel(i, kLST_Color_Off);
+				break;
+
+			default:
+				logInvalidArgument();
+				setColor_LogLabel(i, kLST_Color_Off);
+				break;
+			}
 			break;
 
 		default:

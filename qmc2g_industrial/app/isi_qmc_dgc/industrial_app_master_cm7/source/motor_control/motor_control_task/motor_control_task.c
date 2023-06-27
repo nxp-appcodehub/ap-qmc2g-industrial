@@ -1,7 +1,11 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
- * NXP Confidential. This software is owned or controlled by NXP and may only be used strictly in accordance with the applicable license terms found at https://www.nxp.com/docs/en/disclaimer/LA_OPT_NXP_SW.html.
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
 #include <mcinit_qmc2g_imxrt1170.h>
@@ -81,42 +85,45 @@ RAM_FUNC_CRITICAL void M1_slowloop_handler(void)
 	g_sM1Drive.psMotorCmd = MC_GetMotorCommand_fromISR(kMC_Motor1);
 
 	// Set up motor commands
-	switch(g_sM1Drive.psMotorCmd->eControlMethodSel)
+	if(NULL != g_sM1Drive.psMotorCmd)
 	{
-	case kMC_ScalarControl:
-		g_sM1Drive.eControl = kControlMode_Scalar;
-		g_sM1Drive.sScalarCtrl.fltVHzGain = g_sM1Drive.psMotorCmd->uSpeed_pos.sScalarParam.fltScalarControlVHzGain;
-		g_sM1Drive.sScalarCtrl.fltFreqCmd = g_sM1Drive.psMotorCmd->uSpeed_pos.sScalarParam.fltScalarControlFrequency;
-		break;
-	case kMC_FOC_SpeedControl:
-		g_sM1Drive.eControl = kControlMode_SpeedFOC;
-		g_sM1Drive.sSpeed.fltSpeedCmd = g_sM1Drive.psMotorCmd->uSpeed_pos.fltSpeed * M1_SPEED_MECH_RPM_TO_ELEC_ANGULAR_COEFF;
-		break;
-	case kMC_FOC_PositionControl:
-	default:
-		g_sM1Drive.eControl = kControlMode_PositionFOC;
-		if(g_sM1Drive.psMotorCmd->uSpeed_pos.sPosParam.bIsRandomPosition == true)
+		switch(g_sM1Drive.psMotorCmd->eControlMethodSel)
 		{
-			g_sM1Drive.sPosition.bIsRandomPosition = TRUE; // Don't generate trajectory in position loop
+		case kMC_ScalarControl:
+			g_sM1Drive.eControl = kControlMode_Scalar;
+			g_sM1Drive.sScalarCtrl.fltVHzGain = g_sM1Drive.psMotorCmd->uSpeed_pos.sScalarParam.fltScalarControlVHzGain;
+			g_sM1Drive.sScalarCtrl.fltFreqCmd = g_sM1Drive.psMotorCmd->uSpeed_pos.sScalarParam.fltScalarControlFrequency;
+			break;
+		case kMC_FOC_SpeedControl:
+			g_sM1Drive.eControl = kControlMode_SpeedFOC;
+			g_sM1Drive.sSpeed.fltSpeedCmd = g_sM1Drive.psMotorCmd->uSpeed_pos.fltSpeed * M1_SPEED_MECH_RPM_TO_ELEC_ANGULAR_COEFF;
+			break;
+		case kMC_FOC_PositionControl:
+		default:
+			g_sM1Drive.eControl = kControlMode_PositionFOC;
+			if(g_sM1Drive.psMotorCmd->uSpeed_pos.sPosParam.bIsRandomPosition == true)
+			{
+				g_sM1Drive.sPosition.bIsRandomPosition = TRUE; // Don't generate trajectory in position loop
 
+			}
+			else
+			{
+				g_sM1Drive.sPosition.bIsRandomPosition = FALSE;
+			}
+			g_sM1Drive.sPosition.i32Q16PosCmd = g_sM1Drive.psMotorCmd->uSpeed_pos.sPosParam.uPosition.i32Raw;
+
+			break;
+		}
+
+		// Turn on/off motor
+		if(g_sM1Drive.psMotorCmd->eAppSwitch == kMC_App_On)
+		{
+			g_bM1SwitchAppOnOff = TRUE;
 		}
 		else
 		{
-			g_sM1Drive.sPosition.bIsRandomPosition = FALSE;
+			g_bM1SwitchAppOnOff = FALSE;
 		}
-		g_sM1Drive.sPosition.i32Q16PosCmd = g_sM1Drive.psMotorCmd->uSpeed_pos.sPosParam.uPosition.i32Raw;
-
-		break;
-	}
-
-	// Turn on/off motor
-    if(g_sM1Drive.psMotorCmd->eAppSwitch == kMC_App_On)
-    {
-    	g_bM1SwitchAppOnOff = TRUE;
-    }
-    else
-    {
-    	g_bM1SwitchAppOnOff = FALSE;
     }
 #endif
     /* M1 Slow StateMachine call */
@@ -150,43 +157,46 @@ RAM_FUNC_CRITICAL void M2_slowloop_handler(void)
 	g_sM2Drive.psMotorCmd = MC_GetMotorCommand_fromISR(kMC_Motor2);
 
 	// Set up motor commands
-	switch(g_sM2Drive.psMotorCmd->eControlMethodSel)
+	if(NULL != g_sM2Drive.psMotorCmd)
 	{
-	case kMC_ScalarControl:
-		g_sM2Drive.eControl = kControlMode_Scalar;
-		g_sM2Drive.sScalarCtrl.fltVHzGain = g_sM2Drive.psMotorCmd->uSpeed_pos.sScalarParam.fltScalarControlVHzGain;
-		g_sM2Drive.sScalarCtrl.fltFreqCmd = g_sM2Drive.psMotorCmd->uSpeed_pos.sScalarParam.fltScalarControlFrequency;
-		break;
-	case kMC_FOC_SpeedControl:
-		g_sM2Drive.eControl = kControlMode_SpeedFOC;
-		g_sM2Drive.sSpeed.fltSpeedCmd = g_sM2Drive.psMotorCmd->uSpeed_pos.fltSpeed * M1_SPEED_MECH_RPM_TO_ELEC_ANGULAR_COEFF;
-		break;
-	case kMC_FOC_PositionControl:
-	default:
-		g_sM2Drive.eControl = kControlMode_PositionFOC;
-		if(g_sM2Drive.psMotorCmd->uSpeed_pos.sPosParam.bIsRandomPosition == true)
+		switch(g_sM2Drive.psMotorCmd->eControlMethodSel)
 		{
-			g_sM2Drive.sPosition.bIsRandomPosition = TRUE; // Don't generate trajectory in position loop
+		case kMC_ScalarControl:
+			g_sM2Drive.eControl = kControlMode_Scalar;
+			g_sM2Drive.sScalarCtrl.fltVHzGain = g_sM2Drive.psMotorCmd->uSpeed_pos.sScalarParam.fltScalarControlVHzGain;
+			g_sM2Drive.sScalarCtrl.fltFreqCmd = g_sM2Drive.psMotorCmd->uSpeed_pos.sScalarParam.fltScalarControlFrequency;
+			break;
+		case kMC_FOC_SpeedControl:
+			g_sM2Drive.eControl = kControlMode_SpeedFOC;
+			g_sM2Drive.sSpeed.fltSpeedCmd = g_sM2Drive.psMotorCmd->uSpeed_pos.fltSpeed * M1_SPEED_MECH_RPM_TO_ELEC_ANGULAR_COEFF;
+			break;
+		case kMC_FOC_PositionControl:
+		default:
+			g_sM2Drive.eControl = kControlMode_PositionFOC;
+			if(g_sM2Drive.psMotorCmd->uSpeed_pos.sPosParam.bIsRandomPosition == true)
+			{
+				g_sM2Drive.sPosition.bIsRandomPosition = TRUE; // Don't generate trajectory in position loop
 
+			}
+			else
+			{
+				g_sM2Drive.sPosition.bIsRandomPosition = FALSE;
+			}
+			g_sM2Drive.sPosition.i32Q16PosCmd = g_sM2Drive.psMotorCmd->uSpeed_pos.sPosParam.uPosition.i32Raw;
+
+			break;
+		}
+
+		// Turn on/off motor
+		if(g_sM2Drive.psMotorCmd->eAppSwitch == kMC_App_On)
+		{
+			g_bM2SwitchAppOnOff = TRUE;
 		}
 		else
 		{
-			g_sM2Drive.sPosition.bIsRandomPosition = FALSE;
+			g_bM2SwitchAppOnOff = FALSE;
 		}
-		g_sM2Drive.sPosition.i32Q16PosCmd = g_sM2Drive.psMotorCmd->uSpeed_pos.sPosParam.uPosition.i32Raw;
-
-		break;
 	}
-
-	// Turn on/off motor
-    if(g_sM2Drive.psMotorCmd->eAppSwitch == kMC_App_On)
-    {
-    	g_bM2SwitchAppOnOff = TRUE;
-    }
-    else
-    {
-    	g_bM2SwitchAppOnOff = FALSE;
-    }
 #endif
     /* M1 Slow StateMachine call */
     SM_StateMachineSlow(&g_sM2Ctrl);
@@ -219,43 +229,46 @@ RAM_FUNC_CRITICAL void M3_slowloop_handler(void)
 	g_sM3Drive.psMotorCmd = MC_GetMotorCommand_fromISR(kMC_Motor3);
 
 	// Set up motor commands
-	switch(g_sM3Drive.psMotorCmd->eControlMethodSel)
+	if(NULL != g_sM3Drive.psMotorCmd)
 	{
-	case kMC_ScalarControl:
-		g_sM3Drive.eControl = kControlMode_Scalar;
-		g_sM3Drive.sScalarCtrl.fltVHzGain = g_sM3Drive.psMotorCmd->uSpeed_pos.sScalarParam.fltScalarControlVHzGain;
-		g_sM3Drive.sScalarCtrl.fltFreqCmd = g_sM3Drive.psMotorCmd->uSpeed_pos.sScalarParam.fltScalarControlFrequency;
-		break;
-	case kMC_FOC_SpeedControl:
-		g_sM3Drive.eControl = kControlMode_SpeedFOC;
-		g_sM3Drive.sSpeed.fltSpeedCmd = g_sM3Drive.psMotorCmd->uSpeed_pos.fltSpeed * M1_SPEED_MECH_RPM_TO_ELEC_ANGULAR_COEFF;
-		break;
-	case kMC_FOC_PositionControl:
-	default:
-		g_sM3Drive.eControl = kControlMode_PositionFOC;
-		if(g_sM3Drive.psMotorCmd->uSpeed_pos.sPosParam.bIsRandomPosition == true)
+		switch(g_sM3Drive.psMotorCmd->eControlMethodSel)
 		{
-			g_sM3Drive.sPosition.bIsRandomPosition = TRUE; // Don't generate trajectory in position loop
+		case kMC_ScalarControl:
+			g_sM3Drive.eControl = kControlMode_Scalar;
+			g_sM3Drive.sScalarCtrl.fltVHzGain = g_sM3Drive.psMotorCmd->uSpeed_pos.sScalarParam.fltScalarControlVHzGain;
+			g_sM3Drive.sScalarCtrl.fltFreqCmd = g_sM3Drive.psMotorCmd->uSpeed_pos.sScalarParam.fltScalarControlFrequency;
+			break;
+		case kMC_FOC_SpeedControl:
+			g_sM3Drive.eControl = kControlMode_SpeedFOC;
+			g_sM3Drive.sSpeed.fltSpeedCmd = g_sM3Drive.psMotorCmd->uSpeed_pos.fltSpeed * M1_SPEED_MECH_RPM_TO_ELEC_ANGULAR_COEFF;
+			break;
+		case kMC_FOC_PositionControl:
+		default:
+			g_sM3Drive.eControl = kControlMode_PositionFOC;
+			if(g_sM3Drive.psMotorCmd->uSpeed_pos.sPosParam.bIsRandomPosition == true)
+			{
+				g_sM3Drive.sPosition.bIsRandomPosition = TRUE; // Don't generate trajectory in position loop
 
+			}
+			else
+			{
+				g_sM3Drive.sPosition.bIsRandomPosition = FALSE;
+			}
+			g_sM3Drive.sPosition.i32Q16PosCmd = g_sM3Drive.psMotorCmd->uSpeed_pos.sPosParam.uPosition.i32Raw;
+
+			break;
+		}
+
+		// Turn on/off motor
+		if(g_sM3Drive.psMotorCmd->eAppSwitch == kMC_App_On)
+		{
+			g_bM3SwitchAppOnOff = TRUE;
 		}
 		else
 		{
-			g_sM3Drive.sPosition.bIsRandomPosition = FALSE;
+			g_bM3SwitchAppOnOff = FALSE;
 		}
-		g_sM3Drive.sPosition.i32Q16PosCmd = g_sM3Drive.psMotorCmd->uSpeed_pos.sPosParam.uPosition.i32Raw;
-
-		break;
 	}
-
-	// Turn on/off motor
-    if(g_sM3Drive.psMotorCmd->eAppSwitch == kMC_App_On)
-    {
-    	g_bM3SwitchAppOnOff = TRUE;
-    }
-    else
-    {
-    	g_bM3SwitchAppOnOff = FALSE;
-    }
 #endif
     /* M1 Slow StateMachine call */
     SM_StateMachineSlow(&g_sM3Ctrl);
@@ -288,43 +301,46 @@ RAM_FUNC_CRITICAL void M4_slowloop_handler(void)
 	g_sM4Drive.psMotorCmd = MC_GetMotorCommand_fromISR(kMC_Motor4);
 
 	// Set up motor commands
-	switch(g_sM4Drive.psMotorCmd->eControlMethodSel)
+	if(NULL != g_sM4Drive.psMotorCmd)
 	{
-	case kMC_ScalarControl:
-		g_sM4Drive.eControl = kControlMode_Scalar;
-		g_sM4Drive.sScalarCtrl.fltVHzGain = g_sM4Drive.psMotorCmd->uSpeed_pos.sScalarParam.fltScalarControlVHzGain;
-		g_sM4Drive.sScalarCtrl.fltFreqCmd = g_sM4Drive.psMotorCmd->uSpeed_pos.sScalarParam.fltScalarControlFrequency;
-		break;
-	case kMC_FOC_SpeedControl:
-		g_sM4Drive.eControl = kControlMode_SpeedFOC;
-		g_sM4Drive.sSpeed.fltSpeedCmd = g_sM4Drive.psMotorCmd->uSpeed_pos.fltSpeed * M1_SPEED_MECH_RPM_TO_ELEC_ANGULAR_COEFF;
-		break;
-	case kMC_FOC_PositionControl:
-	default:
-		g_sM4Drive.eControl = kControlMode_PositionFOC;
-		if(g_sM4Drive.psMotorCmd->uSpeed_pos.sPosParam.bIsRandomPosition == true)
+		switch(g_sM4Drive.psMotorCmd->eControlMethodSel)
 		{
-			g_sM4Drive.sPosition.bIsRandomPosition = TRUE; // Don't generate trajectory in position loop
+		case kMC_ScalarControl:
+			g_sM4Drive.eControl = kControlMode_Scalar;
+			g_sM4Drive.sScalarCtrl.fltVHzGain = g_sM4Drive.psMotorCmd->uSpeed_pos.sScalarParam.fltScalarControlVHzGain;
+			g_sM4Drive.sScalarCtrl.fltFreqCmd = g_sM4Drive.psMotorCmd->uSpeed_pos.sScalarParam.fltScalarControlFrequency;
+			break;
+		case kMC_FOC_SpeedControl:
+			g_sM4Drive.eControl = kControlMode_SpeedFOC;
+			g_sM4Drive.sSpeed.fltSpeedCmd = g_sM4Drive.psMotorCmd->uSpeed_pos.fltSpeed * M1_SPEED_MECH_RPM_TO_ELEC_ANGULAR_COEFF;
+			break;
+		case kMC_FOC_PositionControl:
+		default:
+			g_sM4Drive.eControl = kControlMode_PositionFOC;
+			if(g_sM4Drive.psMotorCmd->uSpeed_pos.sPosParam.bIsRandomPosition == true)
+			{
+				g_sM4Drive.sPosition.bIsRandomPosition = TRUE; // Don't generate trajectory in position loop
 
+			}
+			else
+			{
+				g_sM4Drive.sPosition.bIsRandomPosition = FALSE;
+			}
+			g_sM4Drive.sPosition.i32Q16PosCmd = g_sM4Drive.psMotorCmd->uSpeed_pos.sPosParam.uPosition.i32Raw;
+
+			break;
+		}
+
+		// Turn on/off motor
+		if(g_sM4Drive.psMotorCmd->eAppSwitch == kMC_App_On)
+		{
+			g_bM4SwitchAppOnOff = TRUE;
 		}
 		else
 		{
-			g_sM4Drive.sPosition.bIsRandomPosition = FALSE;
+			g_bM4SwitchAppOnOff = FALSE;
 		}
-		g_sM4Drive.sPosition.i32Q16PosCmd = g_sM4Drive.psMotorCmd->uSpeed_pos.sPosParam.uPosition.i32Raw;
-
-		break;
 	}
-
-	// Turn on/off motor
-    if(g_sM4Drive.psMotorCmd->eAppSwitch == kMC_App_On)
-    {
-    	g_bM4SwitchAppOnOff = TRUE;
-    }
-    else
-    {
-    	g_bM4SwitchAppOnOff = FALSE;
-    }
 #endif
     /* M1 Slow StateMachine call */
     SM_StateMachineSlow(&g_sM4Ctrl);
@@ -676,7 +692,7 @@ void getMotorStatusTask(void *pvParameters)
 	if(sStatus != kStatus_QMC_Ok)
 	{
 		PRINTF("Fail to get Status Queue handler");
-		while(1);
+		goto error_exit;
 	}
 
 	while(1)
@@ -710,10 +726,12 @@ void getMotorStatusTask(void *pvParameters)
 		if((sStatus != kStatus_QMC_ErrNoMsg)&&(sStatus != kStatus_QMC_Ok))
 		{
 			PRINTF("Fail to get Status Queue contents");
-			while(1);
+			goto error_exit;
 		}
 		vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(30));
 	}
 
+error_exit:
+	vTaskDelete(NULL);
 }
 #endif

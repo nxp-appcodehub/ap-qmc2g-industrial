@@ -1,0 +1,46 @@
+/*
+ * Copyright 2023 NXP 
+ *
+ * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+ * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+ * installing, activating and/or otherwise using the software, you are agreeing that you have read,
+ * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+ * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
+ */
+
+    /* MAIN TEXT SECTION */
+    .text : ALIGN(${text_align})
+    {        
+        . = ALIGN(0x80000) ;       
+        FILL(0xff)
+        __fw_hdr_start__ = ABSOLUTE(.) ;
+        KEEP(*(.fw_hdr))        
+        FILL(0xff)
+        . = ALIGN(0x100) ;            
+        __vectors_start__ = . ;
+        KEEP(*(.isr_vector))
+<#include "global_section_table.ldt" >				
+        *(.after_vectors*)
+
+<#include "crp.ldt" >
+<#include "flashconfig.ldt" >
+<#if (PLAIN_LOAD_IMAGE) >
+    } > ${CODEX} AT> ${CODE}
+<#else>
+    } > ${CODE}
+</#if>
+
+    .text : ALIGN(${text_align})
+    {
+<#include "extrasections_text.ldt">
+<#include "main_text.ldt" >
+<#include "extrasections_rodata.ldt">
+<#include "freertos_debugconfig.ldt">
+<#include "main_rodata.ldt" >
+			 
+<#include "cpp_info.ldt" >
+<#if (PLAIN_LOAD_IMAGE) >
+    } > ${CODEX} AT> ${CODE}
+<#else>
+    } > ${CODE}
+</#if>
