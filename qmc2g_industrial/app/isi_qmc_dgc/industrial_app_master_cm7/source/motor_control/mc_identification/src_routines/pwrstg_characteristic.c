@@ -42,9 +42,9 @@
  *
  * @return None
  */
-volatile static float_t fltRs_voltage_drop;      /* Auxiliary variable for Rs voltage drop calculation */
-volatile static float_t fltUdReqFilt;            /* Filtered Ud required value */
-volatile static float_t fltIdfbckFilt;           /* Filtered Id feedback value */
+static float_t fltRs_voltage_drop;      /* Auxiliary variable for Rs voltage drop calculation */
+static float_t fltUdReqFilt;            /* Filtered Ud required value */
+static float_t fltIdfbckFilt;           /* Filtered Id feedback value */
 
 void MID_GetTransferCharacteristic(mid_get_char_t* sTransferCharFcn)
 {

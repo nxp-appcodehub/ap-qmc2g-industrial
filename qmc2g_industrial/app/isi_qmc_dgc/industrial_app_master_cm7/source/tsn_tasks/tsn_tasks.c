@@ -22,8 +22,10 @@
 #include "api_motorcontrol.h"
 #include "api_fault.h"
 #include "api_qmc_common.h"
+#include "api_rpc.h"
 #include "main_cm7.h"
 #include "api_motorcontrol_internal.h"
+#include "api_logging.h"
 
 /*******************************************************************************
  * Definitions
@@ -58,6 +60,25 @@ static void TSN_main_loop(void *data, int timer_status)
 	system_status_frame_t system_status_frame;
     mc_motor_status_t motor_status;
 
+	if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogTSN) != kStatus_QMC_Ok)
+	{
+		log_record_t logEntryWithoutId = {
+				.rhead = {
+						.chksum				= 0,
+						.uuid				= 0,
+						.ts = {
+							.seconds		= 0,
+							.milliseconds	= 0
+						}
+				},
+				.type = kLOG_SystemData,
+				.data.systemData.source = LOG_SRC_TSN,
+				.data.systemData.category = LOG_CAT_General,
+				.data.systemData.eventCode = LOG_EVENT_FunctionalWatchdogKickFailed
+		};
+
+		LOG_QueueLogEntry(&logEntryWithoutId, false);
+	}
 
     /*Check, if receive callback was executed (callback set network_status_ok),
      * which means network is OK*/
@@ -103,7 +124,7 @@ static void TSN_main_loop(void *data, int timer_status)
 
     /*Call MC_GetMotorStatusforTsn function for all four motors. Save motor statuses including
      * MC_GetMotorStatusforTsn function return status into the prepared system status frame */
-    for(int i = 0; i < MC_MAX_MOTORS; i++)
+    for(mc_motor_id_t i = 0; i < MC_MAX_MOTORS; i++)
     {
     	MC_GetMotorStatusforTsn(i, &motor_status);
     	system_status_frame.motor_status[i].sFast = motor_status.sFast;
@@ -220,6 +241,10 @@ static void TSN_receive_MC_command(void *ctx, int msg_id, int src_id, void *buf,
  */
 qmc_status_t TsnInit(void)
 {
+	if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogTSN) != kStatus_QMC_Ok)
+	{
+		FAULT_RaiseFaultEvent(kFAULT_FunctionalWatchdogInitFail);
+	}
 
     struct tsn_app_config *config = NULL;
 
@@ -309,6 +334,26 @@ qmc_status_t TsnInit(void)
 
 	/*Start cyclic task*/
 	cyclic_task_start(gs_tsn_ctx.c_task);
+
+	if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogTSN) != kStatus_QMC_Ok)
+	{
+		log_record_t logEntryWithoutId = {
+				.rhead = {
+						.chksum				= 0,
+						.uuid				= 0,
+						.ts = {
+							.seconds		= 0,
+							.milliseconds	= 0
+						}
+				},
+				.type = kLOG_SystemData,
+				.data.systemData.source = LOG_SRC_TSN,
+				.data.systemData.category = LOG_CAT_General,
+				.data.systemData.eventCode = LOG_EVENT_FunctionalWatchdogKickFailed
+		};
+
+		LOG_QueueLogEntry(&logEntryWithoutId, false);
+	}
 
 	return kStatus_QMC_Ok;
 

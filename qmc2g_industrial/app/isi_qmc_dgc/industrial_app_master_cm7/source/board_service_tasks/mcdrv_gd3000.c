@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -128,7 +128,12 @@ uint8_t GD3000_sendData(FLEXIO_SPI_Type *base, uint8_t ui8Data)
 #endif /* #if SPI_RETRY_TIMES */
 
 	helper_FLEXIO_SPI_SetSCKTimerBitcount(base, GD3000_CMD_BITCOUNT);
-	helper_FLEXIO_SPI_WriteBlockingWithBitcount(base, FLEXIO_SPI_DIRECTION, &ui8Data, 1, GD3000_CMD_BITCOUNT);
+	status_t statusCheck = helper_FLEXIO_SPI_WriteBlockingWithBitcount(base, FLEXIO_SPI_DIRECTION, &ui8Data, 1, GD3000_CMD_BITCOUNT);
+
+	if (statusCheck != kStatus_Success)
+	{
+		return 0;
+	}
 
 #if SPI_RETRY_TIMES
 	waitTimes = SPI_RETRY_TIMES;

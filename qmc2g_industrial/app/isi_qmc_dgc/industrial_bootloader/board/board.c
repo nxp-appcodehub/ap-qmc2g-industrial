@@ -12,6 +12,7 @@
 #include "fsl_lpi2c.h"
 #endif /* SDK_I2C_BASED_COMPONENT_USED */
 #include "fsl_iomuxc.h"
+#include "fsl_snvs_lp.h"
 
 /*******************************************************************************
  * Variables
@@ -19,6 +20,172 @@
 /*******************************************************************************
  * Code
  ******************************************************************************/
+
+/*!
+ * @brief Transforms a SNVS RTC counter value to a timestamp in milliseconds.
+ *
+ * Transformation equation: time in ms = \f$ \lfloor rtcValue / 32768Hz * 1000 \rfloor \f$
+ *
+ * This function rounds down, i.e., the milliseconds are only advanced if the current
+ * millisecond completely passed.
+ *
+ * The maximum supported input value without an overflow is
+ * \f$ \lfloor \mathrm{INT64\_MAX}/1000\rfloor = \lfloor (2^{63} - 1)/1000\rfloor = 9223372036854775 \f$
+ * which results in a timestamp in milliseconds which is capable of representing
+ * approximately \f$ 9223372036854775 * 1000/32768/1000/3600/24/366 \approx 8901 \f$
+ * years.
+ *
+ * This function is reentrant and can be used concurrently as long as pTimeMs points to
+ * unique locations.
+ *
+ * @startuml
+ * start
+ * if (pTimeMs == NULL) then (true)
+ *   :return kStatus_QMC_ErrArgInvalid;
+ *   stop
+ * endif
+ * if ((rtcValue > (INT64_MAX / 1000)) || (rtcValue < 0)) then (true)
+ *   :return kStatus_QMC_ErrRange;
+ *   stop
+ * endif
+ * :~*pTimeMs = rtcValue * 1000
+ * *pTimeMs = *pTimeMs >> 15
+ * return kStatus_QMC_Ok;
+ * stop
+ * @enduml
+ *
+ * @param[in] rtcValue A SNVS RTC counter value which should be converted to a timestamp
+ * in milliseconds.
+ * @param[out] pTimeMs Pointer to a variable which gets the resulting timestamp in milliseconds
+ * assigned. The result has only been written if this function returns kStatus_QMC_Ok.
+ * @return A qmc_status_t status code.
+ * @retval kStatus_QMC_ErrRange
+ * The given RTC counter value was below zero or too large so that
+ * an overflow would have occurred. The result data at *pTimeMs was not modified.
+ * @retval kStatus_QMC_Ok
+ * The operation did complete successfully, the result has been written to *pTimeMs.
+ */
+static qmc_status_t ConvertRtcCounterValToMs(int64_t rtcValue, int64_t *pTimeMs)
+{
+    assert(NULL != pTimeMs);
+
+    if ((rtcValue > (INT64_MAX / 1000)) || (rtcValue < 0))
+    {
+        return kStatus_QMC_ErrRange;
+    }
+
+    /* *pTimeMs = rtcValue * 1000 */
+    *pTimeMs = rtcValue * 1000; /* do this first to prevent rounding errors */
+    /* *pTimeMs = (rtcValue * 1000) / 32768 */
+    *pTimeMs = *pTimeMs >> 15U;
+
+    return kStatus_QMC_Ok;
+}
+
+#define SNVS_GET_SRTC_COUNT_RETRIES 3
+static qmc_status_t HAL_GetSrtcCount(int64_t *pRtcVal)
+{
+    uint8_t tries      = 0U;
+    int64_t srtcValue1 = 0;
+    int64_t srtcValue2 = 0;
+
+    if (NULL == pRtcVal)
+    {
+        return kStatus_QMC_ErrArgInvalid;
+    }
+
+    do
+    {
+        /* read two consecutive times to make sure we have a stable value */
+        srtcValue1 = ((int64_t)SNVS->LPSRTCMR << 32U) | SNVS->LPSRTCLR;
+        srtcValue2 = ((int64_t)SNVS->LPSRTCMR << 32U) | SNVS->LPSRTCLR;
+        tries++;
+    } while ((tries < SNVS_GET_SRTC_COUNT_RETRIES) && (srtcValue1 != srtcValue2));
+
+    if (tries < SNVS_GET_SRTC_COUNT_RETRIES)
+    {
+        *pRtcVal = srtcValue1;
+        return kStatus_QMC_Ok;
+    }
+    else
+    {
+        return kStatus_QMC_Timeout;
+    }
+}
+
+
+static int64_t HAL_GetSrtcOffset(void)
+{
+    return (int64_t)SNVS->LPGPR[RTCLOW_SNVS_INDEX] | ((int64_t)SNVS->LPGPR[RTCHIGH_SNVS_INDEX]) << 32U;
+}
+
+qmc_status_t QMC_CM4_GetRtcTimeIntsDisabled(qmc_timestamp_t *const pTime)
+{
+    qmc_status_t ret = kStatus_QMC_Err;
+
+    if (NULL == pTime)
+    {
+        return kStatus_QMC_ErrArgInvalid;
+    }
+
+    /* get offset */
+    int64_t offset = HAL_GetSrtcOffset();
+
+    /* get the current RTC value
+     * rtcValueIs is always positive by definition */
+    int64_t rtcValueIs = 0;
+    ret                = HAL_GetSrtcCount(&rtcValueIs);
+    if (kStatus_QMC_Ok != ret)
+    {
+        return ret;
+    }
+    assert(rtcValueIs > 0);
+
+    /* check for overflow
+     * can only overflow in positive direction as rtcValueIs is always positive */
+    if (offset > INT64_MAX - rtcValueIs)
+    {
+        return kStatus_QMC_ErrRange;
+    }
+
+    /* get the current time in ms */
+    int64_t rtcValueReal = rtcValueIs + offset;
+    int64_t timeMs       = 0;
+    ret                  = ConvertRtcCounterValToMs(rtcValueReal, &timeMs);
+    if (kStatus_QMC_Ok != ret)
+    {
+        return ret;
+    }
+
+    pTime->milliseconds = timeMs % 1000;
+    pTime->seconds      = timeMs / 1000;
+
+    return kStatus_QMC_Ok;
+}
+
+qmc_status_t BOARD_GetTime(qmc_timestamp_t* timestamp)
+{
+    qmc_timestamp_t gs_getTimeOffset = {0};
+
+	/* input sanitation and limit checks */
+	if(NULL == timestamp)
+	    return kStatus_QMC_ErrArgInvalid;
+
+	if(kStatus_QMC_Ok != QMC_CM4_GetRtcTimeIntsDisabled(&gs_getTimeOffset))
+	{
+		return kStatus_QMC_Err;
+	}
+
+    /* compute current time */
+    *timestamp               = gs_getTimeOffset;
+    if(timestamp->milliseconds >= 1000) /* handle milliseconds overflow */
+    {
+    	timestamp->milliseconds -= 1000;
+    	timestamp->seconds++;
+    }
+
+    return kStatus_QMC_Ok;
+}
 
 /* Get debug console frequency. */
 uint32_t BOARD_DebugConsoleSrcFreq(void)
@@ -270,8 +437,8 @@ void BOARD_ConfigMPU(void)
      */
 
     /* Region 0 setting: Instruction access disabled, No data access permission. */
-  //  MPU->RBAR = ARM_MPU_RBAR(0, 0x00000000U);
-  //  MPU->RASR = ARM_MPU_RASR(1, ARM_MPU_AP_NONE, 2, 0, 0, 0, 0, ARM_MPU_REGION_SIZE_4GB);
+    MPU->RBAR = ARM_MPU_RBAR(0, 0x00000000U);
+    MPU->RASR = ARM_MPU_RASR(1, ARM_MPU_AP_NONE, 2, 0, 0, 0, 0, ARM_MPU_REGION_SIZE_4GB);
 
     /* Region 1 setting: Memory with Normal type, not shareable, outer/inner write back */
     MPU->RBAR = ARM_MPU_RBAR(1, 0x00000000U);
@@ -279,52 +446,47 @@ void BOARD_ConfigMPU(void)
 
     /* Region 2 setting: Memory with Normal type, not shareable, outer/inner write back */
     MPU->RBAR = ARM_MPU_RBAR(2, 0x20000000U);
-    MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_256KB);
+    MPU->RASR = ARM_MPU_RASR(1, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_256KB);
 
     /* Region 3 setting: Memory with Normal type, non-shareable, outer/inner write back - consider LMEM OCRAM -> CM4 TCMs */
 	MPU->RBAR = ARM_MPU_RBAR(3, 0x20220000U);
-	MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 0, 0, 0, ARM_MPU_REGION_SIZE_256KB);
+	MPU->RASR = ARM_MPU_RASR(1, ARM_MPU_AP_FULL, 0, 0, 0, 0, 0, ARM_MPU_REGION_SIZE_256KB);
 
     /* Region 4 setting: Memory with Normal type, non-shareable, outer/inner write back - consider OCRAM1 - 1st 256kB */
     MPU->RBAR = ARM_MPU_RBAR(4, 0x20240000U);
-    MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_256KB);
+    MPU->RASR = ARM_MPU_RASR(1, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_256KB);
 
     /* Region 5 setting: Memory with Normal type, non-shareable, outer/inner write back - consider OCRAM1 - 2nd 256kB */
 	MPU->RBAR = ARM_MPU_RBAR(5, 0x20280000U);
-	MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_256KB);
+	MPU->RASR = ARM_MPU_RASR(1, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_256KB);
 
     /* Region 6 setting: Memory with Normal type, shareable, outer/inner write back - consider OCRAM2 - 1st 256kB */
     MPU->RBAR = ARM_MPU_RBAR(6, 0x202C0000U);
-    MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_256KB);
+    MPU->RASR = ARM_MPU_RASR(1, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_256KB);
 
     /* Region 6 setting: Memory with Normal type, shareable, outer/inner write back - consider OCRAM2 - 2nd 256kB */
 	MPU->RBAR = ARM_MPU_RBAR(7, 0x20300000U);
-	MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_256KB);
+	MPU->RASR = ARM_MPU_RASR(1, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_256KB);
 
     /* Region 8 setting: Memory with Normal type, shareable, outer/inner write back - consider OCRAM ECC1 */
     MPU->RBAR = ARM_MPU_RBAR(8, 0x20340000U);
-    MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_64KB);
+    MPU->RASR = ARM_MPU_RASR(1, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_512KB);
 
-    /* Region 8 setting: Memory with Normal type, shareable, outer/inner write back - consider OCRAM ECC2 */
-    //MPU->RBAR = ARM_MPU_RBAR(8, 0x20350000U);
-    //MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 0, 0, 0, ARM_MPU_REGION_SIZE_64KB);
-
-    /* Region 9 setting: Memory with Normal type, shareable, outer/inner write back - FlexRAM OCRAM ECC */
-    MPU->RBAR = ARM_MPU_RBAR(9, 0x20360000U);
+    MPU->RBAR = ARM_MPU_RBAR(9, 0x00200000U);
     MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_128KB);
 
     /* Region 10 setting: Memory with Device type, shareable, outer/inner write back - FlexSPI1 OctalFLASH */
     MPU->RBAR = ARM_MPU_RBAR(10, 0x30000000U);
-    MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_RO, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_64MB);
+    MPU->RASR = ARM_MPU_RASR(1, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_64MB);
 
     /* Region 11 setting: Memory with Device type, shareable, outer/inner write back - FlexSPI1 OctalRAM */
     MPU->RBAR = ARM_MPU_RBAR(11, 0x34000000U);
-    MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_32MB);
+    MPU->RASR = ARM_MPU_RASR(1, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_32MB);
 
 #if defined(XIP_EXTERNAL_FLASH) && (XIP_EXTERNAL_FLASH == 1)
     /* Region 12 setting: Memory with Normal type, not shareable, outer/inner write back. */
     MPU->RBAR = ARM_MPU_RBAR(12, 0x60000000U);
-    MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_RO, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_16MB);
+    MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_32MB);
 #endif
 
     while ((size >> i) > 0x1U)

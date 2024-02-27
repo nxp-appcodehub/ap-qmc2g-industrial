@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -58,7 +58,7 @@ RAM_FUNC_CRITICAL void MCDRV_eFlexPwm3PhDutyUpdate(mcdrv_pwm3ph_pwma_t *this)
     this->pui32PwmBaseAddress->SM[this->ui16PhCSubNum].VAL2 = MLIB_Neg_F16(f16DutyRegVal);
 
     /* set LDOK bits */
-    ui8MaskTemp = (1U << (this->ui16PhASubNum))|(1U << (this->ui16PhBSubNum))|(1U << (this->ui16PhCSubNum));
+    ui8MaskTemp = ((uint16_t)(1U) << (this->ui16PhASubNum))|((uint16_t)(1U) << (this->ui16PhBSubNum))|((uint16_t)(1U) << (this->ui16PhCSubNum));
     this->pui32PwmBaseAddress->MCTRL |= PWM_MCTRL_LDOK(ui8MaskTemp);
 }
 
@@ -73,7 +73,7 @@ RAM_FUNC_CRITICAL void MCDRV_eFlexPwm3PhOutEnable(mcdrv_pwm3ph_pwma_t *this)
 {
     uint8_t ui8MaskTemp = 0U;  
     
-    ui8MaskTemp = (1U << (this->ui16PhASubNum))|(1U << (this->ui16PhBSubNum))|(1U << (this->ui16PhCSubNum));  
+    ui8MaskTemp = ((uint16_t)(1U) << (this->ui16PhASubNum))|((uint16_t)(1U) << (this->ui16PhBSubNum))|((uint16_t)(1U) << (this->ui16PhCSubNum));
       
     /* PWM outputs of sub-modules 0,1 and 2 enabled */
     /* PWM_A output */
@@ -99,7 +99,7 @@ RAM_FUNC_CRITICAL void MCDRV_eFlexPwm3PhOutDisable(mcdrv_pwm3ph_pwma_t *this)
     uint32_t    ui32MaskTemp = 0U;
     uint16_t     ui16PhSubTemp = 0U; 
 
-    ui16PhSubTemp = ~((1U << (this->ui16PhASubNum))|(1U << (this->ui16PhBSubNum))|(1U << (this->ui16PhCSubNum))); 
+    ui16PhSubTemp = ~(((uint16_t)(1U) << (this->ui16PhASubNum))|((uint16_t)(1U) << (this->ui16PhBSubNum))|((uint16_t)(1U) << (this->ui16PhCSubNum)));
     
     /* PWM outputs of used PWM sub-modules disabled */
     /* PWM_A output */
@@ -132,7 +132,7 @@ RAM_FUNC_CRITICAL bool_t MCDRV_eFlexPwm3PhFaultGet(mcdrv_pwm3ph_pwma_t *this)
 
 	/* read fault flags */
     ui16StatusFlags = (((this->pui32PwmBaseAddress->FSTS & PWM_FSTS_FFLAG_MASK) >> PWM_FSTS_FFLAG_SHIFT) &
-                    (1 << this->ui16FaultFixNum | 1 << this->ui16FaultAdjNum));
+                    ((uint16_t)(1) << this->ui16FaultFixNum | (uint16_t)(1) << this->ui16FaultAdjNum));
 
     /* read fault pins status */
     /* Reading pin status because fault flag is only triggered by signal edge, there can be situations where fault signals are
@@ -140,11 +140,11 @@ RAM_FUNC_CRITICAL bool_t MCDRV_eFlexPwm3PhFaultGet(mcdrv_pwm3ph_pwma_t *this)
      * be set even though fault signals are valid.
      *  */
     ui16StatusPins = (((this->pui32PwmBaseAddress->FSTS & PWM_FSTS_FFPIN_MASK) >> PWM_FSTS_FFPIN_SHIFT) &
-            (1 << this->ui16FaultFixNum | 1 << this->ui16FaultAdjNum));
+            ((uint16_t)(1) << this->ui16FaultFixNum | (uint16_t)(1) << this->ui16FaultAdjNum));
 
     /* clear faults flag */
     this->pui32PwmBaseAddress->FSTS = ((this->pui32PwmBaseAddress->FSTS & ~(PWM_FSTS_FFLAG_MASK)) |
-                                       (1 << this->ui16FaultFixNum | 1 << this->ui16FaultAdjNum));
+                                       ((uint16_t)(1) << this->ui16FaultFixNum | (uint16_t)(1) << this->ui16FaultAdjNum));
 
     if((ui16StatusFlags > 0)||(ui16StatusPins > 0))
     {

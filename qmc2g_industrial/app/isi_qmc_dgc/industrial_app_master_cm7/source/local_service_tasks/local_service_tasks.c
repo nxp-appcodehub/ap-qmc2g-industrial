@@ -10,17 +10,17 @@
 
 #include "local_service_tasks.h"
 #include "lvgl_support.h"
-#include "lvgl.h"
 #include "gui_guider.h"
-#include "events_init.h"
 #include "qmc_features_config.h"
 #include "api_fault.h"
 #include "api_board.h"
 #include "api_motorcontrol.h"
 #include "api_logging.h"
 #include "api_usermanagement.h"
+#include "api_rpc.h"
 #include "fsl_debug_console.h"
-#include "task.h"
+#include "constants.h"
+#include "dispatcher.h"
 
 #include <stdio.h>
 /*******************************************************************************
@@ -29,6 +29,7 @@
 #define LS_OPACITY_SHOW                 255u
 #define LS_OPACITY_HIDE                 0u
 #define MOTOR_QUEUE_TIMEOUT_ATTEMPTS    20u
+#define MAX_LOG_LABELS					3u
 
 typedef enum _tampering_type
 {
@@ -62,7 +63,7 @@ static void setColor_Motor(mc_motor_id_t index, ls_color_mode_t color_mode);
  * @param[in] value Pointer to the array of characters to be set as the text
  * @param[in] motor_label_id The status that should be configured
  */
-static void setText_MotorLabel(mc_motor_id_t index, char *value, ls_motor_label_id_t motor_label_id);
+static void setText_MotorLabel(mc_motor_id_t index, const char *value, ls_motor_label_id_t motor_label_id);
 
 /*!
  * @brief This function initializes the colors of the log labels and the necessary variables
@@ -86,7 +87,7 @@ static void setColor_LogLabel(ls_log_label_id_t index, ls_color_mode_t color_mod
  * @param[in] lastLogs Pointer to an array of last logs
  * @param[in] activeLogLabels Amount of already active log rows
  */
-static void update_LogLabels(log_record_t *lastLogs, int activeLogLabels);
+static void update_LogLabels(log_record_t *lastLogs, unsigned int activeLogLabels);
 
 /*!
  * @brief This function sets the text of the log labels
@@ -95,7 +96,7 @@ static void update_LogLabels(log_record_t *lastLogs, int activeLogLabels);
  * @param[in] message The log message to be displayed
  * @param[in] timestamp_string The timestamp of the log message
  */
-static void setText_LogLabel(ls_log_label_id_t index, char *message, char *timestamp_string);
+static void setText_LogLabel(ls_log_label_id_t index, const char *message, const char *timestamp_string);
 
 /*!
  * @brief This function updates the specified icon's style
@@ -105,12 +106,14 @@ static void setText_LogLabel(ls_log_label_id_t index, char *message, char *times
  */
 static void updateIconOpacity(lv_obj_t *icon, uint8_t opacity);
 
+#if FEATURE_HANDLE_BUTTON_PRESS_EVENTS
 /*!
  * @brief This function starts or stops a motors based it's current state
  *
  * @param[in] motorId Id of the motor that should be started or stopped
  */
 static void motorStartStop(mc_motor_id_t motorId);
+#endif
 
 /*!
  * @brief This function handles opening or closing of the button and SD lids
@@ -119,11 +122,13 @@ static void motorStartStop(mc_motor_id_t motorId);
  */
 static void lidOpenClose(uint32_t inputButtonEvent);
 
+#if FEATURE_HANDLE_BUTTON_PRESS_EVENTS
 /*!
  * @brief This function handles pressing of the emergency button
  *
  */
 static void emergencyPressed();
+#endif
 
 /*!
  * @brief This function handles a tampering event
@@ -143,13 +148,16 @@ static volatile bool gs_lvgl_initialized = false;
 static lv_ui gs_guider_ui;
 static lv_style_t gs_color_style_motor[MC_MAX_MOTORS];
 static lv_style_t gs_color_style_log[3];
-static bool gs_wasSet[4] = { false };
 static bool gs_wasSetLidSd = false;
-static bool gs_wasSetLidButton = false;
-static bool gs_wasSetEmergency = false;
+#if FEATURE_HANDLE_BUTTON_PRESS_EVENTS
+	static bool gs_wasSet[4] = { false };
+	static bool gs_wasSetLidButton = false;
+	static bool gs_wasSetEmergency = false;
+#endif
 static bool gs_isRunning[4] = { false };
 static bool gs_sdCardAvailablePrevious = false;
 static bool gs_tamperingReported = false;
+static qmc_msg_queue_handle_t *motorStatusQueue;
 
 extern fault_system_fault_t g_systemFaultStatus;
 extern EventGroupHandle_t g_systemStatusEventGroupHandle;
@@ -171,7 +179,13 @@ TaskHandle_t g_local_service_task_handle;
  */
 qmc_status_t LocalServiceInit(void)
 {
+	if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogLocalService) != kStatus_QMC_Ok)
+	{
+		FAULT_RaiseFaultEvent(kFAULT_FunctionalWatchdogInitFail);
+	}
+
 	uint32_t systemStatus = xEventGroupGetBits(g_systemStatusEventGroupHandle);
+	uint32_t inputButtonEvent = xEventGroupGetBits(g_inputButtonEventGroupHandle);
 	gs_sdCardAvailablePrevious = systemStatus & QMC_SYSEVENT_MEMORY_SdCardAvailable;
 
 	if (systemStatus & QMC_SYSEVENT_LOG_FlashError)
@@ -206,6 +220,43 @@ qmc_status_t LocalServiceInit(void)
 		}
 	}
 
+	if (inputButtonEvent & QMC_IOEVENT_LID_OPEN_SD)
+	{
+		gs_wasSetLidSd = true;
+	}
+
+#if FEATURE_HANDLE_BUTTON_PRESS_EVENTS
+	if (inputButtonEvent & QMC_IOEVENT_LID_OPEN_BUTTON)
+	{
+		gs_wasSetLidButton = true;
+	}
+#endif
+
+	if (MC_GetNewStatusQueueHandle(&motorStatusQueue, 10) != kStatus_QMC_Ok)
+	{
+		return kStatus_QMC_Err;
+	}
+	
+	if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogLocalService) != kStatus_QMC_Ok)
+	{
+		log_record_t logEntryWithoutId = {
+				.rhead = {
+						.chksum				= 0,
+						.uuid				= 0,
+						.ts = {
+							.seconds		= 0,
+							.milliseconds	= 0
+						}
+				},
+				.type = kLOG_SystemData,
+				.data.systemData.source = LOG_SRC_LocalService,
+				.data.systemData.category = LOG_CAT_General,
+				.data.systemData.eventCode = LOG_EVENT_FunctionalWatchdogKickFailed
+		};
+
+		LOG_QueueLogEntry(&logEntryWithoutId, false);
+	}
+
 	return kStatus_QMC_Ok;
 }
 
@@ -218,15 +269,15 @@ qmc_status_t LocalServiceInit(void)
 void LocalServiceTask(void *pvParameters)
 {
 	qmc_status_t qmcStatus;
-	qmc_msg_queue_handle_t *motorStatusQueue;
 	mc_motor_status_t newMotorStatusFromDataHub;
 	mc_motor_status_t oldMotorStatusArray[4];
 	mc_state_t currentFastMotorState[4] = { kMC_Init, kMC_Init, kMC_Init, kMC_Init };
 	uint32_t oldSystemStatus = 0;
 	uint32_t oldLogId = UINT32_MAX;
 	double oldTemps[4] = { 0.0, 0.0, 0.0, 0.0 };
-	log_record_t lastLogs[3];
-	int activeLogLabels = 0;
+	log_record_t lastLogs[3] = { 0 };
+	unsigned int activeLogLabels = 0;
+	int checkResult = 0;
 	bool inErrorState = false;
 	bool inMaintenanceState = false;
 	bool reloadFastMotorStates = false;
@@ -234,7 +285,27 @@ void LocalServiceTask(void *pvParameters)
 	TickType_t lastProcessedGUI = 0;
 	TickType_t lastProcessedMotorLogs = 0;
 	uint32_t inputButtonEvent = xEventGroupGetBits(g_inputButtonEventGroupHandle);
-	qmcStatus = MC_GetNewStatusQueueHandle(&motorStatusQueue, 10);
+
+	if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogLocalService) != kStatus_QMC_Ok)
+	{
+		log_record_t logEntryWithoutId = {
+				.rhead = {
+						.chksum				= 0,
+						.uuid				= 0,
+						.ts = {
+							.seconds		= 0,
+							.milliseconds	= 0
+						}
+				},
+				.type = kLOG_SystemData,
+				.data.systemData.source = LOG_SRC_LocalService,
+				.data.systemData.category = LOG_CAT_General,
+				.data.systemData.eventCode = LOG_EVENT_FunctionalWatchdogKickFailed
+		};
+
+		LOG_QueueLogEntry(&logEntryWithoutId, false);
+	}
+
 	memset(oldMotorStatusArray, 0, sizeof(mc_motor_status_t) * 4);
 
     lv_init();
@@ -497,7 +568,10 @@ void LocalServiceTask(void *pvParameters)
 					lastLogs[0] = lastLogs[1];
 					lastLogs[1] = lastLogs[2];
 
-					activeLogLabels--;
+					if (activeLogLabels > 0)
+					{
+						activeLogLabels--;
+					}
 				}
 			}
 			/* Log update - end */
@@ -587,8 +661,29 @@ void LocalServiceTask(void *pvParameters)
 					if (newMotorStatusFromDataHub.sSlow.fltSpeed != oldMotorStatusPtr->sSlow.fltSpeed)
 					{
 						char value[8] = {0};
-						snprintf(value, 8, "%.0f", newMotorStatusFromDataHub.sSlow.fltSpeed);
-						setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Speed);
+						float fltSpeed = newMotorStatusFromDataHub.sSlow.fltSpeed;
+
+						if (fltSpeed > 9999.0)
+						{
+							checkResult = snprintf(value, 8, "> 9999");
+						}
+						else if (fltSpeed < -9999.0)
+						{
+							checkResult = snprintf(value, 8, "< -9999");
+						}
+						else
+						{
+							checkResult = snprintf(value, 8, "%.0f", fltSpeed);
+						}
+
+						if (checkResult < 0 || checkResult >= sizeof(value))
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, "err", kLST_Motor_Label_Speed);
+						}
+						else
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Speed);
+						}
 
 						oldMotorStatusPtr->sSlow.fltSpeed = newMotorStatusFromDataHub.sSlow.fltSpeed;
 					}
@@ -596,8 +691,29 @@ void LocalServiceTask(void *pvParameters)
 					if (newMotorStatusFromDataHub.sSlow.uPosition.i32Raw != oldMotorStatusPtr->sSlow.uPosition.i32Raw)
 					{
 						char value[8] = {0};
-						snprintf(value, 8, "%.2f", ((double) newMotorStatusFromDataHub.sSlow.uPosition.i32Raw/65536));
-						setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Position);
+						double position = ((double) newMotorStatusFromDataHub.sSlow.uPosition.i32Raw/65536);
+
+						if (position > 9999.0)
+						{
+							checkResult = snprintf(value, 8, "> 9999");
+						}
+						else if (position < -9999.0)
+						{
+							checkResult = snprintf(value, 8, "< -9999");
+						}
+						else
+						{
+							checkResult = snprintf(value, 8, "%.1f", position);
+						}
+
+						if (checkResult < 0 || checkResult >= sizeof(value))
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, "err", kLST_Motor_Label_Position);
+						}
+						else
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Position);
+						}
 
 						oldMotorStatusPtr->sSlow.uPosition.i32Raw = newMotorStatusFromDataHub.sSlow.uPosition.i32Raw;
 					}
@@ -612,8 +728,16 @@ void LocalServiceTask(void *pvParameters)
 						(oldTemps[newMotorStatusFromDataHub.eMotorId] != g_PSBTemps[newMotorStatusFromDataHub.eMotorId * 2]))
 					{
 						char value[8] = {0};
-						snprintf(value, 8, "%.2f", g_PSBTemps[newMotorStatusFromDataHub.eMotorId * 2]);
-						setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Temperature);
+						checkResult = snprintf(value, 8, "%.2f", g_PSBTemps[newMotorStatusFromDataHub.eMotorId * 2]);
+
+						if (checkResult < 0 || checkResult >= sizeof(value))
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, "err", kLST_Motor_Label_Temperature);
+						}
+						else
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Temperature);
+						}
 
 						oldTemps[newMotorStatusFromDataHub.eMotorId] = g_PSBTemps[newMotorStatusFromDataHub.eMotorId * 2];
 					}
@@ -688,8 +812,16 @@ void LocalServiceTask(void *pvParameters)
 					if (newMotorStatusFromDataHub.sFast.fltIa != oldMotorStatusPtr->sFast.fltIa)
 					{
 						char value[8] = {0};
-						snprintf(value, 8, "%.2f", newMotorStatusFromDataHub.sFast.fltIa);
-						setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Phase_A_Curr);
+						checkResult = snprintf(value, 8, "%.2f", newMotorStatusFromDataHub.sFast.fltIa);
+
+						if (checkResult < 0 || checkResult >= sizeof(value))
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, "err", kLST_Motor_Label_Phase_A_Curr);
+						}
+						else
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Phase_A_Curr);
+						}
 
 						oldMotorStatusPtr->sFast.fltIa = newMotorStatusFromDataHub.sFast.fltIa;
 					}
@@ -697,8 +829,16 @@ void LocalServiceTask(void *pvParameters)
 					if (newMotorStatusFromDataHub.sFast.fltIb != oldMotorStatusPtr->sFast.fltIb)
 					{
 						char value[8] = {0};
-						snprintf(value, 8, "%.2f", newMotorStatusFromDataHub.sFast.fltIb);
-						setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Phase_B_Curr);
+						checkResult = snprintf(value, 8, "%.2f", newMotorStatusFromDataHub.sFast.fltIb);
+
+						if (checkResult < 0 || checkResult >= sizeof(value))
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, "err", kLST_Motor_Label_Phase_B_Curr);
+						}
+						else
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Phase_B_Curr);
+						}
 
 						oldMotorStatusPtr->sFast.fltIb = newMotorStatusFromDataHub.sFast.fltIb;
 					}
@@ -706,8 +846,16 @@ void LocalServiceTask(void *pvParameters)
 					if (newMotorStatusFromDataHub.sFast.fltIc != oldMotorStatusPtr->sFast.fltIc)
 					{
 						char value[8] = {0};
-						snprintf(value, 8, "%.2f", newMotorStatusFromDataHub.sFast.fltIc);
-						setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Phase_C_Curr);
+						checkResult = snprintf(value, 8, "%.2f", newMotorStatusFromDataHub.sFast.fltIc);
+
+						if (checkResult < 0 || checkResult >= sizeof(value))
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, "err", kLST_Motor_Label_Phase_C_Curr);
+						}
+						else
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Phase_C_Curr);
+						}
 
 						oldMotorStatusPtr->sFast.fltIc = newMotorStatusFromDataHub.sFast.fltIc;
 					}
@@ -715,8 +863,16 @@ void LocalServiceTask(void *pvParameters)
 					if (newMotorStatusFromDataHub.sFast.fltValpha != oldMotorStatusPtr->sFast.fltValpha)
 					{
 						char value[8] = {0};
-						snprintf(value, 8, "%.2f", newMotorStatusFromDataHub.sFast.fltValpha);
-						setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Alpha_V);
+						checkResult = snprintf(value, 8, "%.2f", newMotorStatusFromDataHub.sFast.fltValpha);
+
+						if (checkResult < 0 || checkResult >= sizeof(value))
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, "err", kLST_Motor_Label_Alpha_V);
+						}
+						else
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Alpha_V);
+						}
 
 						oldMotorStatusPtr->sFast.fltValpha = newMotorStatusFromDataHub.sFast.fltValpha;
 					}
@@ -724,8 +880,15 @@ void LocalServiceTask(void *pvParameters)
 					if (newMotorStatusFromDataHub.sFast.fltVbeta != oldMotorStatusPtr->sFast.fltVbeta)
 					{
 						char value[8] = {0};
-						snprintf(value, 8, "%.2f", newMotorStatusFromDataHub.sFast.fltVbeta);
-						setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Beta_V);
+						checkResult = snprintf(value, 8, "%.2f", newMotorStatusFromDataHub.sFast.fltVbeta);
+
+						if (checkResult < 0 || checkResult >= sizeof(value))
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, "err", kLST_Motor_Label_Beta_V);
+						}
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Beta_V);
+						}
 
 						oldMotorStatusPtr->sFast.fltVbeta = newMotorStatusFromDataHub.sFast.fltVbeta;
 					}
@@ -733,8 +896,16 @@ void LocalServiceTask(void *pvParameters)
 					if (newMotorStatusFromDataHub.sFast.fltVDcBus != oldMotorStatusPtr->sFast.fltVDcBus)
 					{
 						char value[8] = {0};
-						snprintf(value, 8, "%.2f", newMotorStatusFromDataHub.sFast.fltVDcBus);
-						setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Db_Bus_V);
+						checkResult = snprintf(value, 8, "%.2f", newMotorStatusFromDataHub.sFast.fltVDcBus);
+
+						if (checkResult < 0 || checkResult >= sizeof(value))
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, "err", kLST_Motor_Label_Db_Bus_V);
+						}
+						else
+						{
+							setText_MotorLabel(newMotorStatusFromDataHub.eMotorId, value, kLST_Motor_Label_Db_Bus_V);
+						}
 
 						oldMotorStatusPtr->sFast.fltVDcBus = newMotorStatusFromDataHub.sFast.fltVDcBus;
 					}
@@ -878,6 +1049,7 @@ void LocalServiceTask(void *pvParameters)
 		{
 			gs_wasSet[kMC_Motor4] = false;
 		}
+#endif
 
 		if (gs_sdCardAvailablePrevious != sdCardAvailableCurrent)
 		{
@@ -892,11 +1064,16 @@ void LocalServiceTask(void *pvParameters)
 			gs_sdCardAvailablePrevious = sdCardAvailableCurrent;
 		}
 
-		if (inputButtonEvent & QMC_IOEVENT_LID_OPEN_SD || inputButtonEvent & QMC_IOEVENT_LID_OPEN_BUTTON)
+#if FEATURE_HANDLE_BUTTON_PRESS_EVENTS
+		if (inputButtonEvent & QMC_IOEVENT_LID_OPEN_SD|| inputButtonEvent & QMC_IOEVENT_LID_OPEN_BUTTON)
+#else
+		if (inputButtonEvent & QMC_IOEVENT_LID_OPEN_SD)
+#endif
 		{
 			lidOpenClose(inputButtonEvent);
 		}
 
+#if FEATURE_HANDLE_BUTTON_PRESS_EVENTS
 		if (inputButtonEvent & QMC_IOEVENT_EMERGENCY_PRESSED)
 		{
 			if (!inErrorState && !inMaintenanceState)
@@ -904,12 +1081,14 @@ void LocalServiceTask(void *pvParameters)
 				emergencyPressed();
 			}
 		}
+#endif
 
 		if (inputButtonEvent & QMC_IOEVENT_LID_CLOSE_SD)
 		{
 			gs_wasSetLidSd = false;
 		}
 
+#if FEATURE_HANDLE_BUTTON_PRESS_EVENTS
 		if (inputButtonEvent & QMC_IOEVENT_LID_CLOSE_BUTTON)
 		{
 			gs_wasSetLidButton = false;
@@ -922,18 +1101,56 @@ void LocalServiceTask(void *pvParameters)
 		/* Button Events - end */
 #endif
 
-		if ((xTaskGetTickCount() - lastProcessedGUI) >= pdMS_TO_TICKS(GUI_HANDLER_DELAY_AT_LEAST_MS))
+		/* Checking the subtraction result to satisfy CERT-C INT30-C rule */
+		TickType_t currentTickCount = xTaskGetTickCount();
+		TickType_t tickCountDifference = currentTickCount - lastProcessedGUI;
+
+		if (tickCountDifference > currentTickCount)
 		{
-			lv_task_handler();
-			lastProcessedGUI = xTaskGetTickCount();
+			tickCountDifference = 0;
+		}
+
+		if (tickCountDifference >= pdMS_TO_TICKS(GUI_HANDLER_DELAY_AT_LEAST_MS))
+		{
+			if( dispatcher_get_flash_lock(pdMS_TO_TICKS(1000)) == kStatus_QMC_Ok)
+			{
+				lv_task_handler();
+
+				dispatcher_release_flash_lock();
+				lastProcessedGUI = xTaskGetTickCount();
+			}
+
+	    	if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogLocalService) != kStatus_QMC_Ok)
+	    	{
+	    		log_record_t logEntryWithoutId = {
+	    				.rhead = {
+	    						.chksum				= 0,
+	    						.uuid				= 0,
+	    						.ts = {
+	    							.seconds		= 0,
+	    							.milliseconds	= 0
+	    						}
+	    				},
+	    				.type = kLOG_SystemData,
+	    				.data.systemData.source = LOG_SRC_LocalService,
+	    				.data.systemData.category = LOG_CAT_General,
+	    				.data.systemData.eventCode = LOG_EVENT_FunctionalWatchdogKickFailed
+	    		};
+
+	    		LOG_QueueLogEntry(&logEntryWithoutId, false);
+	    	}
 		}
 
 
-		inputButtonEvent = xEventGroupWaitBits(g_inputButtonEventGroupHandle,\
-				QMC_IOEVENT_BTN1_PRESSED | QMC_IOEVENT_BTN2_PRESSED | QMC_IOEVENT_BTN3_PRESSED | QMC_IOEVENT_BTN4_PRESSED |\
-				QMC_IOEVENT_BTN1_RELEASED | QMC_IOEVENT_BTN2_RELEASED | QMC_IOEVENT_BTN3_RELEASED | QMC_IOEVENT_BTN4_RELEASED |\
-				QMC_IOEVENT_INPUT0_HIGH | QMC_IOEVENT_INPUT1_HIGH | QMC_IOEVENT_INPUT2_HIGH |\
-				QMC_IOEVENT_INPUT0_LOW | QMC_IOEVENT_INPUT1_LOW | QMC_IOEVENT_INPUT2_LOW, pdFALSE, pdFALSE, pdMS_TO_TICKS(TASK_DELAY_MS));
+
+		EventBits_t waitBits = gs_wasSet[kMC_Motor1] ? QMC_IOEVENT_BTN1_RELEASED : QMC_IOEVENT_BTN1_PRESSED;
+		waitBits |= gs_wasSet[kMC_Motor2] ? QMC_IOEVENT_BTN2_RELEASED : QMC_IOEVENT_BTN2_PRESSED;
+		waitBits |= gs_wasSet[kMC_Motor3] ? QMC_IOEVENT_BTN3_RELEASED : QMC_IOEVENT_BTN3_PRESSED;
+		waitBits |= gs_wasSet[kMC_Motor4] ? QMC_IOEVENT_BTN4_RELEASED : QMC_IOEVENT_BTN4_PRESSED;
+		waitBits |= gs_wasSetEmergency ? QMC_IOEVENT_EMERGENCY_RELEASED : QMC_IOEVENT_EMERGENCY_PRESSED;
+		waitBits |= (gs_wasSetLidSd) ? QMC_IOEVENT_LID_CLOSE_SD : QMC_IOEVENT_LID_OPEN_SD;
+		waitBits |= (gs_wasSetLidButton) ? QMC_IOEVENT_LID_CLOSE_BUTTON : QMC_IOEVENT_LID_OPEN_BUTTON;
+		inputButtonEvent = xEventGroupWaitBits(g_inputButtonEventGroupHandle, waitBits, pdFALSE, pdFALSE, pdMS_TO_TICKS(TASK_DELAY_MS));
     }
 }
 
@@ -1252,7 +1469,7 @@ static void setColor_Motor(mc_motor_id_t index, ls_color_mode_t color_mode)
  * @param[in] value Pointer to the array of characters to be set as the text
  * @param[in] motor_label_id The status that should be configured
  */
-static void setText_MotorLabel(mc_motor_id_t index, char *value, ls_motor_label_id_t motor_label_id)
+static void setText_MotorLabel(mc_motor_id_t index, const char *value, ls_motor_label_id_t motor_label_id)
 {
 	switch(index)
 	{
@@ -1647,7 +1864,7 @@ static void setColor_LogLabel(ls_log_label_id_t index, ls_color_mode_t color_mod
  * @param[in] message The log message to be displayed
  * @param[in] timestamp_string The timestamp of the log message
  */
-static void setText_LogLabel(ls_log_label_id_t index, char *message, char *timestamp_string)
+static void setText_LogLabel(ls_log_label_id_t index, const char *message, const char *timestamp_string)
 {
 	switch(index)
 	{
@@ -1678,13 +1895,20 @@ static void setText_LogLabel(ls_log_label_id_t index, char *message, char *times
  * @param[in] lastLogs Pointer to an array of last logs
  * @param[in] activeLogLabels Amount of already active log rows
  */
-static void update_LogLabels(log_record_t *lastLogs, int activeLogLabels)
+static void update_LogLabels(log_record_t *lastLogs, unsigned int activeLogLabels)
 {
 	qmc_timestamp_t timestamp;
 	qmc_datetime_t datetime;
 	qmc_status_t qmcStatus;
 	char message[GUI_MAX_MESSAGE_LENGTH] = {0};
 	char timestamp_string[GUI_MAX_TIMESTAMP_LENGTH] = {0};
+	int checkResultMessage = 0;
+	int checkResultTimestamp = 0;
+
+	if (activeLogLabels > MAX_LOG_LABELS)
+	{
+		activeLogLabels = MAX_LOG_LABELS;
+	}
 
 	for (int i = 0; i < activeLogLabels; i++)
 	{
@@ -1694,98 +1918,83 @@ static void update_LogLabels(log_record_t *lastLogs, int activeLogLabels)
 			switch (lastLogs[i].data.defaultData.eventCode)
 			{
 			case LOG_EVENT_LidOpenSd:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "SD lid was opened.");
-				setColor_LogLabel(i, kLST_Color_Maintenance);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "SD lid was opened.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
 				break;
 
 			case LOG_EVENT_LidOpenButton:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Button lid was opened.");
-				setColor_LogLabel(i, kLST_Color_Maintenance);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Button lid was opened.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
 				break;
 
 			case LOG_EVENT_EmergencyButtonPressed:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Emergency button was pressed.");
-				setColor_LogLabel(i, kLST_Color_Maintenance);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Emergency button was pressed.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
 				break;
 
 			case LOG_EVENT_Button1Pressed:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Button1 was pressed.");
-				setColor_LogLabel(i, kLST_Color_Maintenance);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Button1 was pressed.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
 				break;
 
 			case LOG_EVENT_Button2Pressed:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Button2 was pressed.");
-				setColor_LogLabel(i, kLST_Color_Maintenance);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Button2 was pressed.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
 				break;
 
 			case LOG_EVENT_Button3Pressed:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Button3 was pressed.");
-				setColor_LogLabel(i, kLST_Color_Maintenance);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Button3 was pressed.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
 				break;
 
 			case LOG_EVENT_Button4Pressed:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Button4 was pressed.");
-				setColor_LogLabel(i, kLST_Color_Maintenance);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Button4 was pressed.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
 				break;
 
 			case LOG_EVENT_TamperingButton:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "BUTTON TAMPERING EVENT!");
-				setColor_LogLabel(i, kLST_Color_Error);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "BUTTON TAMPERING EVENT!");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Error);
 				break;
 
 			case LOG_EVENT_TamperingSd:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "SD TAMPERING EVENT!");
-				setColor_LogLabel(i, kLST_Color_Error);
-				break;
-
-			case LOG_EVENT_ResetWatchdog:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Watchdog: Reset Watchdog");
-				setColor_LogLabel(i, kLST_Color_Off);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "SD TAMPERING EVENT!");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Error);
 				break;
 
 			case LOG_EVENT_AccountResumed:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Account resumed.");
-				setColor_LogLabel(i, kLST_Color_Off);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Account resumed.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Off);
 				break;
 
 			case LOG_EVENT_AccountSuspended:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Account suspended.");
-				setColor_LogLabel(i, kLST_Color_Maintenance);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Account suspended.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
 				break;
 
 			case LOG_EVENT_LoginFailure:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Login failure.");
-				setColor_LogLabel(i, kLST_Color_Error);
-				break;
-
-			case LOG_EVENT_SessionTimeout:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Session timeout.");
-				setColor_LogLabel(i, kLST_Color_Maintenance);
-				break;
-
-			case LOG_EVENT_TerminateSession:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Terminate session.");
-				setColor_LogLabel(i, kLST_Color_Maintenance);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Login failure.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Error);
 				break;
 
 			case LOG_EVENT_UserLogin:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "User login.");
-				setColor_LogLabel(i, kLST_Color_Off);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "User login.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Off);
 				break;
 
 			case LOG_EVENT_UserLogout:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "User logout.");
-				setColor_LogLabel(i, kLST_Color_Off);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "User logout.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Off);
 				break;
 
 			case LOG_EVENT_InvalidArgument:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Invalid arguments used.");
-				setColor_LogLabel(i, kLST_Color_Off);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Invalid arguments used.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Off);
 				break;
 
 			default:
 				logInvalidArgument();
-				setColor_LogLabel(i, kLST_Color_Off);
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Off);
 				break;
 			}
 			break;
@@ -1794,94 +2003,98 @@ static void update_LogLabels(log_record_t *lastLogs, int activeLogLabels)
 			if ((lastLogs[i].data.faultDataWithID.eventCode == LOG_EVENT_NoFaultMC) ||\
 				(lastLogs[i].data.faultDataWithID.eventCode == LOG_EVENT_NoFaultBS))
 			{
-				setColor_LogLabel(i, kLST_Color_Operational);
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Operational);
 			}
 			else
 			{
-				setColor_LogLabel(i, kLST_Color_Fault);
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Fault);
 			}
 
 			switch (lastLogs[i].data.faultDataWithID.eventCode)
 			{
 			case LOG_EVENT_AfePsbCommunicationError:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d AfePsbCommunicationError", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d AfePsbCommunicationError", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_GD3000_Desaturation:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d GD3000_Desaturation", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d GD3000_Desaturation", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_GD3000_LowVLS:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d GD3000_LowVLS", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d GD3000_LowVLS", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_GD3000_OverCurrent:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d GD3000_OverCurrent", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d GD3000_OverCurrent", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_GD3000_OverTemperature:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d GD3000_OverTemperature", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d GD3000_OverTemperature", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_GD3000_PhaseError:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d GD3000_PhaseError", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d GD3000_PhaseError", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_GD3000_Reset:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d GD3000_Reset", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d GD3000_Reset", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_NoFaultBS:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d NoFaultBS", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d NoFaultBS", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_NoFaultMC:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d NoFaultMC", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d NoFaultMC", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_OverCurrent:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d OverCurrent", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d OverCurrent", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_OverDcBusVoltage:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d OverDcBusVoltage", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d OverDcBusVoltage", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_OverLoad:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d OverLoad", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d OverLoad", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_OverSpeed:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d OverSpeed", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d OverSpeed", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_PsbOverTemperature1:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d PsbOverTemperature1", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d PsbOverTemperature1", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_PsbOverTemperature2:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d PsbOverTemperature2", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d PsbOverTemperature2", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_RotorBlocked:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d RotorBlocked", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d RotorBlocked", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_UnderDcBusVoltage:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d UnderDcBusVoltage", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d UnderDcBusVoltage", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_QueueingCommandFailedInternal:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d SetMotorCommand failed", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d SetMotorCommand failed", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			case LOG_EVENT_QueueingCommandFailedTSN:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d TSN MotorCommand failed", lastLogs[i].data.faultDataWithID.motorId + 1);
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Motor %d TSN MotorCommand failed", lastLogs[i].data.faultDataWithID.id + 1);
+				break;
+
+			case LOG_EVENT_PmicUnderVoltage:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Pmic %d UnderVoltage", lastLogs[i].data.faultDataWithID.id + 1);
 				break;
 
 			default:
 				logInvalidArgument();
-				setColor_LogLabel(i, kLST_Color_Off);
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Off);
 				break;
 			}
 			break;
@@ -1889,106 +2102,343 @@ static void update_LogLabels(log_record_t *lastLogs, int activeLogLabels)
 		case kLOG_FaultDataWithoutID:
 			if (lastLogs[i].data.faultDataWithoutID.eventCode == LOG_EVENT_NoFault)
 			{
-				setColor_LogLabel(i, kLST_Color_Operational);
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Operational);
 			}
 			else
 			{
-				setColor_LogLabel(i, kLST_Color_Fault);
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Fault);
 			}
 
 			switch (lastLogs[i].data.faultDataWithoutID.eventCode)
 			{
 			case LOG_EVENT_AfeDbCommunicationError:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "AfeDbCommunicationError");
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "AfeDbCommunicationError");
 				break;
 
 			case LOG_EVENT_DBTempSensCommunicationError:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "DBTempSensCommunicationError");
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "DBTempSensCommunicationError");
 				break;
 
 			case LOG_EVENT_DbOverTemperature:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "DbOverTemperature");
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "DbOverTemperature");
 				break;
 
 			case LOG_EVENT_EmergencyStop:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "EmergencyStop");
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "EmergencyStop");
 				break;
 
 			case LOG_EVENT_FaultBufferOverflow:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "FaultBufferOverflow");
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "FaultBufferOverflow");
 				break;
 
 			case LOG_EVENT_FaultQueueOverflow:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "FaultQueueOverflow");
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "FaultQueueOverflow");
 				break;
 
 			case LOG_EVENT_InvalidFaultSource:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "InvalidFaultSource");
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "InvalidFaultSource");
 				break;
 
 			case LOG_EVENT_McuOverTemperature:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "McuOverTemperature");
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "McuOverTemperature");
 				break;
 
 			case LOG_EVENT_NoFault:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "NoFault");
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "NoFault");
 				break;
 
 			case LOG_EVENT_PmicOverTemperature:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "PmicOverTemperature");
-				break;
-
-			case LOG_EVENT_PmicUnderVoltage1:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "PmicUnderVoltage1");
-				break;
-
-			case LOG_EVENT_PmicUnderVoltage2:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "PmicUnderVoltage2");
-				break;
-
-			case LOG_EVENT_PmicUnderVoltage3:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "PmicUnderVoltage3");
-				break;
-
-			case LOG_EVENT_PmicUnderVoltage4:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "PmicUnderVoltage4");
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "PmicOverTemperature");
 				break;
 
 			case LOG_EVENT_QueueingCommandFailedQueue:
-				snprintf(message , GUI_MAX_MESSAGE_LENGTH, "QueueMotorCommand failed.");
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "QueueMotorCommand failed.");
+				break;
+
+			case LOG_EVENT_RPCCallFailed:
+				checkResultMessage = snprintf(message, GUI_MAX_MESSAGE_LENGTH, "RPC call failed.");
+				break;
+
+			case LOG_EVENT_FunctionalWatchdogInitFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Functional Watchdog Init Failed.");
+				break;
+
+			case LOG_EVENT_Scp03ConnFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Scp03 Conn Failed");
+				break;
+
+			case LOG_EVENT_Scp03KeyReconFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Scp03 Key Recon Failed");
+				break;
+
+			case LOG_EVENT_NewFWRevertFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "New FW Revert Failed");
+				break;
+
+			case LOG_EVENT_NewFWCommitFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "New FW Commit Failed");
+				break;
+
+			case LOG_EVENT_AwdtExpired:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Awdt Expired");
+				break;
+
+			case LOG_EVENT_CfgDataBackUpFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Cfg Data Back Up Failed");
+				break;
+
+			case LOG_EVENT_MainFwAuthFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Main FW Auth Failed");
+				break;
+
+			case LOG_EVENT_FwuAuthFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "FWU Auth Failed");
+				break;
+
+			case LOG_EVENT_StackError:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Stack Error");
+				break;
+
+			case LOG_EVENT_InvalidFwuVersion:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Invalid FWU Version");
+				break;
+
+			case LOG_EVENT_ExtMemOprFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Ext Mem Opr Failed");
+				break;
+
+			case LOG_EVENT_BackUpImgAuthFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Back Up Img Auth Failed");
+				break;
+
+			case LOG_EVENT_SdCardFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "SD Card Failed");
+				break;
+
+			case LOG_EVENT_HwInitDeinitFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "HW Init Deinit Failed");
+				break;
+
+			case LOG_EVENT_SvnsLpGprOpFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "SNVS LP GPR Op Failed");
+				break;
+
+			case LOG_EVENT_Scp03KeyRotationFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Scp03 Key Rotation Failed");
+				break;
+
+			case LOG_EVENT_DecommissioningFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Decommissioning Failed");
+				break;
+
+			case LOG_EVENT_VerReadFromSeFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Ver Read From SE Failed");
+				break;
+
+			case LOG_EVENT_FwExecutionFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "FW Execution Failed");
+				break;
+
+			case LOG_EVENT_FwuCommitFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "FWU Commit Failed");
+				break;
+
+			case LOG_EVENT_RpcInitFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "RPC Init Failed");
+				break;
+
+			case LOG_EVENT_UnknownFWReturnStatus:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Unknown FW Return Status");
 				break;
 
 			default:
 				logInvalidArgument();
-				setColor_LogLabel(i, kLST_Color_Off);
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Off);
 				break;
 			}
-
 			break;
 
 		case kLOG_SystemData:
 			switch (lastLogs[i].data.systemData.eventCode)
 			{
 			case LOG_EVENT_ResetRequest:
-				snprintf(message, GUI_MAX_MESSAGE_LENGTH, "Watchdog: Reset Request");
-				setColor_LogLabel(i, kLST_Color_Off);
+				checkResultMessage = snprintf(message, GUI_MAX_MESSAGE_LENGTH, "Watchdog: Reset Request");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Off);
+				break;
+
+			case LOG_EVENT_InvalidResetCause:
+				checkResultMessage = snprintf(message, GUI_MAX_MESSAGE_LENGTH, "Invalid reset cause was used.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Error);
 				break;
 
 			case LOG_EVENT_InvalidArgument:
-				snprintf(message, GUI_MAX_MESSAGE_LENGTH, "Invalid arguments used.");
-				setColor_LogLabel(i, kLST_Color_Off);
+				checkResultMessage = snprintf(message, GUI_MAX_MESSAGE_LENGTH, "Invalid arguments used.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Off);
+				break;
+
+			case LOG_EVENT_AWDTExpired:
+				checkResultMessage = snprintf(message, GUI_MAX_MESSAGE_LENGTH, "AWDT Expired.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Off);
+				break;
+
+			case LOG_EVENT_RPCCallFailed:
+				checkResultMessage = snprintf(message, GUI_MAX_MESSAGE_LENGTH, "RPC call failed.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Fault);
+				break;
+
+			case LOG_EVENT_SignatureInvalid:
+				checkResultMessage = snprintf(message, GUI_MAX_MESSAGE_LENGTH, "Signature invalid.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Error);
+				break;
+
+			case LOG_EVENT_Timeout:
+				checkResultMessage = snprintf(message, GUI_MAX_MESSAGE_LENGTH, "Timeout.");
+				setColor_LogLabel((ls_log_label_id_t)i, kLST_Color_Error);
+				break;
+
+			case LOG_EVENT_SyncError:
+				checkResultMessage = snprintf(message, GUI_MAX_MESSAGE_LENGTH, "Synchronization failed.");
+				setColor_LogLabel((ls_log_label_id_t)i, kLST_Color_Error);
+				break;
+
+			case LOG_EVENT_InternalError:
+				checkResultMessage = snprintf(message, GUI_MAX_MESSAGE_LENGTH, "Internal error.");
+				setColor_LogLabel((ls_log_label_id_t)i, kLST_Color_Error);
+				break;
+
+			case LOG_EVENT_NoBufsError:
+				checkResultMessage = snprintf(message, GUI_MAX_MESSAGE_LENGTH, "Buffer too small.");
+				setColor_LogLabel((ls_log_label_id_t)i, kLST_Color_Error);
+				break;
+
+			case LOG_EVENT_ConnectionError:
+				checkResultMessage = snprintf(message, GUI_MAX_MESSAGE_LENGTH, "Server connection failed.");
+				setColor_LogLabel((ls_log_label_id_t)i, kLST_Color_Error);
+				break;
+
+			case LOG_EVENT_RequestError:
+				checkResultMessage = snprintf(message, GUI_MAX_MESSAGE_LENGTH, "Server request failed.");
+				setColor_LogLabel((ls_log_label_id_t)i, kLST_Color_Error);
+				break;
+
+			case LOG_EVENT_JsonParsingError:
+				checkResultMessage = snprintf(message, GUI_MAX_MESSAGE_LENGTH, "JSON parsing failed.");
+				setColor_LogLabel((ls_log_label_id_t)i, kLST_Color_Error);
+				break;
+
+			case LOG_EVENT_RangeError:
+				checkResultMessage = snprintf(message, GUI_MAX_MESSAGE_LENGTH, "Out of range.");
+				setColor_LogLabel((ls_log_label_id_t)i, kLST_Color_Error);
+				break;
+
+			case LOG_EVENT_ResetSecureWatchdog:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Secure Watchdog Reset.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
+				break;
+
+			case LOG_EVENT_ResetFunctionalWatchdog:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Functional Watchdog Reset.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
+				break;
+
+			case LOG_EVENT_FunctionalWatchdogKickFailed:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Functional Watchdog Kick Failed.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
+				break;
+
+			case LOG_EVENT_PowerLoss:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Power lost, system restarted.");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
+				break;
+
+			case LOG_EVENT_DeviceDecommissioned:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Device Decommissioned");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
+				break;
+
+			case LOG_EVENT_CfgDataBackedUp:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Cfg Data Backed Up");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
+				break;
+
+			case LOG_EVENT_NewFWReverted:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "New FW Reverted");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Error);
+				break;
+
+			case LOG_EVENT_NewFWCommitted:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "New FW Committed");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
+				break;
+
+			case LOG_EVENT_KeyRevocation:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Key Revocation");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Error);
+				break;
+
+			case LOG_EVENT_NoLogEntry:
+				checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "No Log Entry");
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Off);
 				break;
 
 			default:
 				logInvalidArgument();
-				setColor_LogLabel(i, kLST_Color_Off);
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Off);
 				break;
 			}
 			break;
 
-		default:
-			logInvalidArgument();
-			setColor_LogLabel(i, kLST_Color_Off);
+		case kLOG_ErrorCount:
+			if (lastLogs[i].data.errorCount.source == LOG_SRC_Webservice)
+			{
+				checkResultMessage = snprintf(message, GUI_MAX_MESSAGE_LENGTH, "[%u] %s.",
+						lastLogs[i].data.errorCount.count,
+						status_code_string(lastLogs[i].data.errorCount.errorCode)
+						);
+			}
+			else
+			{
+				logInvalidArgument();
+			}
+			setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Off);
+			break;
+
+		case kLOG_UsrMgmt:
+			if (lastLogs[i].data.usrMgmt.source == LOG_SRC_UsrMgmt)
+			{
+				switch (lastLogs[i].data.usrMgmt.eventCode)
+				{
+					case LOG_EVENT_SessionTimeout:
+						checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Session timeout.");
+						setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
+						break;
+					case LOG_EVENT_UserCreated:
+						checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "New user account created.");
+						setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
+						break;
+					case LOG_EVENT_UserUpdate:
+						checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "User account updated.");
+						setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
+						break;
+					case LOG_EVENT_UserRemoved:
+						checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "User account removed.");
+						setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
+						break;
+					case LOG_EVENT_TerminateSession:
+						checkResultMessage = snprintf(message , GUI_MAX_MESSAGE_LENGTH, "Terminated user session.");
+						setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Maintenance);
+						break;
+					default:
+						logInvalidArgument();
+						setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Off);
+						break;
+				}
+			}
+			else
+			{
+				logInvalidArgument();
+				setColor_LogLabel((ls_log_label_id_t) i, kLST_Color_Off);
+			}
 			break;
 		}
 
@@ -1998,15 +2448,37 @@ static void update_LogLabels(log_record_t *lastLogs, int activeLogLabels)
 		qmcStatus = BOARD_ConvertTimestamp2Datetime(&timestamp, &datetime);
 		if (qmcStatus == kStatus_QMC_Ok)
 		{
-			snprintf(timestamp_string, 20, "%02d:%02d:%02d %02d/%02d/%d", datetime.hour, datetime.minute, datetime.second,\
+			checkResultTimestamp = snprintf(timestamp_string, 20, "%02d:%02d:%02d %02d/%02d/%d", datetime.hour, datetime.minute, datetime.second,\
 					datetime.month, datetime.day, datetime.year);
 		}
 		else
 		{
-			snprintf(timestamp_string, 20, "00:00:00 00/00/00");
+			checkResultTimestamp = snprintf(timestamp_string, 20, "00:00:00 00/00/00");
 		}
 
-		setText_LogLabel(i, message, timestamp_string);
+
+		if (checkResultMessage < 0 || checkResultMessage >= sizeof(message))
+		{
+			if (checkResultTimestamp < 0 || checkResultTimestamp >= sizeof(timestamp_string))
+			{
+				setText_LogLabel((ls_log_label_id_t) i, "err", "err");
+			}
+			else
+			{
+				setText_LogLabel((ls_log_label_id_t) i, "err", timestamp_string);
+			}
+		}
+		else
+		{
+			if (checkResultTimestamp < 0 || checkResultTimestamp >= sizeof(timestamp_string))
+			{
+				setText_LogLabel((ls_log_label_id_t) i, message, "err");
+			}
+			else
+			{
+				setText_LogLabel((ls_log_label_id_t) i, message, timestamp_string);
+			}
+		}
 	}
 }
 
@@ -2022,6 +2494,7 @@ static void updateIconOpacity(lv_obj_t *icon, uint8_t opacity)
 	lv_obj_refresh_style(icon, LV_PART_MAIN|LV_STATE_DEFAULT, LV_STYLE_OPA);
 }
 
+#if FEATURE_HANDLE_BUTTON_PRESS_EVENTS
 /*!
  * @brief This function starts or stops a motors based it's current state
  *
@@ -2029,6 +2502,19 @@ static void updateIconOpacity(lv_obj_t *icon, uint8_t opacity)
  */
 static void motorStartStop(mc_motor_id_t motorId)
 {
+	if (IS_MOTORID_INVALID(motorId))
+	{
+		log_record_t logEntryError = {0};
+		logEntryError.type = kLOG_FaultDataWithoutID;
+		logEntryError.data.faultDataWithoutID.source = LOG_SRC_LocalService;
+		logEntryError.data.faultDataWithoutID.category = LOG_CAT_Fault;
+		logEntryError.data.faultDataWithoutID.eventCode = LOG_EVENT_InvalidArgument;
+		LOG_QueueLogEntry(&logEntryError, true);
+
+		BOARD_SetLifecycle(kQMC_LcError);
+		return;
+	}
+
 	mc_motor_command_t cmd = {0};
 	cmd.eMotorId = motorId;
 
@@ -2040,6 +2526,8 @@ static void motorStartStop(mc_motor_id_t motorId)
 	else
 	{
 		cmd.eAppSwitch = kMC_App_On;
+		cmd.eControlMethodSel = kMC_FOC_SpeedControl;
+		cmd.uSpeed_pos.fltSpeed = DEFAULT_MOTOR_SPEED;
 		gs_isRunning[motorId] = true;
 	}
 
@@ -2071,6 +2559,7 @@ static void motorStartStop(mc_motor_id_t motorId)
 		BOARD_SetLifecycle(kQMC_LcError);
 	}
 }
+#endif
 
 /*!
  * @brief This function handles opening or closing of the button and SD lids
@@ -2095,6 +2584,7 @@ static void lidOpenClose(uint32_t inputButtonEvent)
 		}
 	}
 
+#if FEATURE_HANDLE_BUTTON_PRESS_EVENTS
 	if (inputButtonEvent & QMC_IOEVENT_LID_OPEN_BUTTON)
 	{
 		if (!gs_wasSetLidButton)
@@ -2109,7 +2599,10 @@ static void lidOpenClose(uint32_t inputButtonEvent)
 			gs_wasSetLidButton = true;
 		}
 	}
+#endif
 }
+
+#if FEATURE_HANDLE_BUTTON_PRESS_EVENTS
 
 /*!
  * @brief This function handles pressing of the emergency button
@@ -2166,6 +2659,7 @@ static void emergencyPressed()
 
 	gs_wasSetEmergency = true;
 }
+#endif
 
 /*!
  * @brief This function handles a tampering event

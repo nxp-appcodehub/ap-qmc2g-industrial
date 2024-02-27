@@ -52,30 +52,30 @@
  * mechanisms and their side-effects do depend on the actual architecture and
  * environment the code is running on. For example, in case of a x64 Linux setup
  * a pthread_mutex lock can be used. On the other hand, on a single processor
- * bare metal environment disabling interrupts is sufficient (assuming some of the
+ * bare metal environment, disabling interrupts is sufficient (assuming some of the
  * functions are called in an interrupt).
  * Locking shall always be performed if two different execution contexts
  * (two threads, different interrupts, one interrupt and the main code, ...)
  * access the same LWDG unit concurrently.
  * However, note that all pointer arguments to the underlying structures are 
- * volatile which allows the underlying structures to be a global variables 
+ * volatile, which allows the underlying structures to be global variables 
  * accessed by external agents if proper locking is applied.
  *
  * # 3 Expected Module Context
  * The logical watchdog module needs the support of external code and
  * components to achieve its functionality and typical additional tasks:
  * ## Timer Source
- * The LWDGU_Tick function needs to be called by a configured and
+ * The LWDGU_Tick() function needs to be called by a configured and
  * running timer. How this timer is configured and started is not scope of
  * this module. The user has to make sure that it works right and that
- * the LWDGU_Tick function is indeed called with the right period.
+ * the LWDGU_Tick() function is indeed called with the right period.
  * ## System Reset Notification
- * If LWDGU_Tick returns kStatus_LWDG_TickJustStarted, the grace watchdog
+ * If LWDGU_Tick() returns kStatus_LWDG_TickJustStarted, the grace watchdog
  * has been started and the system will be reset soon. It is left to the
  * user to take the appropriate actions to notify other parts of the system
  * of the pending reset so that they can prepare for it.
  * ## System Reset
- * If LWDGU_Tick returns kStatus_LWDG_TickJustExpired the user has
+ * If LWDGU_Tick() returns kStatus_LWDG_TickJustExpired the user has
  * to ensure that a system reset happens. Otherwise, the logical watchdog
  * module will just stay in the expired state and can not be reset.
  * It is emphasized once again that the module is designed to have no
@@ -86,7 +86,7 @@
  * The accuracy of a watchdog's timeout time depends on the tick frequency.
  * For example, suppose we have a watchdog with a tick frequency of 1kHz
  * (1ms interval) and a wanted timeout of 5ms (timeout ticks == 5).
- * Then, the following behaviour occurs (see also the description of LWDG_Init function
+ * Then, the following behaviour occurs (see also the description of LWDG_Init() function
  * for more information):
  *
  *      |   K   |       |       |       |       |       |
@@ -96,13 +96,13 @@
  * tick interval (which is then counted as served)!
  * The max. time deviation caused by this behaviour is +1 tick interval.
  *
- * Note that for the internal conversion between timout times and timeout ticks
+ * Note that for the internal conversion between timeout times and timeout ticks
  * the results are rounded up to the next possible value (whole integers)
  * which can cause an additional deviation of max. +1 tick interval.
  *
  * So the expected accuracy (not considering any deviations of the used clock
  * or side-effects from locking) of the timeout times is:
- *      min: choosen timeout time   max: choosen timeout time + 2 * 1 / choosen tick frequency
+ *  - chosen timeout time <= actual timeout time <= chosen timeout time + 2 * 1 / chosen tick frequency
  */
 
 #include "lwdg_unit_api.h"
@@ -119,7 +119,7 @@
  * @brief Converts a timeout in ms to a tick value the logical watchdog module understands.
  *
  * Converts a timeout in ms to a tick value the logical watchdog module understands. If the given values
- * would lead to an overflow kStatus_LWDG_InvArg is returned.
+ * would lead to an overflow, kStatus_LWDG_InvArg is returned.
  * Note that the calculated tick value is rounded up to the next possible one,
  * so the caller has to choose a tick frequency with an appropriate resolution.
  *
@@ -142,7 +142,7 @@
  * @enduml
  *
  * @param[in] timeoutTimeMs Specifies after how many ms the logical watchdog should expire.
- * @param[in] tickFrequencyHz The frequency at which the LWDG_Tick function is called. Must not be 0!
+ * @param[in] tickFrequencyHz The frequency at which the LWDG_Tick() function is called. Must not be 0!
  * @param[out] pTimeoutTicks A pointer to a uint32_t to which the resulting timeout ticks are written if the conversion
  * was successful. In case of an error the value is not touched.
  * @retval kStatus_LWDG_InvArg
@@ -157,7 +157,7 @@ static inline lwdg_status_t LWDGU_ConvertTimeoutTimeMsToTimoutTicks(const uint32
     assert(NULL != pTimeoutTicks);
 
     lwdg_status_t ret     = kStatus_LWDG_Err;
-    uint64_t timeoutTicks = 0ULL;
+    uint64_t timeoutTicks = 0U;
 
     /* check for invalid arguments and if an overflow would happen at
      * the timeoutTicks calculation
@@ -184,7 +184,7 @@ static inline lwdg_status_t LWDGU_ConvertTimeoutTimeMsToTimoutTicks(const uint32
         else
         {
             *pTimeoutTicks = (uint32_t)timeoutTicks;
-            ret             = kStatus_LWDG_Ok;
+            ret            = kStatus_LWDG_Ok;
         }
     }
 
@@ -239,10 +239,10 @@ lwdg_status_t LWDGU_Init(volatile logical_watchdog_unit_t *const pUnit,
         if (kStatus_LWDG_Ok == lwdgInitRet)
         {
             pUnit->tickFrequencyHz  = tickFrequencyHz;
-            pUnit->pLwdgs          = pLwdgs;
+            pUnit->pLwdgs           = pLwdgs;
             pUnit->lwdgsCount       = lwdgsCount;
             pUnit->graceTriggerLwdg = kStatus_LWDGU_GetGraceTriggerLwdgIdNotRunning;
-            ret                      = kStatus_LWDG_Ok;
+            ret                     = kStatus_LWDG_Ok;
         }
         else
         {
@@ -262,7 +262,11 @@ lwdg_status_t LWDGU_InitWatchdog(volatile logical_watchdog_unit_t *const pUnit,
     uint32_t timeoutTicks = 0U;
 
     /* pointer is NULL pointer or out of bounds */
-    if ((NULL == pUnit) || (id >= pUnit->lwdgsCount))
+    if (NULL == pUnit)
+    {
+        ret = kStatus_LWDG_InvArg;
+    }
+    else if (id >= pUnit->lwdgsCount)
     {
         ret = kStatus_LWDG_InvArg;
     }
@@ -342,8 +346,8 @@ static inline uint8_t LWDGU_TickGraceWatchdog(volatile logical_watchdog_unit_t *
  *
  * @startuml
  *   start
- *   :ret = kStatus_LWDG_TickErr;
- *   :tick_status = kStatus_LWDG_TickErr;
+ *   :ret = kStatus_LWDG_TickErr
+ *   tick_status = kStatus_LWDG_TickErr;
  *   :LWDG_Kick(&pUnit->graceLwdg);
  *   :tick_status = LWDG_Tick(&pUnit->graceLwdg);
  *   if () then (tick_status == kStatus_LWDG_TickRunning)
@@ -413,19 +417,21 @@ lwdg_tick_status_t LWDGU_Tick(volatile logical_watchdog_unit_t *const pUnit)
     /* tick logical watchdogs if grace watchdog is not running yet */
     else
     {
+        /* CERT C does not allow persistent side effects in conditions (reading volatile value) */
+        uint8_t lwdgsCount = pUnit->lwdgsCount;
         /* if the loop runs through without break no logical watchdog expired */
         ret = kStatus_LWDG_TickNotRunning;
-        for (uint8_t currentLwdogI = 0U; currentLwdogI < pUnit->lwdgsCount; currentLwdogI++)
+        for (uint8_t id = 0U; id < lwdgsCount; id++)
         {
             /* start grace watchdog if logical watchdog did expire
              * LWDG_Tick does never return an error ! */
-            lwdgTickStatus = LWDG_Tick(&pUnit->pLwdgs[currentLwdogI]);
+            lwdgTickStatus = LWDG_Tick(&pUnit->pLwdgs[id]);
             if (kStatus_LWDG_TickJustExpired == lwdgTickStatus)
             {
                 /* start grace watchdog */
                 ret = LWDGU_StartGraceWatchdog(pUnit);
                 /* save which logical watchdog triggered the starting of the grace watchdog */
-                pUnit->graceTriggerLwdg = currentLwdogI;
+                pUnit->graceTriggerLwdg = id;
                 break;
             }
         }
@@ -439,7 +445,11 @@ lwdg_kick_status_t LWDGU_KickOne(volatile logical_watchdog_unit_t *const pUnit, 
     lwdg_kick_status_t ret = kStatus_LWDG_KickErr;
 
     /* pointer is NULL pointer or out of bounds */
-    if ((NULL == pUnit) || (id >= pUnit->lwdgsCount))
+    if (NULL == pUnit)
+    {
+        ret = kStatus_LWDG_KickInvArg;
+    }
+    else if (id >= pUnit->lwdgsCount)
     {
         ret = kStatus_LWDG_KickInvArg;
     }
@@ -478,7 +488,11 @@ lwdg_status_t LWDGU_IsWatchdogRunning(const volatile logical_watchdog_unit_t *co
     lwdg_status_t ret = kStatus_LWDG_Err;
 
     /* pointers are NULL pointers or out of bounds */
-    if ((NULL == pUnit) || (NULL == pIsRunning) || (id >= pUnit->lwdgsCount))
+    if ((NULL == pUnit) || (NULL == pIsRunning))
+    {
+        ret = kStatus_LWDG_InvArg;
+    }
+    else if (id >= pUnit->lwdgsCount)
     {
         ret = kStatus_LWDG_InvArg;
     }
@@ -500,8 +514,11 @@ lwdg_status_t LWDGU_ChangeTimeoutTicksWatchdog(volatile logical_watchdog_unit_t 
 
     /* pointer is NULL pointer or out of bounds or newTimeoutTicks negative
      * or newTimeoutTicks is too large */
-
-    if ((NULL == pUnit) || (id >= pUnit->lwdgsCount))
+    if (NULL == pUnit)
+    {
+        ret = kStatus_LWDG_InvArg;
+    }
+    else if(id >= pUnit->lwdgsCount)
     {
         ret = kStatus_LWDG_InvArg;
     }
@@ -528,7 +545,11 @@ lwdg_status_t LWDGU_ChangeTimeoutTimeMsWatchdog(volatile logical_watchdog_unit_t
 
     /* pointer is NULL pointer or out of bounds or newTimeoutTicks negative
      * or newTimeoutTicks is too large */
-    if ((NULL == pUnit) || (id >= pUnit->lwdgsCount))
+    if (NULL == pUnit)
+    {
+        ret = kStatus_LWDG_InvArg;
+    }
+    else if (id >= pUnit->lwdgsCount)
     {
         ret = kStatus_LWDG_InvArg;
     }
@@ -560,7 +581,11 @@ lwdg_status_t LWDGU_GetRemainingTicksWatchdog(const volatile logical_watchdog_un
     lwdg_status_t ret = kStatus_LWDG_Err;
 
     /* pointers are NULL pointers or out of bounds */
-    if ((NULL == pUnit) || (NULL == pRemainingTicks) || (id >= pUnit->lwdgsCount))
+    if ((NULL == pUnit) || (NULL == pRemainingTicks))
+    {
+        ret = kStatus_LWDG_InvArg;
+    }
+    else if (id >= pUnit->lwdgsCount)
     {
         ret = kStatus_LWDG_InvArg;
     }

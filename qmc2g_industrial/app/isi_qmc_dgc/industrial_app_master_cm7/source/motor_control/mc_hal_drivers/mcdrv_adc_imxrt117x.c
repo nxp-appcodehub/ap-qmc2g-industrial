@@ -1,6 +1,6 @@
 /*
  * Copyright 2013 - 2015, Freescale Semiconductor, Inc.
- * Copyright 2016-2022 NXP
+ * Copyright 2016-2023 NXP
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -152,12 +152,12 @@ bool_t MCDRV_Curr3Ph2ShChanAssignInit(mcdrv_adc_t *this)
     		if(this->psChannelAssignment->sLPADC2IC.ui16ChanNum != NOT_EXIST)
     		{
     			/* Ic -> ADC2 */
-    			this->sCurrSec16.pui16RsltRegPhaB = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
-    			this->sCurrSec16.pui16RsltRegPhaC = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec23.pui16RsltRegPhaA = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec23.pui16RsltRegPhaC = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec45.pui16RsltRegPhaA = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec45.pui16RsltRegPhaB = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    			this->sCurrSec16.pui16RsltRegPhaB = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    			this->sCurrSec16.pui16RsltRegPhaC = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec23.pui16RsltRegPhaA = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec23.pui16RsltRegPhaC = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec45.pui16RsltRegPhaA = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec45.pui16RsltRegPhaB = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
 
     	    	this->sCurrSec16.ui16ADC1Seg0CmdNum = this->psChannelAssignment->sLPADC1IB.ui16Cmd;
     	    	this->sCurrSec16.ui16ADC2Seg0CmdNum = this->psChannelAssignment->sLPADC2IC.ui16Cmd;
@@ -180,12 +180,12 @@ bool_t MCDRV_Curr3Ph2ShChanAssignInit(mcdrv_adc_t *this)
     		if(this->psChannelAssignment->sLPADC1IC.ui16ChanNum != NOT_EXIST)
     		{
     			/* Ic -> ADC1 */
-    			this->sCurrSec16.pui16RsltRegPhaB = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
-    			this->sCurrSec16.pui16RsltRegPhaC = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec23.pui16RsltRegPhaA = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec23.pui16RsltRegPhaC = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec45.pui16RsltRegPhaA = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec45.pui16RsltRegPhaB = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    			this->sCurrSec16.pui16RsltRegPhaB = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    			this->sCurrSec16.pui16RsltRegPhaC = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec23.pui16RsltRegPhaA = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec23.pui16RsltRegPhaC = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec45.pui16RsltRegPhaA = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec45.pui16RsltRegPhaB = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
 
     	    	this->sCurrSec16.ui16ADC1Seg0CmdNum = this->psChannelAssignment->sLPADC1IC.ui16Cmd;
     	    	this->sCurrSec16.ui16ADC2Seg0CmdNum = this->psChannelAssignment->sLPADC2IB.ui16Cmd;
@@ -212,12 +212,12 @@ bool_t MCDRV_Curr3Ph2ShChanAssignInit(mcdrv_adc_t *this)
     		if(this->psChannelAssignment->sLPADC2IC.ui16ChanNum != NOT_EXIST)
     		{
     			/* Ic -> ADC2 */
-    			this->sCurrSec16.pui16RsltRegPhaB = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
-    			this->sCurrSec16.pui16RsltRegPhaC = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec23.pui16RsltRegPhaA = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec23.pui16RsltRegPhaC = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec45.pui16RsltRegPhaA = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec45.pui16RsltRegPhaB = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    			this->sCurrSec16.pui16RsltRegPhaB = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    			this->sCurrSec16.pui16RsltRegPhaC = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec23.pui16RsltRegPhaA = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec23.pui16RsltRegPhaC = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec45.pui16RsltRegPhaA = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec45.pui16RsltRegPhaB = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
 
     	    	this->sCurrSec16.ui16ADC1Seg0CmdNum = this->psChannelAssignment->sLPADC1IB.ui16Cmd;
     	    	this->sCurrSec16.ui16ADC2Seg0CmdNum = this->psChannelAssignment->sLPADC2IC.ui16Cmd;
@@ -240,12 +240,12 @@ bool_t MCDRV_Curr3Ph2ShChanAssignInit(mcdrv_adc_t *this)
     		if(this->psChannelAssignment->sLPADC1IC.ui16ChanNum != NOT_EXIST)
     		{
     			/* Ic -> ADC1 */
-    			this->sCurrSec16.pui16RsltRegPhaB = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
-    			this->sCurrSec16.pui16RsltRegPhaC = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec23.pui16RsltRegPhaA = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec23.pui16RsltRegPhaC = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec45.pui16RsltRegPhaA = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec45.pui16RsltRegPhaB = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    			this->sCurrSec16.pui16RsltRegPhaB = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    			this->sCurrSec16.pui16RsltRegPhaC = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec23.pui16RsltRegPhaA = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec23.pui16RsltRegPhaC = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec45.pui16RsltRegPhaA = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec45.pui16RsltRegPhaB = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
 
     	    	this->sCurrSec16.ui16ADC1Seg0CmdNum = this->psChannelAssignment->sLPADC1IC.ui16Cmd;
     	    	this->sCurrSec16.ui16ADC2Seg0CmdNum = this->psChannelAssignment->sLPADC2IB.ui16Cmd;
@@ -272,12 +272,12 @@ bool_t MCDRV_Curr3Ph2ShChanAssignInit(mcdrv_adc_t *this)
     		if(this->psChannelAssignment->sLPADC2IA.ui16ChanNum != NOT_EXIST)
     		{
     			/* Ia -> ADC2 */
-    			this->sCurrSec16.pui16RsltRegPhaB = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
-    			this->sCurrSec16.pui16RsltRegPhaC = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec23.pui16RsltRegPhaA = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec23.pui16RsltRegPhaC = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec45.pui16RsltRegPhaA = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec45.pui16RsltRegPhaB = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    			this->sCurrSec16.pui16RsltRegPhaB = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    			this->sCurrSec16.pui16RsltRegPhaC = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec23.pui16RsltRegPhaA = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec23.pui16RsltRegPhaC = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec45.pui16RsltRegPhaA = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec45.pui16RsltRegPhaB = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
 
     	    	this->sCurrSec16.ui16ADC1Seg0CmdNum = this->psChannelAssignment->sLPADC1IB.ui16Cmd;
     	    	this->sCurrSec16.ui16ADC2Seg0CmdNum = this->psChannelAssignment->sLPADC2IC.ui16Cmd;
@@ -300,12 +300,12 @@ bool_t MCDRV_Curr3Ph2ShChanAssignInit(mcdrv_adc_t *this)
     		if(this->psChannelAssignment->sLPADC1IA.ui16ChanNum != NOT_EXIST)
     		{
     			/* Ia -> ADC1 */
-    			this->sCurrSec16.pui16RsltRegPhaB = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
-    			this->sCurrSec16.pui16RsltRegPhaC = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec23.pui16RsltRegPhaA = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec23.pui16RsltRegPhaC = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec45.pui16RsltRegPhaA = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
-    	    	this->sCurrSec45.pui16RsltRegPhaB = (uint16_t *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    			this->sCurrSec16.pui16RsltRegPhaB = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    			this->sCurrSec16.pui16RsltRegPhaC = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec23.pui16RsltRegPhaA = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec23.pui16RsltRegPhaC = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec45.pui16RsltRegPhaA = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0);
+    	    	this->sCurrSec45.pui16RsltRegPhaB = (uint16_t const volatile *)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0);
 
     	    	this->sCurrSec16.ui16ADC1Seg0CmdNum = this->psChannelAssignment->sLPADC1IC.ui16Cmd;
     	    	this->sCurrSec16.ui16ADC2Seg0CmdNum = this->psChannelAssignment->sLPADC2IB.ui16Cmd;
@@ -331,9 +331,9 @@ bool_t MCDRV_Curr3Ph2ShChanAssignInit(mcdrv_adc_t *this)
     	if(this->psChannelAssignment->sLPADC2Aux.ui16ChanNum != NOT_EXIST)
     	{
         	/* Aux -> ADC2 */
-    		this->pui16RsltRegVDcb = (uint16_t *)((uint32_t)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0)+2);
+    		this->pui16RsltRegVDcb = (uint16_t const volatile *)((uint32_t)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0)+2);
         	this->ui16ADC1Seg1CmdNum = this->psChannelAssignment->sLPADC1VDcb.ui16Cmd;
-        	this->pui16RsltRegAux = (uint16_t *)((uint32_t)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0)+2);
+        	this->pui16RsltRegAux = (uint16_t const volatile *)((uint32_t)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0)+2);
         	this->ui16ADC2Seg1CmdNum = this->psChannelAssignment->sLPADC2Aux.ui16Cmd;
     	}
     	else
@@ -349,9 +349,9 @@ bool_t MCDRV_Curr3Ph2ShChanAssignInit(mcdrv_adc_t *this)
     	if(this->psChannelAssignment->sLPADC1Aux.ui16ChanNum != NOT_EXIST)
     	{
     		/* Aux -> ADC1 */
-        	this->pui16RsltRegVDcb = (uint16_t *)((uint32_t)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0)+2);
+        	this->pui16RsltRegVDcb = (uint16_t const volatile *)((uint32_t)(&ADC_ETC->TRIG[this->ui8MotorNum-1+4].TRIGn_RESULT_1_0)+2);
         	this->ui16ADC2Seg1CmdNum = this->psChannelAssignment->sLPADC2VDcb.ui16Cmd;
-        	this->pui16RsltRegAux = (uint16_t *)((uint32_t)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0)+2);
+        	this->pui16RsltRegAux = (uint16_t const volatile *)((uint32_t)(&ADC_ETC->TRIG[this->ui8MotorNum-1].TRIGn_RESULT_1_0)+2);
         	this->ui16ADC1Seg1CmdNum = this->psChannelAssignment->sLPADC1Aux.ui16Cmd;
     	}
     	else

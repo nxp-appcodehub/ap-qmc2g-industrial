@@ -16,7 +16,14 @@
 #include <qmc2_boot_cfg.h>
 #include <qmc2_flash.h>
 #include <qmc2_log.h>
+#include "datalogger_tasks.h"
+#include "flash_recorder.h"
 
+volatile bool isFlashDriverInitialized = false;
+volatile bool isLogKeyCtrAvailable = false;
+volatile bool isDataLoggerInitialized = false;
+
+extern recorder_t g_LogRecorder;
 /**************************************************************************************
  * 									Private functions								  *
  **************************************************************************************/
@@ -24,83 +31,45 @@
 /**************************************************************************************
  * 									Public functions								  *
  **************************************************************************************/
-void QMC2_LOG_CreateLogEntry(log_entry_t *log)
+sss_status_t QMC2_LOG_CreateLogEntry(log_event_code_t *log)
 {
+	qmc_status_t status = kStatus_QMC_Err;
+	log_record_t  logEntry = {0};
 	assert(log != NULL);
 
-	switch(*log)
+	if(isFlashDriverInitialized && isLogKeyCtrAvailable && isDataLoggerInitialized)
 	{
-		case kLOG_HwInitDeinitFailed:
+		if (*log == LOG_EVENT_DeviceDecommissioned || *log == LOG_EVENT_NewFWReverted
+				|| *log == LOG_EVENT_NewFWCommitted || *log == LOG_EVENT_KeyRevocation
+				|| *log == LOG_EVENT_CfgDataBackedUp || *log == LOG_EVENT_NoLogEntry)
+		{
+			logEntry.type = kLOG_SystemData;
+			logEntry.data.systemData.source = LOG_SRC_SecureBootloader;
+			logEntry.data.systemData.category = LOG_CAT_General;
+			logEntry.data.systemData.eventCode = *log;
+		}
+		else if (*log == LOG_EVENT_StackError || *log == LOG_EVENT_UnknownFWReturnStatus)
+		{
+			logEntry.type = kLOG_FaultDataWithoutID;
+			logEntry.data.faultDataWithoutID.source = LOG_SRC_SecureBootloader;
+			logEntry.data.faultDataWithoutID.category = LOG_CAT_General;
+			logEntry.data.faultDataWithoutID.eventCode = *log;
+		}
+		else{
+			logEntry.type = kLOG_FaultDataWithoutID;
+			logEntry.data.faultDataWithoutID.source = LOG_SRC_SecureBootloader;
+			logEntry.data.faultDataWithoutID.category = LOG_CAT_Fault;
+			logEntry.data.faultDataWithoutID.eventCode = *log;
+		}
 
-			break;
-		case kLOG_SdCardFailed:
-
-			break;
-		case kLOG_SvnsLpGprOpFailed:
-
-			break;
-		case kLOG_Scp03KeyRotationFailed:
-
-			break;
-		case kLOG_Scp03KeyReconFailed:
-
-			break;
-		case kLOG_Scp03ConnFailed:
-
-			break;
-		case kLOG_VerReadFromSeFailed:
-
-			break;
-		case kLOG_ExtMemOprFailed:
-
-			break;
-		case kLOG_FwExecutionFailed:
-
-			break;
-		case kLOG_NewFWRevertFailed:
-
-			break;
-		case kLOG_NewFWCommitFailed:
-
-			break;
-		case kLOG_CfgDataBackupFailed:
-
-			break;
-		case kLOG_BackUpImgAuthFailed:
-
-			break;
-		case kLOG_DecomissioningFailed:
-
-			break;
-		case kLOG_DeviceDecommisioned:
-
-			break;
-		case kLOG_NewFWReverted:
-
-			break;
-		case kLOG_NewFWCommited:
-
-			break;
-		case kLOG_AwdtExpired:
-
-			break;
-		case kLOG_MainFwAuthFailed:
-
-			break;
-		case kLOG_FwuAuthFailed:
-
-			break;
-		case kLOG_StackError:
-
-			break;
-		case kLOG_KeyRevocation:
-
-			break;
-		case kLOG_InvalidFwuVersion:
-
-			break;
-		default:
-			break;
+		status = FlashWriteRecord(&logEntry, &g_LogRecorder);
+		if (status == kStatus_QMC_Ok)
+		{
+			PRINTF("\r\nLOG: Successful!\r\n");
+			return kStatus_SSS_Success;
+		}
 	}
 
+	PRINTF("\r\nLOG: failed!\r\n");
+	return kStatus_SSS_Fail;
 }

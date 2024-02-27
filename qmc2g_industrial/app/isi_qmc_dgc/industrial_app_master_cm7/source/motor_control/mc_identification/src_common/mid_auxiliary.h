@@ -28,8 +28,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MID_AUXILIARY_H_
-#define MID_AUXILIARY_H_
+#ifndef MID_AUXILIARY_H
+#define MID_AUXILIARY_H
 
 #include "mid_def.h"
 
@@ -47,5 +47,5 @@ extern void MID_alignment(mid_align_t* sAlignmentFcn);
 }
 #endif
 
-#endif /* MID_AUXILIARY_H_ */
+#endif /* MID_AUXILIARY_H */
 

@@ -14,42 +14,39 @@
 
 MEMORY
 {
-  /* Define each memory region */
+    /* Define each memory region */
 <#list configMemory as memory>
-  ${memory.name} (${memory.linkerMemoryAttributes}) : ORIGIN = ${memory.location}, LENGTH = ${memory.size} /* ${memory.sizek} (alias ${memory.alias}) */  
+    ${memory.name} (${memory.linkerMemoryAttributes}) : ORIGIN = ${memory.location}, LENGTH = ${memory.size} /* ${memory.sizek} (alias ${memory.alias}) */
 </#list>
 }
 
   /* Define a symbol for the top of each memory region */
 <#list configMemory as memory>
-  __base_${memory.name} = ${memory.location}  ; /* ${memory.name} */  
-  __base_${memory.alias} = ${memory.location} ; /* ${memory.alias} */  
-  __top_${memory.name} = ${memory.location} + ${memory.size} ; /* ${memory.sizek} */  
-  __top_${memory.alias} = ${memory.location} + ${memory.size} ; /* ${memory.sizek} */  
+    __base_${memory.name} = ${memory.location}  ; /* ${memory.name} */
+    __base_${memory.alias} = ${memory.location} ; /* ${memory.alias} */
+    __top_${memory.name} = ${memory.location} + ${memory.size} ; /* ${memory.sizek} */
+    __top_${memory.alias} = ${memory.location} + ${memory.size} ; /* ${memory.sizek} */
 </#list>
 
-  __VECTOR_TABLE = __vectors_start__;
-  __VECTOR_RAM = 0x00000000;
-  __RAM_VECTOR_TABLE_SIZE_BYTES = 0x400;
-  
-  __FW_HEADER_START = __fw_hdr_start__; 
-  
-  __FW_CM4_START = LOADADDR (.data_RAM9_core_m4slave_text);
-  __FW_CM4_END = LOADADDR (.data_RAM9_core_m4slave_text) + SIZEOF (.data_RAM9_core_m4slave_text) + SIZEOF (.data_RAM9_core_m4slave_ARM_extab) + SIZEOF (.data_RAM9_core_m4slave_ARM_exidx) + SIZEOF (.data_RAM9_core_m4slave_data);
-  __FW_CM4_SIZE = __FW_CM4_END  - __FW_CM4_START;
-  
-  __FW_SIZE = _image_end - __fw_hdr_start__;
-  
-  __FW_SIGN_START = _image_end; 			
-  
-  __FW_CFGDATA_START = 0x30000000;
-  __FW_CFGDATA_SIZE = 0x2000;
-  
-  __LOG_STORAGE_START = 0x30002000;
-  __LOG_STORAGE_SIZE =  0x303E000;
-  
-  __FWU_STORAGE_START = 0x33040000;
-  __FWU_STORAGE_SIZE = 0xFC0000;
-  
-   	 
-   	 
+    __VECTOR_TABLE = __vectors_start__;
+    __VECTOR_RAM = 0x00000000;
+    __RAM_VECTOR_TABLE_SIZE_BYTES = 0x400;
+
+    __FW_HEADER_START = __fw_hdr_start__;
+
+    __FW_CM4_START = LOADADDR (.data_RAM9_core_m4slave_text);
+    __FW_CM4_END = LOADADDR (.data_RAM9_core_m4slave_text) + SIZEOF (.data_RAM9_core_m4slave_text) + SIZEOF (.data_RAM9_core_m4slave_ARM_extab) + SIZEOF (.data_RAM9_core_m4slave_ARM_exidx) + SIZEOF (.data_RAM9_core_m4slave_data);
+    __FW_CM4_SIZE = __FW_CM4_END  - __FW_CM4_START;
+
+    __FW_SIZE = _image_end - __fw_hdr_start__;
+
+    __FW_SIGN_START = _image_end;
+
+    __FW_CFGDATA_START = 0x30000000;
+    __FW_CFGDATA_SIZE = 0x2000;
+
+    __LOG_STORAGE_START = 0x30002000;
+    __LOG_STORAGE_SIZE =  0x303E000;
+
+    __FWU_STORAGE_START = 0x33040000;
+    __FWU_STORAGE_SIZE = 0xFC0000;

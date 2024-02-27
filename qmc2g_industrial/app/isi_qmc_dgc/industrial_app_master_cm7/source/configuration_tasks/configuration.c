@@ -35,17 +35,39 @@ SemaphoreHandle_t g_config_xSemaphore = NULL;
 
 //Config defaults
 static const cnf_data_t gs_cnf_data_default = {{
-		{ kCONFIG_KeyUser1Id,   "Test_Cnf_1", "Test_Cnf_1_Value" },
-		{ kCONFIG_KeyUser2Id,   "Test_Cnf_2", "Test_Cnf_2_Value" },
-		{ kCONFIG_KeyUser2Role, "Test_Cnf_3", "Test_Cnf_3_Value" },
-		{ kCONFIG_Key_Ip,       "IP_config", {192,168,0,1} },
+		{ kCONFIG_Key_User1, "User 1",{0}},
+		{ kCONFIG_Key_User2, "User 2",{0}},
+		{ kCONFIG_Key_User3, "User 3",{0}},
+		{ kCONFIG_Key_User4, "User 4",{0}},
+		{ kCONFIG_Key_User5, "User 5",{0}},
+		{ kCONFIG_Key_User6, "User 6",{0}},
+		{ kCONFIG_Key_User7, "User 7",{0}},
+		{ kCONFIG_Key_User8, "User 8",{0}},
+		{ kCONFIG_Key_User9, "User 9",{0}},
+		{ kCONFIG_Key_User10, "User 10",{0}},
+		{ kCONFIG_Key_UserHashes1, "UserHashes 1",{0}},
+		{ kCONFIG_Key_UserHashes2, "UserHashes 2",{0}},
+		{ kCONFIG_Key_UserHashes3, "UserHashes 3",{0}},
+		{ kCONFIG_Key_UserHashes4, "UserHashes 4",{0}},
+		{ kCONFIG_Key_UserHashes5, "UserHashes 5",{0}},
+		{ kCONFIG_Key_UserHashes6, "UserHashes 6",{0}},
+		{ kCONFIG_Key_UserHashes7, "UserHashes 7",{0}},
+		{ kCONFIG_Key_UserHashes8, "UserHashes 8",{0}},
+		{ kCONFIG_Key_UserHashes9, "UserHashes 9",{0}},
+		{ kCONFIG_Key_UserHashes10, "UserHashes 10",{0}},
+		{ kCONFIG_Key_Ip,       "IP_config", {10,42,0,10} },
 		{ kCONFIG_Key_Ip_mask,  "IP_mask_config", {255,255,255,0} },
-		{ kCONFIG_Key_Ip_GW,	"IP_gateway", {192,168,0,254}},
-		{ kCONFIG_Key_Ip_DNS, 	"IP_DNS", {192,168,0,254}},
+		{ kCONFIG_Key_Ip_GW,	"IP_gateway", {10,42,0,1}},
+		{ kCONFIG_Key_Ip_DNS, 	"IP_DNS", {8,8,8,8}},
 		{ kCONFIG_Key_MAC_address, "MAC_address", {0x02, 0x00, 0x00, 0x00, 0x00, 0x00}},
 		{ kCONFIG_Key_VLAN_ID, "TSN_VLAN_ID", {2}},
 		{ kCONFIG_Key_TSN_RX_STREAM_MAC_ADDR, "TSN_RX_Stream_MAC", {0x91, 0xe0, 0xf0, 0x00, 0xfe, 0x70}},
 		{ kCONFIG_Key_TSN_TX_STREAM_MAC_ADDR, "TSN_TX_Stream_MAC", {0x91, 0xe0, 0xf0, 0x00, 0xfe, 0x71}},
+		{ kCONFIG_Key_MOTD, "MOTD",
+			"Quad Motor Control 2nd Gen.\n"
+			"Ensure you have the needed training to operate the system.\n"
+		},
+		{ kCONFIG_Key_CloudAzureHubName, "AZURE_IOTHUB_HubName", "Qmc2gHub" },
 }};
 
 AT_NONCACHEABLE_SECTION_ALIGN(static cnf_struct_t gs_cnf_struct_data, 16);
@@ -56,6 +78,30 @@ AT_NONCACHEABLE_SECTION_ALIGN(static uint8_t gs_shabuf[CONFIGURATION_HASH_SIZE],
 AT_NONCACHEABLE_SECTION_ALIGN(static uint8_t gs_in_buf[OCTAL_FLASH_SECTOR_SIZE], 16);
 AT_NONCACHEABLE_SECTION_ALIGN(static uint8_t gs_out_buf[OCTAL_FLASH_SECTOR_SIZE], 16);
 AT_NONCACHEABLE_SECTION_ALIGN(lcrypto_aes_ctx_t g_config_aes_ctx, 16);
+
+#define CONFIG_DEBUG_BUFFER 0
+
+#if CONFIG_DEBUG_BUFFER
+
+#define THE_CONFIG_DEBUG_MAXCN (100U)
+#define THE_CONFIG_DEBUG_MAX_VAL_LENGTH (32-(2*sizeof(uint32_t)))
+#define THE_CONFIG_DEBUG_MAX_KEY_LENGTH (32)
+
+#define THE_CONFIG_DEBUG_OP_SetBinValueById   (0x1 << 24)
+#define THE_CONFIG_DEBUG_OP_SetBinValueById_E (0x2 << 24)
+#define THE_CONFIG_DEBUG_OP_SetBinValue       (0x3 << 24)
+#define THE_CONFIG_DEBUG_OP_SetBinValue_E     (0x4 << 24)
+
+typedef struct {
+	uint32_t		id;
+	uint32_t		length;
+	uint8_t			key[THE_CONFIG_DEBUG_MAX_KEY_LENGTH];
+	uint8_t		    value[THE_CONFIG_DEBUG_MAX_VAL_LENGTH];
+} cnf_debug_record_t;
+
+static cnf_debug_record_t gs_TheConfigDebugBuffer[THE_CONFIG_DEBUG_MAXCN];
+static int gs_TheConfigDebugIndex;
+#endif
 
 /*******************************************************************************
  * Code
@@ -81,29 +127,52 @@ static qmc_status_t config_release_lock()
 	return kStatus_QMC_Ok;
 }
 
-static void CONFIG_get_sum( uint8_t *value, TickType_t ticks)
+static qmc_status_t CONFIG_get_sum( uint8_t *value, TickType_t ticks)
 {
-	LCRYPTO_get_sha256( gs_shabuf, (uint8_t*)gs_cnf_struct_data.cnf_data, sizeof( gs_cnf_struct_data.cnf_data), &g_cnf_sha256_ctx, ticks);
-	memcpy( value, gs_shabuf, CONFIGURATION_HASH_SIZE);
+	qmc_status_t retv = kStatus_QMC_Err;
+	retv = LCRYPTO_get_sha256( gs_shabuf, (uint8_t*)gs_cnf_struct_data.cnf_data, sizeof( gs_cnf_struct_data.cnf_data), &g_cnf_sha256_ctx, ticks);
+	if( retv!= kStatus_QMC_Ok)
+		return retv;	//error
+	if( value != gs_shabuf)
+		memcpy( value, gs_shabuf, CONFIGURATION_HASH_SIZE);
+	return retv;
 }
 
 qmc_status_t CONFIG_UpdateFlash( )
 {
 	qmc_status_t retv = kStatus_QMC_Err;
 	const TickType_t xDelayms = pdMS_TO_TICKS( CONFIG_MUTEX_XDELAYS_MS);
+
+
+#if CONFIG_DEBUG_BUFFER
+	if( gs_TheConfigDebugIndex < THE_CONFIG_DEBUG_MAXCN)
+	{
+		gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].id = 0x77;
+		const char *msg = "UpdateFlash";
+		strncpy( (void*)gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].value, msg, strlen( msg));
+		gs_TheConfigDebugIndex++;
+	}
+#endif
+
+
 	if( config_get_lock( xDelayms) == kStatus_QMC_Ok)
 	{
-
 		retv = dispatcher_erase_sectors( (uint8_t *)RECORDER_REC_CONFIG_AREABEGIN ,RECORDER_REC_CONFIG_AREALENGTH/OCTAL_FLASH_SECTOR_SIZE , portMAX_DELAY);
 		dbgCnfPRINTF("Erase %x\n\r",RECORDER_REC_CONFIG_AREABEGIN );
 		if( retv!= kStatus_QMC_Ok)
 		{
-			dbgCnfPRINTF("ER Err:%d\n\r", retv);
+			dbgCnfPRINTF("ER1 Err:%d\n\r", retv);
 			config_release_lock();
 			return retv;	//error
 		}
 
-		CONFIG_get_sum( gs_cnf_struct_data.hash, xDelayms);
+		retv = CONFIG_get_sum( gs_cnf_struct_data.hash, xDelayms);
+		if( retv!= kStatus_QMC_Ok)
+		{
+			dbgCnfPRINTF("ER2 Err:%d\n\r", retv);
+			config_release_lock();
+			return retv;	//error
+		}
 
 #ifdef NO_SBL
 		memset( g_config_aes_ctx.iv, 0, sizeof( g_config_aes_ctx.iv));
@@ -145,55 +214,85 @@ qmc_status_t CONFIG_UpdateFlash( )
 static qmc_status_t CONFIG_ReadFlash()
 {
 	qmc_status_t retv = kStatus_QMC_Err;
-
 	const TickType_t xDelayms = pdMS_TO_TICKS( CONFIG_MUTEX_XDELAYS_MS);
 
-#ifdef NO_SBL
-	memset( g_config_aes_ctx.iv, 0, sizeof( g_config_aes_ctx.iv));
-#else
-	memcpy( g_config_aes_ctx.iv, g_sbl_prov_keys.nonceConfig, sizeof( g_config_aes_ctx.iv));
+
+#if CONFIG_DEBUG_BUFFER
+	if( gs_TheConfigDebugIndex < THE_CONFIG_DEBUG_MAXCN)
+	{
+		gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].id = 0x77;
+		const char *msg = "ReadFlash";
+		strncpy( (void*)gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].value, msg, strlen( msg));
+		gs_TheConfigDebugIndex++;
+	}
 #endif
 
-	const size_t bsize = sizeof(gs_in_buf);
-	size_t size = sizeof(cnf_struct_t);
-	uint8_t *pdst = (uint8_t *)&gs_cnf_struct_data;
-	uint8_t *psrc = (uint8_t *)RECORDER_REC_CONFIG_AREABEGIN;
-
-	while( size)
+	if( (retv = config_get_lock( xDelayms)) == kStatus_QMC_Ok)
 	{
-		retv = dispatcher_read_memory( gs_in_buf, psrc, bsize, portMAX_DELAY);
-		if( retv != kStatus_QMC_Ok)
+
+#ifdef NO_SBL
+		memset( g_config_aes_ctx.iv, 0, sizeof( g_config_aes_ctx.iv));
+#else
+		memcpy( g_config_aes_ctx.iv, g_sbl_prov_keys.nonceConfig, sizeof( g_config_aes_ctx.iv));
+#endif
+
+		const size_t bsize = sizeof(gs_in_buf);
+		size_t size = sizeof(cnf_struct_t);
+		uint8_t *pdst = (uint8_t *)&gs_cnf_struct_data;
+		uint8_t *psrc = (uint8_t *)RECORDER_REC_CONFIG_AREABEGIN;
+
+		while( size)
 		{
-			dbgCnfPRINTF("RD Err:%d Configuration.\n\r", retv);
-			return retv;
-		}
-		retv = LCRYPTO_decrypt_aes256_cbc( gs_out_buf, gs_in_buf, bsize, &g_config_aes_ctx, xDelayms);
-		if( retv != kStatus_QMC_Ok)
-		{
-			dbgCnfPRINTF("dec Err:%d Configuration.\n\r", retv);
-			return retv;
+			retv = dispatcher_read_memory( gs_in_buf, psrc, bsize, portMAX_DELAY);
+			if( retv != kStatus_QMC_Ok)
+			{
+				dbgCnfPRINTF("RD Err:%d Configuration.\n\r", retv);
+				config_release_lock();
+				return retv;
+			}
+			retv = LCRYPTO_decrypt_aes256_cbc( gs_out_buf, gs_in_buf, bsize, &g_config_aes_ctx, xDelayms);
+			if( retv != kStatus_QMC_Ok)
+			{
+				dbgCnfPRINTF("dec Err:%d Configuration.\n\r", retv);
+				config_release_lock();
+				return retv;
+			}
+
+			if( size > bsize)
+			{
+				memcpy( pdst, gs_out_buf, bsize );
+				size-=bsize;
+			}
+			else
+			{
+				memcpy( pdst, gs_out_buf, size);
+				size=0;
+			}
+			pdst += bsize;
+			psrc += bsize;
 		}
 
-		if( size > bsize)
+		CONFIG_get_sum( gs_shabuf, xDelayms);
+		if( memcmp( gs_shabuf, gs_cnf_struct_data.hash, CONFIGURATION_HASH_SIZE) != 0)
 		{
-			memcpy( pdst, gs_out_buf, bsize );
-			size-=bsize;
+			dbgCnfPRINTF("Read flash hash fail. Using defaults. Configuration.\r\n");
+			memcpy( gs_cnf_struct_data.cnf_data, &gs_cnf_data_default, sizeof( cnf_data_t) );
 		}
 		else
 		{
-			memcpy( pdst, gs_out_buf, size);
-			size=0;
+			dbgCnfPRINTF("Read flash hash match. Configuration.\n\r");
 		}
-		pdst += bsize;
-		psrc += bsize;
+		retv = config_release_lock();	//kStatus_QMC_Ok
 	}
-	return kStatus_QMC_Ok;
+	return retv;
 }
 
 qmc_status_t CONFIG_Init()
 {
-	const TickType_t xDelayms = pdMS_TO_TICKS( CONFIG_MUTEX_XDELAYS_MS);
-
+#if CONFIG_DEBUG_BUFFER
+	gs_TheConfigDebugIndex = 0;
+	memset( gs_TheConfigDebugBuffer, 0, sizeof( gs_TheConfigDebugBuffer));
+#endif
 	if( g_config_xSemaphore == NULL)
 	{
 		g_config_xSemaphore = xSemaphoreCreateMutexStatic( &gs_configMutex);
@@ -203,12 +302,6 @@ qmc_status_t CONFIG_Init()
 			return kStatus_QMC_Err;
 		}
 		dbgCnfPRINTF("Mutex init ok. Configuration.\r\n");
-	}
-
-	if( config_get_lock( xDelayms) != kStatus_QMC_Ok)
-	{
-		dbgCnfPRINTF("CONFIG_Init mutex fail. Configuration.\r\n");
-		return kStatus_QMC_Err;
 	}
 
 #ifdef NO_SBL
@@ -221,22 +314,8 @@ qmc_status_t CONFIG_Init()
 
 	if( CONFIG_ReadFlash() != kStatus_QMC_Ok)
 	{
-		config_release_lock();
 		return kStatus_QMC_Err;
 	}
-
-	CONFIG_get_sum( gs_shabuf, xDelayms);
-	if( memcmp( gs_shabuf, gs_cnf_struct_data.hash, CONFIGURATION_HASH_SIZE) != 0)
-	{
-		dbgCnfPRINTF("Read flash hash fail. Using defaults. Configuration.\r\n");
-		memcpy( gs_cnf_struct_data.cnf_data, &gs_cnf_data_default, sizeof( cnf_data_t) );
-	}
-	else
-	{
-		dbgCnfPRINTF("Read flash hash match. Configuration.\n\r");
-	}
-
-	config_release_lock();
 	return kStatus_QMC_Ok;
 }
 
@@ -246,6 +325,8 @@ static qmc_status_t CONFIG_GetIndexByKey(const unsigned char *key, int *index)
 	int cnt = sizeof( cnf_data_t)/sizeof( cnf_record_t);
 	for( i=0; i < cnt; i++)
 	{
+		if( i < 0 )
+			return kStatus_QMC_ErrRange;
 		if( strncmp( (const char *)gs_cnf_struct_data.cnf_data[i].key, (const char *)key, CONFIG_MAX_KEY_LEN) == 0)
 		{
 			*index = i;
@@ -261,6 +342,8 @@ static qmc_status_t CONFIG_GetIndexById( config_id_t id, int *index)
 	int cnt = sizeof( cnf_data_t)/sizeof( cnf_record_t);
 	for( i=0; i < cnt; i++)
 	{
+		if( i < 0 )
+			return kStatus_QMC_ErrRange;
 		if( gs_cnf_struct_data.cnf_data[i].id == id)
 		{
 			*index = i;
@@ -302,6 +385,9 @@ qmc_status_t CONFIG_GetStrValueById(config_id_t id, unsigned char* value)
 	if( (id == kCONFIG_KeyNone) || (value == NULL) )
 		return kStatus_QMC_ErrArgInvalid;
 
+	if( strlen( (const char*)value) >= sizeof(gs_cnf_struct_data.cnf_data[i].value) )
+		return kStatus_QMC_ErrArgInvalid;
+
 	if( config_get_lock( xDelayms) == kStatus_QMC_Ok)
 	{
 		if( CONFIG_GetIndexById( id, &i) != kStatus_QMC_Ok)
@@ -326,6 +412,9 @@ qmc_status_t CONFIG_SetStrValue(const unsigned char* key, const unsigned char* v
 	if( (key == NULL) || (value == NULL) )
 		return kStatus_QMC_ErrArgInvalid;
 
+	if( strlen( (const char*)value) >= sizeof(gs_cnf_struct_data.cnf_data[i].value) )
+		return kStatus_QMC_ErrArgInvalid;
+
 	if( config_get_lock( xDelayms) == kStatus_QMC_Ok)
 	{
 		if( CONFIG_GetIndexByKey( key, &i) != kStatus_QMC_Ok)
@@ -348,6 +437,9 @@ qmc_status_t CONFIG_SetStrValueById(config_id_t id, const unsigned char* value)
 	const TickType_t xDelayms = pdMS_TO_TICKS( CONFIG_MUTEX_XDELAYS_MS);
 
 	if( (id == kCONFIG_KeyNone) || (value == NULL) )
+		return kStatus_QMC_ErrArgInvalid;
+
+	if( strlen( (const char*)value) >= sizeof(gs_cnf_struct_data.cnf_data[i].value) )
 		return kStatus_QMC_ErrArgInvalid;
 
 	if( config_get_lock( xDelayms) == kStatus_QMC_Ok)
@@ -425,6 +517,18 @@ qmc_status_t CONFIG_SetBinValue(const unsigned char* key, const unsigned char* v
 	int i;
 	const TickType_t xDelayms = pdMS_TO_TICKS( CONFIG_MUTEX_XDELAYS_MS);
 
+#if CONFIG_DEBUG_BUFFER
+	if( gs_TheConfigDebugIndex < THE_CONFIG_DEBUG_MAXCN)
+	{
+		strncpy( (void*)gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].key, key, THE_CONFIG_DEBUG_MAX_KEY_LENGTH);
+		gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].id = 0;
+		gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].id |= THE_CONFIG_DEBUG_OP_SetBinValue;
+		gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].length = length;
+		strncpy( (void*)gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].value, value, THE_CONFIG_DEBUG_MAX_VAL_LENGTH);
+		gs_TheConfigDebugIndex++;
+	}
+#endif
+
 	if( length > CONFIG_MAX_VALUE_LEN)
 		return kStatus_QMC_ErrArgInvalid;
 
@@ -441,6 +545,20 @@ qmc_status_t CONFIG_SetBinValue(const unsigned char* key, const unsigned char* v
 
 		memcpy( (char *)gs_cnf_struct_data.cnf_data[i].value, (const char *)value, length);
 		config_release_lock();
+
+
+#if CONFIG_DEBUG_BUFFER
+	if( gs_TheConfigDebugIndex < THE_CONFIG_DEBUG_MAXCN)
+	{
+		gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].id = 0;
+		gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].id |= THE_CONFIG_DEBUG_OP_SetBinValue_E;
+		gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].length = length;
+		strncpy( (void*)gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].value, (char *)gs_cnf_struct_data.cnf_data[i].value, THE_CONFIG_DEBUG_MAX_VAL_LENGTH);
+		strncpy( (void*)gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].key, (char*)gs_cnf_struct_data.cnf_data[i].key, THE_CONFIG_DEBUG_MAX_KEY_LENGTH);
+		gs_TheConfigDebugIndex++;
+	}
+#endif
+
 		return kStatus_QMC_Ok;
 	}
 	dbgCnfPRINTF("CONFIG_SetValue mutex Err.\n\r");
@@ -451,6 +569,17 @@ qmc_status_t CONFIG_SetBinValueById(config_id_t id, const unsigned char* value, 
 {
 	int i;
 	const TickType_t xDelayms = pdMS_TO_TICKS( CONFIG_MUTEX_XDELAYS_MS);
+
+#if CONFIG_DEBUG_BUFFER
+	if( gs_TheConfigDebugIndex < THE_CONFIG_DEBUG_MAXCN)
+	{
+		gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].id = id;
+		gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].id |= THE_CONFIG_DEBUG_OP_SetBinValueById;
+		gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].length = length;
+		strncpy( (void*)gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].value, value, THE_CONFIG_DEBUG_MAX_VAL_LENGTH);
+		gs_TheConfigDebugIndex++;
+	}
+#endif
 
 	if( length > CONFIG_MAX_VALUE_LEN)
 		return kStatus_QMC_ErrArgInvalid;
@@ -468,6 +597,19 @@ qmc_status_t CONFIG_SetBinValueById(config_id_t id, const unsigned char* value, 
 
 		memcpy( (char *)gs_cnf_struct_data.cnf_data[i].value, (const char *)value, length);
 		config_release_lock();
+
+
+#if CONFIG_DEBUG_BUFFER
+	if( gs_TheConfigDebugIndex < THE_CONFIG_DEBUG_MAXCN)
+	{
+		gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].id = id;
+		gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].id |= THE_CONFIG_DEBUG_OP_SetBinValueById_E;
+		gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].length = length;
+		strncpy( (void*)gs_TheConfigDebugBuffer[ gs_TheConfigDebugIndex].value, (char *)gs_cnf_struct_data.cnf_data[i].value, THE_CONFIG_DEBUG_MAX_VAL_LENGTH);
+		gs_TheConfigDebugIndex++;
+	}
+#endif
+
 		return kStatus_QMC_Ok;
 	}
 	dbgCnfPRINTF("CONFIG_SetValueById mutex Err.\n\r");
@@ -531,10 +673,10 @@ qmc_status_t CONFIG_GetBooleanFromValue(const unsigned char* value, bool* boolea
 
 	if( (size > 0) && (size < CONFIG_MAX_VALUE_LEN))
 	{
-		cnt = sizeof(words)/sizeof(words[0][0]);
+		cnt = sizeof(words)/sizeof(words[0]);
 		for( i=0; i < cnt; i++)
 		{
-			if( strncasecmp( (const char *)value, words[i], sizeof(words[0][0])) == 0)
+			if( strncasecmp( (const char *)value, words[i], sizeof(words[0])) == 0)
 			{
 				if( i&1)
 					*boolean = false;
@@ -604,6 +746,12 @@ qmc_status_t CONFIG_WriteFwUpdateChunk(size_t offset, const uint8_t* data, size_
 		{
 			//get sector address in OCTAL FLASH
 			uint32_t sectorDataOffset = flashAddr % OCTAL_FLASH_SECTOR_SIZE;
+			if( sectorDataOffset > flashAddr)
+			{
+				dbgCnfPRINTF("CONFIG_WriteFwUpdateChunk. Addr Err:%x 5x\n\r", flashAddr, sectorDataOffset);
+				config_release_lock();
+				return retv;	//error
+			}
 			uint32_t sectorAddr = flashAddr - sectorDataOffset;
 
 			//read content of sector

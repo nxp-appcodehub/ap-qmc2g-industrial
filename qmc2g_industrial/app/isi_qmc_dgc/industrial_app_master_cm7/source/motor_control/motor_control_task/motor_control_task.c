@@ -723,12 +723,15 @@ void getMotorStatusTask(void *pvParameters)
 			break;
 		}
 
-		if((sStatus != kStatus_QMC_ErrNoMsg)&&(sStatus != kStatus_QMC_Ok))
+		if(sStatus == kStatus_QMC_Ok)
+		    continue; /* read remaining elements */
+		else if(sStatus == kStatus_QMC_ErrNoMsg)
+		    vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(50));
+		else
 		{
 			PRINTF("Fail to get Status Queue contents");
 			goto error_exit;
 		}
-		vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(30));
 	}
 
 error_exit:

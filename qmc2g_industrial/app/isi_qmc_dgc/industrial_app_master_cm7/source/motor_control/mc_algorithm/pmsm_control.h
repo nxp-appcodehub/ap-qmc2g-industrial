@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -8,8 +8,8 @@
  * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
-#ifndef _PMSM_CONTROL_H_
-#define _PMSM_CONTROL_H_
+#ifndef PMSM_CONTROL_H
+#define PMSM_CONTROL_H
 
 #include "char_pwrstg.h"
 #include "gflib_FP.h"
@@ -25,7 +25,7 @@
  * Definitions
  ******************************************************************************/
 
-typedef struct _pi_controller_desat_coeff
+typedef struct pi_controller_desat_coeff
 {
 	float_t fltPGain;
 	float_t fltIGain;
@@ -34,7 +34,7 @@ typedef struct _pi_controller_desat_coeff
 	float_t fltLowerLim;
 }pi_controller_desat_coeff_t;
 
-typedef struct _pi_controller_desat
+typedef struct pi_controller_desat
 {
 	pi_controller_desat_coeff_t sCoeff;
 
@@ -51,7 +51,7 @@ typedef struct _pi_controller_desat
 
 }pi_controller_desat_t;
 
-typedef struct _trajectory_filter
+typedef struct trajectory_filter
 {
 	int32_t    i32In;
 	int64_t    i64Out;
@@ -100,7 +100,7 @@ typedef struct
 }FILTER_T;
 
 /*! @brief mcs alignment structure */
-typedef struct _mcs_alignment_a1
+typedef struct mcs_alignment_a1
 {
     float_t fltUdReq;       /* Required D voltage at alignment */
     uint16_t ui16Time;      /* Alignment time duration */
@@ -109,7 +109,7 @@ typedef struct _mcs_alignment_a1
 } mcs_alignment_t;       /* PMSM simple two-step Ud voltage alignment */
 
 /*! @brief mcs foc structure */
-typedef struct _mcs_pmsm_foc_a1
+typedef struct mcs_pmsm_foc_a1
 {
     GFLIB_CTRL_PI_P_AW_T_FLT sIdPiParams;       /* Id PI controller parameters */
     GFLIB_CTRL_PI_P_AW_T_FLT sIqPiParams;       /* Iq PI controller parameters */
@@ -152,7 +152,7 @@ typedef struct _mcs_pmsm_foc_a1
 } mcs_pmsm_foc_t;
 
 /*! @brief mcs scalar structure */
-typedef struct _mcs_pmsm_scalar_ctrl_a1
+typedef struct mcs_pmsm_scalar_ctrl_a1
 {
     GFLIB_RAMP_T_FLT sFreqRampParams;           /* Parameters of frequency ramp */
     GMCLIB_2COOR_DQ_T_FLT sUDQReq;              /* Required voltage vector in d,q coordinates */
@@ -166,7 +166,7 @@ typedef struct _mcs_pmsm_scalar_ctrl_a1
 } mcs_pmsm_scalar_ctrl_t;
 
 /*! @brief mcs scalar structure */
-typedef struct _mcs_speed_a1
+typedef struct mcs_speed_a1
 {
     GDFLIB_FILTER_IIR1_T_FLT sSpeedFilter;      /* Speed filter */
     GFLIB_CTRL_PI_P_AW_T_FLT sSpeedPiParams;    /* Speed PI controller parameters */
@@ -190,7 +190,7 @@ typedef struct _mcs_speed_a1
 } mcs_speed_t;
 
 /*! @brief mcs position structure */
-typedef struct _mcs_trajectory_a1
+typedef struct mcs_trajectory_a1
 {
 	int32_t i32Q16PosCmd;      /* Desired position */
 	int32_t i32Q16PosRamp;     /* Ramping output of position command */
@@ -201,7 +201,7 @@ typedef struct _mcs_trajectory_a1
 }mcs_trajectory_t;
 
 /*! @brief mcs position structure */
-typedef struct _mcs_position_a1
+typedef struct mcs_position_a1
 {
 
 	/* Position controller related */
@@ -241,7 +241,7 @@ typedef struct _mcs_position_a1
 
 
 /*! @brief mcs mcat control structure */
-typedef struct _mcs_mcat_ctrl_a1
+typedef struct mcs_mcat_ctrl_a1
 {
     GMCLIB_2COOR_DQ_T_FLT sIDQReqMCAT;          /* required dq current entered from MCAT tool */
     GMCLIB_2COOR_DQ_T_FLT sUDQReqMCAT;          /* required dq voltage entered from MCAT tool */
@@ -249,7 +249,7 @@ typedef struct _mcs_mcat_ctrl_a1
 } mcs_mcat_ctrl_t;
 
 /*! @brief mcs pmsm startup structure */
-typedef struct _mcs_pmsm_startup_a1
+typedef struct mcs_pmsm_startup_a1
 {
     GFLIB_INTEGRATOR_T_A32 sSpeedIntegrator;    /* Speed integrator structure */
     GFLIB_RAMP_T_FLT sSpeedRampOpenLoopParams;  /* Parameters of startup speed ramp */
@@ -412,5 +412,5 @@ extern void PIControllerDesatInit(pi_controller_desat_t *ptr);
 }
 #endif
 
-#endif /* _PMSM_CONTROL_H_ */
+#endif /* PMSM_CONTROL_H */
 

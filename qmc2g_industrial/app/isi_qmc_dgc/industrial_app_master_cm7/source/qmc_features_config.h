@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 NXP 
+ * Copyright 2022-2023 NXP  
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -26,12 +26,13 @@
 #define FEATURE_MC_LOOP_BANDWIDTH_TEST_ENABLE   (0) /* Enable the test of current loop bandwidth in current FOC mode.
                                                        Enable the test of speed loop bandwidth in speed FOC mode.
                                                        Enable the test of position loop bandwidth in position FOC mode */
-#define FEATURE_MC_PSB_TEMPERATURE_FAULTS (0)
-#define FEATURE_TSN_DEBUG_ENABLED         (0)
-#define FEATURE_FREEMASTER_ENABLE         (1)   // TODO: Disable freemaster in the final release
-#define FEATURE_GET_MOTOR_STATUS_FROM_DATA_HUB    (1) // TODO: Disable it in the final release because freemaster is disabled
-#define FEATURE_TOOGLE_USER_LED_ENABLE    (1) // TODO: Disable it in the final release because user led is reserved for users
-#define FEATURE_HANDLE_BUTTON_PRESS_EVENTS (0) /* When no lid is installed over the buttons, pressing a button will be detected as a tampering event */
+#define FEATURE_MC_PSB_TEMPERATURE_FAULTS		(0)
+#define FEATURE_TSN_DEBUG_ENABLED				(0)
+#define FEATURE_TSN_PRINT_IF					(1)
+#define FEATURE_FREEMASTER_ENABLE				(1) // TODO: Disable freemaster in the final release
+#define FEATURE_GET_MOTOR_STATUS_FROM_DATA_HUB	(1) // TODO: Disable it in the final release because freemaster is disabled
+#define FEATURE_TOOGLE_USER_LED_ENABLE			(0)
+#define FEATURE_HANDLE_BUTTON_PRESS_EVENTS		(1) /* When no lid is installed over the buttons, pressing a button will be detected as a tampering event */
 
 /* CONFIGURATION */
 #define MC_MAX_MOTORS        (4)          /* Number of supported motors */
@@ -51,10 +52,9 @@
  ******************************************************************************/
 
 /* FEATURES */
-//TODO: put MC features here
 
 /* CONFIGURATION */
-#define DATAHUB_MAX_STATUS_QUEUES           (3)
+#define DATAHUB_MAX_STATUS_QUEUES           (4)
 #define DATAHUB_STATUS_QUEUE_LENGTH         (10)
 #define DATAHUB_COMMAND_QUEUE_LENGTH        (10)
 #define DATAHUB_STATUS_SAMPLING_INTERVAL_MS (100)
@@ -66,8 +66,8 @@
  ******************************************************************************/
 
 /* FEATURES */
-#define FEATURE_ANOMALY_DETECTION             (1)
-#define FEATURE_ANOMALY_DETECTION_SYNC_CHECK  (1)
+#define FEATURE_ANOMALY_DETECTION             (0)
+#define FEATURE_ANOMALY_DETECTION_SYNC_CHECK  (0)
 
 /* CONFIGURATION */
 #define AD_CURRENT_BLK_SIZE (8)              /* Number of motor status values per block */
@@ -85,7 +85,7 @@
  ******************************************************************************/
 
 /* FEATURES */
-//TODO: put Board API features here
+#define FEATURE_BOARD_SANITY_CHECK_DAY_OF_WEEK   (1)
 
 /* CONFIGURATION */
 #define BOARD_GETTIME_REFRESH_INTERVAL_S (24*60*60) /* After this time the tick-based time is synchronized to the RTC again */
@@ -98,6 +98,7 @@
 #define PSB_TEMP2_THRESHOLD (75.0)
 #define DB_TEMP_THRESHOLD (90.0)
 #define MCU_TEMP_THRESHOLD (100.0)
+#define FAULT_HANDLING_FUNCTIONAL_WATCHDOG_KICK_PERIOD_IN_MS (5000)
 
 /*******************************************************************************
  * Configurations
@@ -107,9 +108,10 @@
 #define FEATURE_DATALOGGER_RECORDER_DBG_PRINT
 #define FEATURE_DATALOGGER_DISPATCHER_DBG_PRINT
 #define FEATURE_DATALOGGER_SDCARD_DBG_PRINT
+#define FEATURE_CLOUD_DBG_PRINT
 
 //Time to wait for grant access by mutex
-#define CONFIG_MUTEX_XDELAYS_MS (800)
+#define CONFIG_MUTEX_XDELAYS_MS (1000)
 
 //Size parameters for configuration items
 #define CONFIG_MAX_KEY_LEN     (32)
@@ -135,23 +137,32 @@
 #define DATALOGGER_MUTEX_XDELAYS_MS (800)
 
 //Depth of receiving datalogger task queue
-#define DATALOGGER_RCV_QUEUE_DEPTH 3U
+#define DATALOGGER_RCV_QUEUE_DEPTH 10U
 
 //dynamicly allocated queue for 3th party services
 #define  FEATURE_DATALOGGER_DQUEUE
 #define  FEATURE_DATALOGGER_DQUEUE_EVENT_BITS
 
 //Depth of dynamicly allocated queue
-#define DATALOGGER_DYNAMIC_RCV_QUEUE_DEPTH 3U
+#define DATALOGGER_DYNAMIC_RCV_QUEUE_DEPTH 10U
 
 //Max number of dynamicy allocated dynamic queues
 #define DATALOGGER_RCV_QUEUE_CN 2U
+
+//Report LOW_MEMORY if LOW_MEMORY_TRESHOLD is triggered
+#define DATALOGGER_REPORT_LOW_MEMORY
+//LOW_MEMORY_TRESHOLD in percentage (20 means signals low memory if free space is less than 20%)
+#define DATALOGGER_LOW_MEMORY_TRESHOLD (20U)
+
+//Sync records stored into the NOR flash by SBL with the SDCARD
+#define FEATURE_DATALOGGER_SYNC_WITH_SBL
 
 //SDCARD implementation
 #define FEATURE_DATALOGGER_SDCARD
 #define DATALOGGER_SDCARD_DIRPATH "/dat"
 #define DATALOGGER_SDCARD_FILEPATH "/dat/datfile.bin"
 #define DATALOGGER_SDCARD_MAX_FILESIZE (10000000U)
+#define DATALOGGER_SDCARD_FATFS_DELAYED_MOUNT
 
 //Octal flash start address of recorder
 #define FLASH_RECORDER_ORIGIN   0x30002000
@@ -173,11 +184,28 @@
 /*******************************************************************************
  * Cyber Resilience 
  ******************************************************************************/
-#define FEATURE_SECURE_WATCHDOG (0) /* Enables the secure watchdog timer */
-#define SECURE_WATCHDOG_HOST "api.awdt.local" /* URL of the secure watchdog ticket server */
-#define SECURE_WATCHDOG_KICK_INTERVAL_S (60)  /* Kick interval of the secure watchdog in seconds */
-#define SECURE_WATCHDOG_KICK_RETRY_S (30) /* Retry interval in case kicking the secure watchdog failed in seconds */
-#define SECURE_WATCHDOG_SOCKET_TIMEOUT_MS (1000U) /* timeout for network operations with the SW server in ms */
+/* Enables the secure watchdog */
+#define FEATURE_SECURE_WATCHDOG (0)
+
+/* URL of the secure watchdog ticket server
+ * (client attempts to connect to port 443 as TLS must be used) */
+#define SECURE_WATCHDOG_HOST "api.awdt.server"
+
+/* Delay in seconds between secure watchdog kick sequences
+ * A kick sequence consists of fetching the secure watchdog's current nonce,
+ * requesting a deferral ticket from the server and trying to kick the watchdog
+ * with the received ticket.
+ * Note that this delay must be lower than the secure watchdog's initial timeout
+ * (or any new timeout included in a ticket) minus the maximum time required for
+ * the kicking sequence (around 20s depending on network operations). */
+#define SECURE_WATCHDOG_KICK_INTERVAL_S (60U)
+
+/* Retry delay in seconds after a failed secure watchdog kick sequence
+ * Same value restrictions as for SECURE_WATCHDOG_KICK_INTERVAL_S apply. */
+#define SECURE_WATCHDOG_KICK_RETRY_S (30U)
+
+/* Timeout in milliseconds for network operations with the SW server */
+#define SECURE_WATCHDOG_SOCKET_TIMEOUT_MS (1000U)
 
 /*******************************************************************************
  * Local Service
@@ -194,6 +222,7 @@
 #define TASK_DELAY_MS 100
 #define GUI_HANDLER_DELAY_AT_LEAST_MS 1000
 #define MOTOR_STATUS_AND_LOGS_DELAY_AT_LEAST_MS 100
+#define DEFAULT_MOTOR_SPEED 200.0f
 
 #define GUI_MAX_MESSAGE_LENGTH 33
 #define GUI_MAX_TIMESTAMP_LENGTH 20
@@ -221,8 +250,144 @@
 #define FEATURE_SE_DEBUG_ENABLED   (1)
 
 /*******************************************************************************
+ * User Management
+ ******************************************************************************/
+
+/*
+ * number of concurrent sessions
+ */
+#define USRMGMT_MAX_SESSIONS 8
+
+/*
+ * number of sessions reserved for users with role "maintenance head"
+ */
+#define USRMGMT_RESERVED_SESSIONS 2
+
+/*
+ * minimal passphrase length
+ */
+#define USRMGMT_MIN_PASSPHRASE_LENGTH 8
+
+/* Character classification classes:
+ * UPPERCASE LOWERCASE NUMBERS SPECIAL CONTROL NON_ASCII
+ *
+ * set required and rejected character classes as requirement for the
+ * user's passphrase
+ */
+#define USRMGMT_PASSPHRASE_REQUIRED_CLASSESS() UPPERCASE LOWERCASE NUMBERS
+#define USRMGMT_PASSPHRASE_REJECTED_CLASSESS() CONTROL
+
+/* User Lockout duration after unsuccessful authentication attempts
+ * in seconds
+ */
+#define USRMGMT_LOCKOUT_DURATION 300
+
+/* Session duration limit
+ * in seconds
+ */
+#define USRMGMT_SESSION_DURATION (60*60*2)
+
+/* Passphrase validity duration limit
+ * in seconds
+ */
+#define USRMGMT_PASSPHRASE_DURATION (60*60*24*60)
+
+/* Number of attempts a locked account has to unlock until the lock is enforced.
+ * Accounts get locked immediately after the first authentication failure.
+ * If the system stays on, they have this amount of attempts to unlock.
+ * during the lockout period without waiting.
+ */
+#define USRMGMT_AUTHENTICATION_ATTEMPTS (5U)
+
+
+/*
+ * size of the session authentication secret (in bytes)
+ */
+#define USRMGMT_SESSION_SECRET_LENGTH  (32U)
+
+/*
+ * size of the user authentication secret (in bytes)
+ */
+#define USRMGMT_USER_SECRET_LENGTH     (32U)
+
+/*
+ * size of the user authentication salt (in bytes)
+ */
+#define USRMGMT_SALT_LENGTH            (16U)
+
+
+/*
+ * user name length limit
+ */
+#define USRMGMT_USER_NAME_MAX_LENGTH   (32U)
+
+/*
+ * password buffer length, limit on password length
+ * size limit is used to perform password 
+ * analytics in constant time
+ */
+#define USRMGMT_PASSWORD_BUFFER_LENGTH (255U)
+
+/*
+ * size limit of the JWT json payload
+ */
+#define USRMGMT_PAYLOAD_BUFFER_LENGTH  (255U)
+
+/*
+ * PBKDF2 hash function to use
+ */
+#define USRMGMT_PASSPHRASE_HASH MBEDTLS_MD_SHA1
+
+/*
+ * PBKDF2 iterations for the password hash
+ */
+#define USRMGMT_MIN_PASSPHRASE_ITERATIONS (2000U)
+
+/*******************************************************************************
+ * Webservice
+ ******************************************************************************/
+
+/*
+ * HTTPD error code logging interval, in seconds
+ */
+#define WEBSERVICE_HTTPD_ERROR_LOG_INTERVAL (120U)
+
+
+/*
+ * Firmware Upload sector write retry count
+ */
+#define WEBSERVICE_FIRMWARE_UPLOAD_WRITE_RETRIES (4U)
+
+/*******************************************************************************
+ * Cloud Service
+ ******************************************************************************/
+
+/* Only one type of cloud service can be selected at a time,
+ * the check below should be updated to reflect the flags */
+#define FEATURE_CLOUD_AZURE_IOTHUB (1)
+#define FEATURE_CLOUD_GENERIC_MQTT (0)
+
+#define INTERFACE_SETUP_DELAY_MS (2500)
+
+/*******************************************************************************
+ * Remote Procedure Call Interface
+ ******************************************************************************/
+
+/* Wait time in ms when calling RPC_Reset() before the request is forwarded
+ * to the M4. During this wait period the M7 has time to write pending logs. */
+#define RPC_WAIT_MS_BEFORE_RESET (5000U) 
+
+/*******************************************************************************
  * Compile time checks
  ******************************************************************************/
+
+#if( (RECORDER_REC_INF_DATALOGGER_AREABEGIN + RECORDER_REC_INF_DATALOGGER_AREALENGTH) > UINT32_MAX )
+#error "Datalogger Inf area space exceeds UINT32_MAX"
+#endif
+
+#if( (RECORDER_REC_DATALOGGER_AREABEGIN + RECORDER_REC_DATALOGGER_AREALENGTH) > UINT32_MAX )
+#error "Datalogger data area space exceeds UINT32_MAX"
+#endif
 
 #if BOARD_GETTIME_REFRESH_INTERVAL_S > UINT32_MAX
     #error "BOARD_GETTIME_REFRESH_INTERVAL_S must not exceed UINT32_MAX"
@@ -231,7 +396,6 @@
 #if( (MC_MAX_MOTORS < 1) || (MC_MAX_MOTORS > 4) )
     #error "Number of motors must be in the range of 1 - 4."
 #endif
-#define BOARD_GETTIME_REFRESH_INTERVAL_S (24*60*60)
 
 #if MC_LIMIT_L_POSITION >= MC_LIMIT_H_POSITION
 #error "Motor control position limit: Lower limit is bigger than or equal to upper limit."
@@ -261,6 +425,46 @@
 
 #if ((FEATURE_ENABLE_GPIO_SW_DEBOUNCING) && (GPIO_SW_DEBOUNCE_MS < 0))
 #error "Debouncing time cannot be shorter than 0 ms!"
+#endif
+
+#if (defined(DATALOGGER_REPORT_LOW_MEMORY) && ((DATALOGGER_LOW_MEMORY_TRESHOLD > 100) || (DATALOGGER_LOW_MEMORY_TRESHOLD < 0)))
+#error "Macro DATALOGGER_LOW_MEMORY_TRESHOLD out of range! <0,100> % allowed."
+#endif
+
+#if ((FLASH_RECORDER_ORIGIN > 0x30400000) || (FLASH_RECORDER_ORIGIN < 0x30002000))
+#error "Macro FLASH_RECORDER_ORIGIN out of range! <0x30002000,0x30400000> allowed."
+#endif
+
+#if ((DATALOGGER_SDCARD_MAX_FILESIZE > 100000000U) || (DATALOGGER_SDCARD_MAX_FILESIZE < 1000000U))
+#error "Macro DATALOGGER_SDCARD_MAX_FILESIZE out of range! <1000000U,100000000U> allowed."
+#endif
+
+#if ((DATALOGGER_MUTEX_XDELAYS_MS > 1000U ) || (DATALOGGER_MUTEX_XDELAYS_MS < 300U ))
+#error "Macro DATALOGGER_MUTEX_XDELAYS_MS out of range! <300,1000> allowed."
+#endif
+
+#if ((CONFIG_MUTEX_XDELAYS_MS > 1000U ) || (CONFIG_MUTEX_XDELAYS_MS < 300U ))
+#error "Macro CONFIG_MUTEX_XDELAYS_MS out of range! <300,1000> allowed."
+#endif
+
+#if (FEATURE_CLOUD_AZURE_IOTHUB && FEATURE_CLOUD_GENERIC_MQTT)
+#        error "A maximum of one type of cloud service can be enabled"
+#endif
+
+#if ((WEBSERVICE_FIRMWARE_UPLOAD_WRITE_RETRIES < 0 ) || (WEBSERVICE_FIRMWARE_UPLOAD_WRITE_RETRIES >5 ))
+#error "Macro WEBSERVICE_FIRMWARE_UPLOAD_WRITE_RETRIES out of range! <0,5> allowed."
+#endif
+
+#if (USRMGMT_RESERVED_SESSIONS > USRMGMT_MAX_SESSIONS )
+#error "Macro USRMGMT_RESERVED_SESSIONS out of range! <0,USRMGMT_MAX_SESSIONS > allowed."
+#endif
+
+#if (USRMGMT_RESERVED_SESSIONS == USRMGMT_MAX_SESSIONS )
+#warning "Macro USRMGMT_RESERVED_SESSIONS: operator user logins not allowed."
+#endif
+
+#if ((USRMGMT_MIN_PASSPHRASE_LENGTH < 1 ) || (USRMGMT_MIN_PASSPHRASE_LENGTH > USRMGMT_PASSWORD_BUFFER_LENGTH ))
+#error "Macro USRMGMT_MIN_PASSPHRASE_LENGTH out of range! <1,USRMGMT_PASSWORD_BUFFER_LENGTH > allowed."
 #endif
 
 #endif /* _QMC_FEATURES_CONFIG_H_ */

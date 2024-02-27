@@ -27,6 +27,7 @@
 #include "fsl_snvs_hp.h"
 #include "fsl_snvs_lp.h"
 #include "fsl_wdog.h"
+#include "fsl_tempsensor.h"
 
 #include "utils/testing.h"
 
@@ -40,44 +41,45 @@
  * The macros that end on MASK mask off the bits of interest, used in the read-modify-write operations
  * The macros that end on POS shift the value into the wanted position in the SNVS GPR register
  */
-#define WDTIMER_SNVS_INDEX (0U)      /*!< which SVNS GPR index is used for the wdTimerBackup */
-#define WDTIMER_SNVS_MASK  (0xFFFFU) /*!< used bits mask for wdTimerBackup in SNVS GPR */
-#define WDTIMER_SNVS_POS   (0U)      /*!< shift position for wdTimerBackup in SNVS GPR */
+#define WDTIMER_SNVS_INDEX (0U)             /*!< which SVNS GPR index is used for the AWDG timer backup */
+#define WDTIMER_SNVS_MASK  UINT32_C(0xFFFF) /*!< used bits mask for AWDG timer backup in SNVS GPR */
+#define WDTIMER_SNVS_POS   (0U)             /*!< shift position for AWDG timer backup in SNVS GPR */
 
-#define WDSTATUS_SNVS_INDEX (0U)        /*!< which SVNS GPR index is used for the wdStatus */
-#define WDSTATUS_SNVS_MASK  (0xFF0000U) /*!< used bits mask for wdTimerBackup in wdStatus */
-#define WDSTATUS_SNVS_POS   (16U)       /*!< shift position for wdTimerBackup in wdStatus */
+#define WDSTATUS_SNVS_INDEX (0U)               /*!< which SVNS GPR index is used for the AWDG status */
+#define WDSTATUS_SNVS_MASK  UINT32_C(0xFF0000) /*!< used bits mask for AWDG status in SNVS GPR */
+#define WDSTATUS_SNVS_POS   (16U)              /*!< shift position for AWDG status in SNVS GPR */
 
-#define FWUSTATUS_SNVS_INDEX (0U)          /*!< which SVNS GPR index is used for the FwuStatus */
-#define FWUSTATUS_SNVS_MASK  (0xFF000000U) /*!< used bits mask for FwuStatus in SNVS GPR */
-#define FWUSTATUS_SNVS_POS   (24U)         /*!< shift position for FwuStatus in SNVS GPR */
+#define FWUSTATUS_SNVS_INDEX (0U)                 /*!< which SVNS GPR index is used for the firmware update status */
+#define FWUSTATUS_SNVS_MASK  UINT32_C(0xFF000000) /*!< used bits mask for firmware update status in SNVS GPR */
+#define FWUSTATUS_SNVS_POS   (24U)                /*!< shift position for firmware update status in SNVS GPR */
 
-#define RTCLOW_SNVS_INDEX (1U)          /*!< which SNVS GPR index is used for the lowest bits RTC offset */
-#define RTCLOW_SNVS_MASK  (0xFFFFFFFFU) /*!< used bits mask for lowest bits RTC offset in SNVS GPR */
-#define RTCLOW_SNVS_POS   (0U)          /*!< shift position for lowest bits RTC offset in SNVS GPR */
+#define RTCLOW_SNVS_INDEX (1U)                 /*!< which SNVS GPR index is used for the low part of the RTC offset */
+#define RTCLOW_SNVS_MASK  UINT32_C(0xFFFFFFFF) /*!< used bits mask for the low part of the RTC offset in SNVS GPR */
+#define RTCLOW_SNVS_POS   (0U)                 /*!< shift position for the low part of the RTC offset in SNVS GPR */
 
-#define RTCHIGH_SNVS_INDEX (2U)          /*!< which SNVS GPR index is used for the highest bits RTC offset */
-#define RTCHIGH_SNVS_MASK  (0xFFFFFFFFU) /*!< used bits mask for highest bits RTC offset in SNVS GPR */
-#define RTCHIGH_SNVS_POS   (0U)          /*!< shift position for highest bits RTC offset in SNVS GPR */
+#define RTCHIGH_SNVS_INDEX (2U)                 /*!< which SNVS GPR index is used for the high part of the RTC offset */
+#define RTCHIGH_SNVS_MASK  UINT32_C(0xFFFFFFFF) /*!< used bits mask for the high part of the RTC offset in SNVS GPR */
+#define RTCHIGH_SNVS_POS   (0U)                 /*!< shift position for the high part of the RTC offset in SNVS GPR */
 
-#define RESETREASON_SNVS_INDEX (3U)    /*!< which SNVS GPR index is used for the Reset Cause */
-#define RESETREASON_SNVS_MASK  (0xFFU) /*!< used bits mask for Reset Cause in SNVS GPR */
-#define RESETREASON_SNVS_POS   (0U)    /*!< shift position for Reset Cause in SNVS GPR */
+#define RESETREASON_SNVS_INDEX (3U)           /*!< which SNVS GPR index is used for the resetCause */
+#define RESETREASON_SNVS_MASK  UINT32_C(0xFF) /*!< used bits mask for resetCause in SNVS GPR */
+#define RESETREASON_SNVS_POS   (0U)           /*!< shift position for resetCause in SNVS GPR */
 
 #define SNVS_GET_SRTC_COUNT_RETRIES (3U) /*!< how often should we try getting a valid SRTC count */
 
-#define GPIO13_OUTPUT_MASK                                                                        \
-    ((1U << kHAL_SnvsUserOutput0) | (1U << kHAL_SnvsUserOutput1) | (1U << kHAL_SnvsUserOutput2) | \
-     (1U << kHAL_SnvsUserOutput3) | (1U << kHAL_SnvsSpiCs0) |                                     \
-     (1U << kHAL_SnvsSpiCs1)) /*!< GPIO13 bits used as outputs */
-#define GPIO13_INPUT_MASK                                                                      \
-    ((1U << kHAL_SnvsUserInput0) | (1U << kHAL_SnvsUserInput1) | (1U << kHAL_SnvsUserInput2) | \
-     (1U << kHAL_SnvsUserInput3)) /*!< GPIO13 bits used as inputs */
+#define GPIO13_OUTPUT_MASK                                                           \
+    ((UINT32_C(1) << kHAL_SnvsUserOutput0) | (UINT32_C(1) << kHAL_SnvsUserOutput1) | \
+     (UINT32_C(1) << kHAL_SnvsUserOutput2) | (UINT32_C(1) << kHAL_SnvsUserOutput3) | \
+     (UINT32_C(1) << kHAL_SnvsSpiCs0) | (UINT32_C(1) << kHAL_SnvsSpiCs1)) /*!< GPIO13 bits used as outputs */
+#define GPIO13_INPUT_MASK                                                          \
+    ((UINT32_C(1) << kHAL_SnvsUserInput0) | (UINT32_C(1) << kHAL_SnvsUserInput1) | \
+     (UINT32_C(1) << kHAL_SnvsUserInput2) | (UINT32_C(1) << kHAL_SnvsUserInput3)) /*!< GPIO13 bits used as inputs */
 
 #define DEBOUNCING_PINS_PER_PORT   (16U) /*!< how many pins per port do we sense? */
-#define DEBOUNCING_TIMEOUT_EXPIRED (1U)  /*!< timeout reached value */
-#define DEBOUNCING_TIMEOUT_IDLE    (0U)  /*!< timeout is now idle */
+#define DEBOUNCING_TIMEOUT_EXPIRED (1)   /*!< debouncing time expired value */
+#define DEBOUNCING_TIMEOUT_IDLE    (0)   /*!< debouncing is idle */
 
+/* see IMXRT1176 reference manual */
 #if HAL_SNVS_RTC_PERIODIC_INTERRUPT_FREQUENCY_EXP > 15U
 #error "HAL: Chosen SNVS RTC periodic interrupt frequency is not supported by hardware!"
 #else
@@ -91,42 +93,36 @@
 /* cross-core shared memory
  * address received from linker
  */
-#if defined(__ICCARM__) /* IAR Workbench */
-#pragma location = RPC_SHM_SECTION_NAME
-volatile rpc_shm_t g_rpcSHM;
-#elif defined(__CC_ARM) || defined(__ARMCC_VERSION) /* Keil MDK */
-volatile rpc_shm_t g_rpcSHM __attribute__((section(RPC_SHM_SECTION_NAME)));
-#elif defined(__GNUC__)
-volatile rpc_shm_t g_rpcSHM __attribute__((section(".noinit.$" RPC_SHM_SECTION_NAME)));
+#if defined(__GNUC__)
+volatile rpc_shm_t g_rpcSHM
+    __attribute__((section(".noinit.$" RPC_SHM_SECTION_NAME))); /*!< shared memory section for RPC */
 #else
 #error "g_rpcSHM: Please provide your definition of g_rpcSHM!"
 #endif
 
 /* AWDG init data shared memory
  * address received from linker
+ * if no SBL is available use static key and seed for testing and debugging
  */
 #if defined(NO_SBL)
-rpc_secwd_init_data_t g_awdgInitDataSHM = {.rngSeed    = QMC_CM4_TEST_AWDG_RNG_SEED,
-                                           .rngSeedLen = QMC_CM4_TEST_AWDG_RNG_SEED_SIZE,
-                                           .pk         = QMC_CM4_TEST_AWDG_PK,
-                                           .pkLen      = QMC_CM4_TEST_AWDG_PK_SIZE};
+rpc_secwd_init_data_t g_awdgInitDataSHM = {
+    .rngSeed    = QMC_CM4_TEST_AWDG_RNG_SEED,
+    .rngSeedLen = QMC_CM4_TEST_AWDG_RNG_SEED_SIZE,
+    .pk         = QMC_CM4_TEST_AWDG_PK,
+    .pkLen      = QMC_CM4_TEST_AWDG_PK_SIZE}; /*!< shared memory section for AWDG init data*/
 #else
-#if defined(__ICCARM__) /* IAR Workbench */
-#pragma location = RPC_SECWD_INIT_DATA_SECTION_NAME
-rpc_secwd_init_data_t g_awdgInitDataSHM;
-#elif defined(__CC_ARM) || defined(__ARMCC_VERSION) /* Keil MDK */
-rpc_secwd_init_data_t g_awdgInitDataSHM __attribute__((section(RPC_SECWD_INIT_DATA_SECTION_NAME)));
-#elif defined(__GNUC__)
-rpc_secwd_init_data_t g_awdgInitDataSHM __attribute__((section(".noinit.$" RPC_SECWD_INIT_DATA_SECTION_NAME)));
+#if defined(__GNUC__)
+rpc_secwd_init_data_t g_awdgInitDataSHM __attribute__((
+    section(".noinit.$" RPC_SECWD_INIT_DATA_SECTION_NAME))); /*!< shared memory section for AWDG init data */
 #else
 #error "g_awdgInitDataSHM: Please provide your definition of g_awdgInitDataSHM!"
 #endif
 #endif
 
-static uint32_t gs_criticalSectionNestingLevel                      = 0U;   /*!< nesting level for critical section */
-/* atomic makes sure data is properly aligned for atomic access */
-static atomic_int_least8_t gs_gpioChanges[DEBOUNCING_PINS_PER_PORT] = {0U}; /*!< record GPIO timeouts per pin */
-STATIC_TEST_VISIBLE _Atomic uint32_t gs_gpioState                   = 0U;   /*!< GPIO input shadow register */
+static uint32_t gs_criticalSectionNestingLevel = 0U; /*!< nesting level for critical section */
+/* _Atomic makes sure data is properly aligned for atomic access */
+static volatile _Atomic int8_t gs_gpioChanges[DEBOUNCING_PINS_PER_PORT] = {0U}; /*!< debouncing timer per pin */
+STATIC_TEST_VISIBLE volatile _Atomic uint32_t gs_gpioState = 0U;   /*!< GPIO input shadow register */
 
 /*******************************************************************************
  * Code
@@ -179,8 +175,15 @@ void HAL_GpioTimerHandler(void)
                 validShadowDr = true;
             }
 
-            /* bitwise operations to modify gpio state without disturbing the rest */
+            /* bitwise operations to modify gpio state without disturbing the rest
+             * these sequence contains two atomic operations (could be interrupted),
+             * but this is OK as it is executed in an interrupt and we have no nesting */
             gs_gpioState = (gs_gpioState & ~mask) | (shadowDr & mask);
+        }
+        else
+        {
+            /* no action required, "else" added for compliance */
+            ;
         }
         mask = mask << 1U;
     }
@@ -189,9 +192,9 @@ void HAL_GpioTimerHandler(void)
 void HAL_InitBoard(void)
 {
     BOARD_ConfigMPU();
-    /* clocks are configured on SBL (M7), just get core clock frequency */
+    /* clocks are configured in SBL (M7), just get core clock frequency */
     SystemCoreClock = CLOCK_GetRootClockFreq(kCLOCK_Root_M4);
-#if !defined(BOARD_INIT_DEBUG_CONSOLE_PERIPHERAL) && 0
+#if !defined(BOARD_INIT_DEBUG_CONSOLE_PERIPHERAL) && defined(ENABLE_M4_DEBUG_CONSOLE)
     /* NOTE only if debug console is wanted on CM4, remove if not needed anymore */
     BOARD_InitDebugConsole();
 #endif
@@ -249,23 +252,41 @@ void HAL_SnvsGpioInit(uint32_t initState)
     GPIO_PortEnableInterrupts(GPIO13, GPIO13_INPUT_MASK);
 }
 
-void HAL_InitSysTick(void)
+qmc_status_t HAL_InitSysTick(void)
 {
-    /* must not overflow */
-    assert(HAL_SYSTICK_PERIOD_MS <= UINT32_MAX / SystemCoreClock);
-    uint32_t ticks = SystemCoreClock * HAL_SYSTICK_PERIOD_MS / 1000U;
-    /* reload value must be possible */
-    assert((ticks - 1UL) <= SysTick_LOAD_RELOAD_Msk);
+    uint32_t ticks = 0U;
 
     /* copied and modified from ARM CMSIS code
-     * as we want to change the interupt priority ourselves */
+     * as we want to change the interrupt priority ourselves */
 
+    /* check for overflow */
+    assert(HAL_SYSTICK_PERIOD_MS <= UINT32_MAX / SystemCoreClock);
+    if (SystemCoreClock > (UINT32_MAX / HAL_SYSTICK_PERIOD_MS))
+    {
+        return kStatus_QMC_ErrRange;
+    }
+    ticks = SystemCoreClock * HAL_SYSTICK_PERIOD_MS / 1000U;
+    
+
+    /* unsupported */
+    assert((ticks > 0U) && ((ticks - 1U) <= SysTick_LOAD_RELOAD_Msk));
+    /* ticks value of 0 is not allowed */
+    if (0U == ticks)
+    {
+        return kStatus_QMC_ErrRange;
+    }
+    else if ((ticks - 1U) > SysTick_LOAD_RELOAD_Msk)
+    {
+       return kStatus_QMC_ErrRange;
+    }
     /* set reload register */
-    SysTick->LOAD = (uint32_t)(ticks - 1UL);
+    SysTick->LOAD = (uint32_t)(ticks - 1U);
     /* load the SysTick counter value */
-    SysTick->VAL = 0UL;
+    SysTick->VAL = 0U;
     /* enable SysTick exception and SysTick timer */
     SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk | SysTick_CTRL_ENABLE_Msk;
+
+    return kStatus_QMC_Ok;
 }
 
 void HAL_InitSrtc(void)
@@ -293,9 +314,9 @@ void HAL_InitSrtc(void)
 
 void HAL_InitRtc(void)
 {
-    /*! SNVS HP RTC configuration */
+    /* SNVS HP RTC configuration */
     const snvs_hp_rtc_config_t kSnvsHpConfig = {
-            .rtcCalEnable = false, .rtcCalValue = 0U, .periodicInterruptFreq = SNVS_RTC_PERIODIC_INTERRUPT_FREQUENCY};
+        .rtcCalEnable = false, .rtcCalValue = 0U, .periodicInterruptFreq = SNVS_RTC_PERIODIC_INTERRUPT_FREQUENCY};
 
     /* setup high-power SNVS */
     SNVS_HP_Init(SNVS);
@@ -364,7 +385,7 @@ void HAL_DisableInterCoreIRQ(void)
 {
     NVIC_DisableIRQ(GPR_IRQ_IRQn);
     /* barrier for interrupt disabling
-     * avoids that a pending IRQ handler is executed after the disabling instruction to avoid side effects
+     * avoids that a pending IRQ handler is executed after the disabling instruction; to avoid side effects
      * documentation-service.arm.com/static/5efefb97dbdee951c1cd5aaf?token= */
     __DSB();
     __ISB();
@@ -374,7 +395,7 @@ void HAL_EnableInterCoreIRQ(void)
 {
     NVIC_EnableIRQ(GPR_IRQ_IRQn);
     /* barrier for interrupt enabling
-     * avoids that following instructions are executed before calling the ISR to avoid side effects
+     * avoids that following instructions are executed before calling the ISR; to avoid side effects
      * documentation-service.arm.com/static/5efefb97dbdee951c1cd5aaf?token= */
     __DSB();
     __ISB();
@@ -385,10 +406,16 @@ void HAL_DataMemoryBarrier(void)
     __DMB();
 }
 
+void HAL_DataSynchronizationBarrier(void)
+{
+    __DSB();
+}
+
 void HAL_TriggerInterCoreIRQWhileIRQDisabled(void)
 {
     /* ensures memory accesses are retired and visible by the other core before the ISR is triggered */
     __DSB();
+    IOMUXC_GPR->GPR7 &= ~IOMUXC_GPR_GPR7_GINT(1U);
     IOMUXC_GPR->GPR7 |= IOMUXC_GPR_GPR7_GINT(1U);
     IOMUXC_GPR->GPR7 &= ~IOMUXC_GPR_GPR7_GINT(1U);
     /* do NOT clear pending IRQ here as M7 might have send another message!
@@ -399,6 +426,8 @@ void HAL_EnterCriticalSectionNonISR(void)
 {
     /* disable interrupts */
     __disable_irq();
+    /* nesting level should never reach such high values */
+    assert(gs_criticalSectionNestingLevel < UINT32_MAX);
     /* increase nesting level counter */
     gs_criticalSectionNestingLevel++;
 }
@@ -408,6 +437,10 @@ void HAL_ExitCriticalSectionNonISR(void)
     /* must be greater one else we never entered a critical section before
      * (programming error) */
     assert(gs_criticalSectionNestingLevel > 0U);
+    if (0U == gs_criticalSectionNestingLevel)
+    {
+        return;
+    }
 
     /* decrease nesting level counter, reenable interrupts if it is zero */
     gs_criticalSectionNestingLevel--;
@@ -425,7 +458,7 @@ void HAL_SetWdTimerBackup(uint16_t value)
 {
     uint32_t snvsStorage            = SNVS->LPGPR[WDTIMER_SNVS_INDEX];
     snvsStorage                     = snvsStorage & ~WDTIMER_SNVS_MASK;
-    snvsStorage                     = snvsStorage | (value << WDTIMER_SNVS_POS);
+    snvsStorage                     = snvsStorage | ((uint32_t)value << WDTIMER_SNVS_POS);
     SNVS->LPGPR[WDTIMER_SNVS_INDEX] = snvsStorage;
 }
 
@@ -439,7 +472,7 @@ void HAL_SetWdStatus(uint8_t status)
 {
     uint32_t snvsStorage             = SNVS->LPGPR[WDSTATUS_SNVS_INDEX];
     snvsStorage                      = snvsStorage & ~WDSTATUS_SNVS_MASK;
-    snvsStorage                      = snvsStorage | (status << WDSTATUS_SNVS_POS);
+    snvsStorage                      = snvsStorage | ((uint32_t)status << WDSTATUS_SNVS_POS);
     SNVS->LPGPR[WDSTATUS_SNVS_INDEX] = snvsStorage;
 }
 
@@ -453,7 +486,7 @@ void HAL_SetFwuStatus(uint8_t status)
 {
     uint32_t snvsStorage              = SNVS->LPGPR[FWUSTATUS_SNVS_INDEX];
     snvsStorage                       = snvsStorage & ~FWUSTATUS_SNVS_MASK;
-    snvsStorage                       = snvsStorage | (status << FWUSTATUS_SNVS_POS);
+    snvsStorage                       = snvsStorage | ((uint32_t)status << FWUSTATUS_SNVS_POS);
     SNVS->LPGPR[FWUSTATUS_SNVS_INDEX] = snvsStorage;
 }
 
@@ -465,20 +498,20 @@ uint8_t HAL_GetFwuStatus(void)
 
 void HAL_SetSrtcOffset(int64_t offset)
 {
-    SNVS->LPGPR[RTCLOW_SNVS_INDEX]  = (uint32_t)(offset);
-    SNVS->LPGPR[RTCHIGH_SNVS_INDEX] = (uint32_t)(offset >> 32U);
+    SNVS->LPGPR[RTCLOW_SNVS_INDEX]  = (uint32_t)(((uint64_t)offset) & 0xFFFFFFFFU);
+    SNVS->LPGPR[RTCHIGH_SNVS_INDEX] = (uint32_t)(((uint64_t)offset) >> 32U);
 }
 
 int64_t HAL_GetSrtcOffset(void)
 {
-    return (int64_t)SNVS->LPGPR[RTCLOW_SNVS_INDEX] | ((int64_t)SNVS->LPGPR[RTCHIGH_SNVS_INDEX]) << 32U;
+    return (int64_t)((uint64_t)SNVS->LPGPR[RTCLOW_SNVS_INDEX] | (((uint64_t)SNVS->LPGPR[RTCHIGH_SNVS_INDEX]) << 32U));
 }
 
 void HAL_SetResetCause(uint8_t cause)
 {
     uint32_t snvsStorage                = SNVS->LPGPR[RESETREASON_SNVS_INDEX];
     snvsStorage                         = snvsStorage & ~RESETREASON_SNVS_MASK;
-    snvsStorage                         = snvsStorage | (cause << RESETREASON_SNVS_POS);
+    snvsStorage                         = snvsStorage | ((uint32_t)cause << RESETREASON_SNVS_POS);
     SNVS->LPGPR[RESETREASON_SNVS_INDEX] = snvsStorage;
 }
 
@@ -506,8 +539,8 @@ uint32_t HAL_GetSnvsGpio13(void)
 qmc_status_t HAL_GetSrtcCount(int64_t *pRtcVal)
 {
     uint8_t tries      = 0U;
-    int64_t srtcValue1 = 0;
-    int64_t srtcValue2 = 0;
+    uint64_t srtcValue1 = 0;
+    uint64_t srtcValue2 = 0;
 
     if (NULL == pRtcVal)
     {
@@ -516,15 +549,17 @@ qmc_status_t HAL_GetSrtcCount(int64_t *pRtcVal)
 
     do
     {
-        /* read two consecutive times to make sure we have a stable value */
-        srtcValue1 = ((int64_t)SNVS->LPSRTCMR << 32U) | SNVS->LPSRTCLR;
-        srtcValue2 = ((int64_t)SNVS->LPSRTCMR << 32U) | SNVS->LPSRTCLR;
+        /* read two consecutive times to make sure we have a stable value 
+         * see reference manual */
+        srtcValue1 = ((uint64_t)SNVS->LPSRTCMR << 32U) | SNVS->LPSRTCLR;
+        srtcValue2 = ((uint64_t)SNVS->LPSRTCMR << 32U) | SNVS->LPSRTCLR;
         tries++;
     } while ((tries < SNVS_GET_SRTC_COUNT_RETRIES) && (srtcValue1 != srtcValue2));
 
-    if (tries < SNVS_GET_SRTC_COUNT_RETRIES)
+    if (srtcValue1 == srtcValue2)
     {
-        *pRtcVal = srtcValue1;
+        /* 17 most-significant bits are always zero, so converting to signed is OK */
+        *pRtcVal = (int64_t)srtcValue1;
         return kStatus_QMC_Ok;
     }
     else
@@ -540,7 +575,7 @@ void HAL_InitHWWatchdog(void)
         .enableWdog             = true,
         .workMode.enableWait    = false,
         .workMode.enableStop    = false,
-        .workMode.enableDebug   = true, /*!< pause watchdog when debugging */
+        .workMode.enableDebug   = true, /* pause watchdog when debugging */
         .enableInterrupt        = true,
         .timeoutValue           = HAL_WDG_TIMEOUT_VALUE,
         .interruptTimeValue     = HAL_WDG_INT_BEFORE_TIMEOUT_VALUE,
@@ -556,4 +591,25 @@ void HAL_InitHWWatchdog(void)
 void HAL_KickHWWatchdog(void)
 {
     WDOG_Refresh(WDOG1);
+}
+
+void HAL_InitMcuTemperatureSensor(void)
+{
+    tmpsns_config_t config = {0};
+	TMPSNS_GetDefaultConfig(&config);
+	TMPSNS_Init(TMPSNS, &config);
+    /* disable interrupts */
+    TMPSNS_DisableInterrupt(TMPSNS, kTEMPSENSOR_LowTempInterruptStatusEnable);
+	TMPSNS_DisableInterrupt(TMPSNS, kTEMPSENSOR_HighTempInterruptStatusEnable);
+	TMPSNS_DisableInterrupt(TMPSNS, kTEMPSENSOR_PanicTempInterruptStatusEnable);
+    TMPSNS_DisableInterrupt(TMPSNS, kTEMPSENSOR_FinishInterruptStatusEnable);
+}
+
+float HAL_GetMcuTemperature(void)
+{
+	float MCUTemp = 0;
+	TMPSNS_StartMeasure(TMPSNS);
+	MCUTemp = TMPSNS_GetCurrentTemperature(TMPSNS);
+	TMPSNS_StopMeasure(TMPSNS);
+    return MCUTemp;
 }

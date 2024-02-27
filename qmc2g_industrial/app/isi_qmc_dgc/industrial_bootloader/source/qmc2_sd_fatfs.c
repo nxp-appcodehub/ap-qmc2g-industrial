@@ -74,7 +74,7 @@ static sss_status_t SDCARD_FATFS_isCardInserted(sd_card_t *card, uint32_t status
 {
     assert(card != NULL);
     assert(card->usrParam.cd != NULL);
-    uint8_t attempts = 10;
+    uint8_t attempts = 2;
 
     if (card->usrParam.cd->type == kSD_DetectCardByGpioCD)
     {
@@ -143,9 +143,14 @@ sss_status_t QMC2_SD_FATFS_Open(const char* path)
     error = f_open(fileObj, _T(path), (FA_READ | FA_OPEN_EXISTING));
     if (error)
     {
-        if (error == FR_EXIST)
+        if(error == FR_EXIST)
         {
             PRINTF("File exists.\r\n");
+        }
+
+        if(error == FR_NO_FILE)
+        {
+        	return kStatus_SSS_Fail;
         }
         else
         {
@@ -214,7 +219,8 @@ sss_status_t QMC2_SD_FATFS_Init(bool *isSdCardInserted)
     if (SDCARD_FATFS_isCardInserted(card, kSD_Inserted) != kStatus_SSS_Success)
     {
         /* host deinitialize */
-        SD_HostDeinit(card);
+    	if (card->host != NULL)
+    		SD_HostDeinit(card);
         /* Return success. The card is not inserted. */
     	return kStatus_SSS_Success;
     }
@@ -248,9 +254,14 @@ sss_status_t QMC2_SD_FATFS_Init(bool *isSdCardInserted)
 sss_status_t QMC2_SD_FATFS_DeInit(void)
 {
     /* Card deinitialize */
-    SD_CardDeinit(card);
-    /* Host deinitialize */
-    SD_HostDeinit(card);
+	if (card != NULL)
+	{
+		SD_CardDeinit(card);
+
+		/* Host deinitialize */
+		if (card->host != NULL)
+			SD_HostDeinit(card);
+	}
 
     GPIO_PortDisableInterrupts(BOARD_SDMMC_SD_CD_GPIO_BASE, 1U << BOARD_SDMMC_SD_CD_GPIO_PIN);
     GPIO_PortClearInterruptFlags(BOARD_SDMMC_SD_CD_GPIO_BASE, ~0);

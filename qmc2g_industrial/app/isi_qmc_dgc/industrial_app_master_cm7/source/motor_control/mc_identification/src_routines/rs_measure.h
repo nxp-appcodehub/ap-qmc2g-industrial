@@ -28,8 +28,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RS_MEASURE_H_
-#define RS_MEASURE_H_
+#ifndef RS_MEASURE_H
+#define RS_MEASURE_H
 
 #include "mid_def.h"
 
@@ -46,4 +46,4 @@ extern void MID_getRs(mid_get_rs_t* sRsMeasFcn);
 }
 #endif
 
-#endif /* RS_MEASURE_H_ */
+#endif /* RS_MEASURE_H */

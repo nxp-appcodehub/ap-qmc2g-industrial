@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -37,10 +37,10 @@ void NAFE_HAL_init(FLEXIO_SPI_Type *halHdl, flexio_spi_master_config_t *masterCo
  * @retval Returns status based on the success of the write operation.
  */
 status_t NAFE_HAL_writeRegBlock(FLEXIO_SPI_Type *halHdl, uint32_t cmd,
-                            uint32_t data, uint32_t dataBits)
+                            uint32_t data, uint16_t dataBits)
 {
 	uint32_t tmpRetVal = 0;
-    uint16_t bitcount = COMMAND_BITCOUNT + dataBits;
+    uint16_t bitcount = (uint16_t) COMMAND_BITCOUNT + dataBits;
     uint64_t combinedCmdData = 0;
     status_t statusCheck = kStatus_Fail;
 #if SPI_RETRY_TIMES
@@ -91,7 +91,7 @@ status_t NAFE_HAL_writeRegBlock(FLEXIO_SPI_Type *halHdl, uint32_t cmd,
  * @retval Returns status based on the success of the write and read operations.
  */
 status_t NAFE_HAL_readRegBlock(FLEXIO_SPI_Type *halHdl, uint32_t cmd,
-                           uint32_t *data, uint32_t dataBits)
+                           uint32_t *data, uint16_t dataBits)
 {
 	uint16_t bitcount = COMMAND_BITCOUNT + dataBits;
 	status_t statusCheck = kStatus_Fail;

@@ -66,6 +66,9 @@ typedef enum _qmc_reset_cause_id
     kQMC_ResetFunctionalWd = 3U,
 } qmc_reset_cause_id_t;
 
+/*!
+ * @brief Common API return values.
+ */
 typedef enum _qmc_status
 {
     kStatus_QMC_Ok            = kStatus_Success,                         /*!< Operation was successful; no errors occurred. */
@@ -73,7 +76,14 @@ typedef enum _qmc_status
     kStatus_QMC_ErrRange      = kStatus_OutOfRange,                      /*!< Error in case input argument is out of range e.g. array out of bounds, value not defined in enumeration. */
     kStatus_QMC_ErrArgInvalid = kStatus_InvalidArgument,                 /*!< Argument invalid e.g. wrong type, NULL pointer, etc. */
     kStatus_QMC_Timeout       = kStatus_Timeout,                         /*!< Operation was not carried out because a timeout occurred. */
-
+    kStatus_QMC_ErrBusy        = MAKE_STATUS(kStatusGroup_QMC, 7),       /*!< Error because device or resource is busy. */
+    kStatus_QMC_ErrMem         = MAKE_STATUS(kStatusGroup_QMC, 8),       /*!< Out of memory error. */
+    kStatus_QMC_ErrSync        = MAKE_STATUS(kStatusGroup_QMC, 9),       /*!< Synchronization error when accessing shared resources. */
+    kStatus_QMC_ErrNoMsg       = MAKE_STATUS(kStatusGroup_QMC, 10),      /*!< Error if a message shall be retrieved (e.g. from a message queue) but is not available. */
+    kStatus_QMC_ErrInterrupted = MAKE_STATUS(kStatusGroup_QMC, 11),      /*!< Operation could not be executed because it was interrupted. */
+    kStatus_QMC_ErrNoBufs      = MAKE_STATUS(kStatusGroup_QMC, 12),      /*!< Given buffer space is not sufficient. */
+    kStatus_QMC_ErrInternal    = MAKE_STATUS(kStatusGroup_QMC, 13),      /*!< An internal error occurred. */
+    kStatus_QMC_ErrSignatureInvalid = MAKE_STATUS(kStatusGroup_QMC, 14)  /*!< A signature check failed. */
 } qmc_status_t;
 
 /*!
@@ -85,6 +95,7 @@ typedef struct _qmc_timestamp
     uint16_t milliseconds;
 } qmc_timestamp_t;
 
+typedef uint32_t TickType_t;
 /*!
  * @brief Firmware version (format: MAJOR . MINOR . BUGFIX)
  */
@@ -145,37 +156,6 @@ typedef struct _sbl_fwu_manifest
 	bool isFwuImgOnSdCard;
 } fwu_manifest_t;
 
-typedef enum _log_entry
-{
-    kLOG_Scp03ConnFailed 			= 0x31U, /* SCP03 connection Failed. */
-	kLOG_Scp03KeyReconFailed		= 0x32U, /* Key reconstruction Failed. */
-	kLOG_NewFWReverted				= 0x33U, /* Program Backup image.*/
-	kLOG_NewFWRevertFailed			= 0x34U, /* Program Backup image Failed.*/
-	kLOG_NewFWCommited 				= 0x35U, /* Commit new version of FW into SE and create new Backup Image. */
-	kLOG_NewFWCommitFailed			= 0x36U, /* Commit new version of FW into SE and create new Backup Image Failed. */
-	kLOG_AwdtExpired				= 0x37U, /* Authenticated WDOG expired, reboot keeping this state in SNVS_LP_GPR to go into maitanance mode. */
-	kLOG_CfgDataBackuped			= 0x38U, /* Back up configuration data. */
-	kLOG_CfgDataBackupFailed		= 0x39U, /* Back up configuration data failed. */
-	kLOG_MainFwAuthFailed			= 0x3AU, /* Main FW authentication failed. */
-	kLOG_FwuAuthFailed				= 0x3BU, /* FWU authentication failed. */
-	kLOG_StackError					= 0x3CU, /* Stack Error/Corruption detected. */
-	kLOG_KeyRevocation				= 0x3DU, /* Key Revocation request. */
-	kLOG_InvalidFwuVersion			= 0x3EU, /* Invalid FWU version */
-	kLOG_ExtMemOprFailed			= 0x3FU, /* Invalid FWU version */
-	kLOG_BackUpImgAuthFailed		= 0x41U, /* Invalid FWU version */
-	kLOG_SdCardFailed				= 0x42U, /* Invalid FWU version */
-	kLOG_HwInitDeinitFailed			= 0x43U, /* HW Init Failed */
-	kLOG_SvnsLpGprOpFailed			= 0x45U, /* SNVS LP GPR read or write failed.*/
-	kLOG_Scp03KeyRotationFailed		= 0x46U, /* Key rotation Failed. */
-	kLOG_DecomissioningFailed		= 0x47U, /* Decommisioning failed. */
-	kLOG_VerReadFromSeFailed		= 0x48U, /* Reading version from SE failed. */
-	kLOG_FwExecutionFailed			= 0x49U, /* Booting of the main FW failed. */
-	kLOG_FwuCommitFailed			= 0x50U, /* Booting of the main FW failed. */
-	kLOG_DeviceDecommisioned		= 0x61U, /* Booting of the main FW failed. */
-	kLOG_RpcInitFailed				= 0x73U, /* Booting of the main FW failed. */
-	kLOG_NoLogEntry					= 0x00U, /* There is not log entry. */
-} log_entry_t;
-
 /* SBL interna state */
 typedef enum _fwu_int_state
 {
@@ -215,7 +195,6 @@ typedef enum _fw_state
     kFWU_BackupCfgData  = 0x04U, /*!< Back up configuration data */
     kFWU_AwdtExpired    = 0x08U, /*!< Authenticated watchdog expired; reboot keeping this state in SNVS_LP_GPR (main FW must go into maintenance mode) */
     kFWU_VerifyFw       = 0x10U, /*!< After FW update is programmed, SBL indicates to the new FW that a self-check must be performed to provide kFWU_Commit or kFWU_Revert status finalizing the FW update process. */
-	kFWU_TimestampIssue = 0x20U, /*!< Firmware timestamp could not be checked, e.g. timestamp is in the future / RTC not set correctly. */
 	kFWU_NoState  		= 0x00U,
 } fw_state_t;
 
@@ -244,11 +223,13 @@ typedef struct _scp03_keys
 
 typedef struct _log_keys
 {
-	uint8_t aesKey1[PUF_INTRINSIC_LOG_KEY_SIZE];
-	uint8_t nonce1[PUF_INTRINSIC_LOG_NONCE_SIZE];
-	uint8_t aesKey2[PUF_INTRINSIC_LOG_KEY_SIZE];
-	uint8_t nonce2[PUF_INTRINSIC_LOG_NONCE_SIZE];
+	uint8_t aesKeyConfig[PUF_INTRINSIC_LOG_KEY_SIZE];
+	uint8_t nonceConfig[PUF_INTRINSIC_LOG_NONCE_SIZE];
+	uint8_t aesKeyLog[PUF_INTRINSIC_LOG_KEY_SIZE];
+	uint8_t nonceLog[PUF_INTRINSIC_LOG_NONCE_SIZE];
 }  log_keys_t;
+
+extern log_keys_t g_sbl_prov_keys;
 
 typedef struct _scp03_puf_key_codes
 {
@@ -260,10 +241,10 @@ typedef struct _scp03_puf_key_codes
 
 typedef struct _log_puf_key_codes
 {
-	uint8_t aesKeyCode1[PUF_INTRINSIC_LOG_KEY_CODE_SIZE];
-	uint8_t nonceKeyCode1[PUF_INTRINSIC_LOG_NONCE_CODE_SIZE];
-	uint8_t aesKeyCode2[PUF_INTRINSIC_LOG_KEY_CODE_SIZE];
-	uint8_t nonceKeyCode2[PUF_INTRINSIC_LOG_NONCE_CODE_SIZE];
+	uint8_t aesKeyConfig[PUF_INTRINSIC_LOG_KEY_CODE_SIZE];
+	uint8_t nonceConfig[PUF_INTRINSIC_LOG_NONCE_CODE_SIZE];
+	uint8_t aesKeyLog[PUF_INTRINSIC_LOG_KEY_CODE_SIZE];
+	uint8_t nonceLog[PUF_INTRINSIC_LOG_NONCE_CODE_SIZE];
 } log_puf_key_codes_t;
 
 typedef struct _puf_key_store
@@ -352,6 +333,17 @@ typedef struct _boot_data
 	se_data_t seData;
 	sdcard_t sdCard;
 } boot_data_t;
+
+/*!
+ * @brief Represents a memory write request.
+ */
+typedef struct _qmc_mem_write
+{
+	uintptr_t baseAddress;
+    uint32_t data[16U];
+    uint8_t dataWords;
+    uint8_t accessSize;
+} qmc_mem_write_t;
 
 //------------------------------------------------------------------------------
 // Global Variables

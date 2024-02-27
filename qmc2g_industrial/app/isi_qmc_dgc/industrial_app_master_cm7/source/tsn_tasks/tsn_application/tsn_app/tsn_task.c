@@ -21,6 +21,10 @@
 
 static void tsn_net_st_oper_config_print(struct tsn_task *task);
 
+char proc_time[] = "processing time";
+char total_time[] = "total time";
+char sched_err[] = "sched err";
+
 
 
 /*	tsn_task_stats_init
@@ -42,13 +46,15 @@ static void tsn_net_st_oper_config_print(struct tsn_task *task);
  */
 void tsn_task_stats_init(struct tsn_task *task)
 {
-    stats_init(&task->stats.sched_err, 31, "sched err", NULL);
+
+
+    stats_init(&task->stats.sched_err, 31, sched_err, NULL);
     hist_init(&task->stats.sched_err_hist, 100, 100);
 
-    stats_init(&task->stats.proc_time, 31, "processing time", NULL);
+    stats_init(&task->stats.proc_time, 31, proc_time, NULL);
     hist_init(&task->stats.proc_time_hist, 100, 1000);
 
-    stats_init(&task->stats.total_time, 31, "total time", NULL);
+    stats_init(&task->stats.total_time, 31, total_time, NULL);
     hist_init(&task->stats.total_time_hist, 100, 1000);
 
     task->stats.sched_err_max = 0;
@@ -360,10 +366,18 @@ static unsigned int frame_tx_time_ns(unsigned int frame_size, int speed_mbps)
 {
     unsigned int eth_size;
 
+    if(speed_mbps < 1 || speed_mbps > 1000)
+    {
+    	speed_mbps = 1000;
+    }
+
     eth_size = sizeof(struct eth_hdr) + frame_size + ETHER_FCS;
 
     if (eth_size < ETHER_MIN_FRAME_SIZE)
         eth_size = ETHER_MIN_FRAME_SIZE;
+
+    if(eth_size > ETHER_MTU)
+    	eth_size = ETHER_MTU;
 
     eth_size += ETHER_IFG + ETHER_PREAMBLE;
 
@@ -720,8 +734,12 @@ int tsn_task_register(struct tsn_task **task, struct tsn_task_params *params,
                       int id, void (*main_loop)(void *), void *ctx,
                       void (*timer_callback)(void *, int))
 {
-    char task_name[16];
+    char task_name[20];
+    char task_name_init[20] = {"tsn_task1"};
+
     char timer_name[16];
+    char timer_name_init[16] = {"task0 timer"};
+    int checkResult = 0;
 
     *task = pvPortMalloc(sizeof(struct tsn_task));
     if (!(*task))
@@ -733,8 +751,19 @@ int tsn_task_register(struct tsn_task **task, struct tsn_task_params *params,
     (*task)->params = params;
     (*task)->ctx = ctx;
 
-    sprintf(task_name, "tsn task%1d", (*task)->id);
-    sprintf(timer_name, "task%1d timer", (*task)->id);
+    checkResult = sprintf(task_name, "tsn task%1d", (*task)->id);
+
+    if(checkResult < 0 || checkResult >= sizeof(task_name))
+    {
+    	memcpy(task_name, task_name_init, sizeof(task_name_init));
+    }
+
+    checkResult = sprintf(timer_name, "task%1d timer", (*task)->id);
+
+    if(checkResult < 0 || checkResult >= sizeof(task_name))
+    {
+    	memcpy(timer_name, timer_name_init, sizeof(timer_name_init));
+    }
 
     if (tsn_task_net_init(*task) < 0) {
 #if PRINT_LEVEL == VERBOSE_DEBUG

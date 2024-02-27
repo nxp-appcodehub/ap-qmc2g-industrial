@@ -1,0 +1,18 @@
+options {
+    flags = 0x00;			   // No need to configure flags for this example
+    startAddress = 0x60000000; // FlexSPI1
+    ivtOffset = 0x1000;		   // FlexSPI NOR memory must have IVT on 0x1000 offset 	
+    initialLoadSize = 0x2000;  // 0x60002000 resulting address of the app's vector table base address
+    //DCDFilePath = "dcd.bin";
+    # Note: This is required if the default entrypoint is not the Reset_Handler 
+    #       Please set the entryPointAddress to the base address of vector table
+    #sentryPointAddress = 0x60002000;
+}
+
+sources {
+    elfFile = extern(0);
+}
+
+section (0)
+{
+}

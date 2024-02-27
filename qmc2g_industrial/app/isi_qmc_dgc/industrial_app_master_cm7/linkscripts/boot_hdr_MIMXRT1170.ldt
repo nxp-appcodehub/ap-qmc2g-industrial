@@ -39,9 +39,9 @@
 </#if>
         KEEP(*(.boot_hdr.dcd_data))
         __boot_hdr_end__ = ABSOLUTE(.) ;
-        FILL(0xff)  
-        . = ALIGN(0x80000) ;       
-               
+        FILL(0xff)
+        . = ALIGN(0x80000) ;
+
     } >${CODE}
 
 <#if (PLAIN_LOAD_IMAGE) >

@@ -12,65 +12,77 @@
  * @file awdg_api.c
  * @brief Defines the authenticated watchdog timer (AWDG).
  *
- * The authenticated watchdog timer is an extension for the LWDGU module. An authenticated
- * watchdog only allows the deferral if a fresh + valid signed ticket is provided.
+ * The authenticated watchdog timer is an extension of the LWDGU module. An authenticated
+ * watchdog only performs a deferral if a fresh and valid signed ticket is provided.
  *
  * This module relies on the mbedtls library and requires at least AWDG_MBEDTLS_HEAP_MIN_STATIC_BUFFER_SIZE
- * bytes of memory. The user has to setup mbedtls to have at least this amount of heap
- * memory available!
+ * bytes of memory. The user must set up mbedtls to have at least this heap memory available!
  *
- * The AWDG has to be initialized dynamically with the AWDG_Init() function which also
+ * The AWDG has to be initialized dynamically with the AWDG_Init() function, which also
  * starts the watchdog. A nonce for ticket creation can be obtained by calling the
  * AWDG_GetNonce() function. A signed ticket can be given to and verified by the AWDG
- * using the AWDG_ValidateTicket() function (takes up to 15016ms on a RT1176 CM4).
+ * using the AWDG_ValidateTicket() function (takes up to 15016ms on an RT1176 CM4).
  * After a successful verification attempt, the user can defer the watchdog by executing
  * the AWDG_DeferWatchdog() function.
  *
+ * The AWDG_Tick() and AWDG_GetRemainingTicks() functions can be called from interrupts.
+ * Other functions should not be called from interrupts!
  * Check the API descriptions of the individual functions for detailed information
  * about the concurrency assumptions.
  *
- * The ticket signature algorithm is fixed to ECDSA with a 512 bit curve, the
- * signature and key have to be in the ASN.1 DER format defined in www.secg.org/sec1-v2.pdf
+ * The ticket signature algorithm is fixed to ECDSA with a 512-bit curve. The
+ * signature and key must be in the ASN.1 DER format defined in www.secg.org/sec1-v2.pdf
  * Appendix C. The ticket is a binary blob with the following content:
- *  | new timeout (u32 LE) | ASN.1 DER 512 bit ECDSA signature |
+ * 
+ *  ```text
+ *  | new timeout (u32 LE) | ASN.1 DER 512-bit ECDSA signature |
  *   0                    3 4                               140 (max)
- *
- * The external requirements for the QMC2G project are:
- *  - The AWDG should be ticked every millisecond. This allows timeout periods
+ *  ```
+ * 
+ * The external requirements for the QMC 2G project are:
+ *  - The AWDG should be ticked every millisecond allowing timeout periods
  *    up to (2^32 - 2) / 1000 / 3600 / 24 ~ 49 days.
- *  - After the AWDG expires the system has to be notified about the upcoming reset (logging)
- *    and the reset cause  has to be stored in the SNVS storage. The reset cause should not
- *    be reset during booting by the CM4 (as the CM7 application needs the contents).
- *  - The AWDG's counter value and state (running / not running) should be stored in a
- *    shadow register for the SNVS storage after each AWDG tick in the timer interrupt.
- *    The backup counter value is calculated by right shifting the current tick value by 16
- *    (+ rounding up; value approximately represents minutes). If the AWDG has not expired the
- *    backup state value matches the AWDG's isRunning flag, otherwise it is set to 0.
- *    If the AWDG did expire the state value of 0 is directly written into the SNVS
- *    storage, similar as the reset cause, to ensure the values are backed up before
- *    the system reset.
- *    The shadow register is periodically written back to the SNVS storage in the main loop.
- *    These backup values are used during initialization to restore the watchdog's state (if it was running).
- *    For the initialization the 16-bit shifted counter value is decremented by 1.
- *    The two possible saved states before an initialization are: Timer was not running at all (fresh init)
- *    and timer was running (resume with values from SNVS).
- *    The SNVS values are reset to zero at a cold boot, hence the values in the SNVS storage
- *    should be designed so that an initial value of zero is logically correct
- *    (e.g. a running flag is ok).
- *  - The before mentioned SNVS storage has to be isolated from the CM7 after the initial
- *    bootloader handed over control and must be only accessible by the CM4 afterwards.
+ *  - After the AWDG expires, the system has to be notified about the upcoming reset (logging), 
+ *    and the reset cause has to be stored in the SNVS (secure non-volatile storage). 
+ *    The previous reset cause should be available after a reboot (as the CM7 application 
+ *    needs this information).
+ *  - The AWDG's tick value and state (running / not running) should periodically be stored
+ *    in the SNVS to restore the state after a reset. The backup tick value is calculated by right-shifting 
+ *    the current tick value by 16 (rounding up; value approximately represents minutes). If the AWDG has not expired,
+ *    the backup state value is 1. Otherwise, it is set to 0. If the AWDG did expire, the state value of 0
+ *    and the reset cause are directly written into the SNVS to ensure these values are backed up before
+ *    the system reset. The backup values are used during initialization to restore the watchdog's state 
+ *    (if it was running). The 16-bit shifted tick value is halved before the initialization to ensure the 
+ *    AWDG expires in case of a reboot loop. Before an initialization, the two possible saved states are:  
+ *    Timer was not running at all (fresh init), or timer was running (resume with values from SNVS).
+ *    The SNVS values are reset to zero at a cold boot. Hence, the backup format should be designed so that
+ *    initial zero values are logically correct (e.g., an isRunning flag is ok).
+ *  - The before-mentioned SNVS must be isolated from the CM7 after the initial
+ *    bootloader handed over control and only accessible by the CM4 afterward.
  *  - If the AWDG should expire during the grace period of a functional watchdog unit,
  *    the reset cause shall be overwritten to reflect that the AWDG expired. This
- *    behaviour is relevant for security as the reset cause is used to trigger an
- *    boot of the recovery image. However, in the worst case this means that the log entry describing
- *    that the AWDG expired will not make it into the log file.
- *    Further, in the case a functional watchdog unit expires during the grace period of the AWDG
+ *    behavior is relevant for security as the reset cause triggers a boot into recovery mode. 
+ *    However, in the worst case, the log entry describing the AWDG expired will not appear in the log file. 
+ *    Further, if a functional watchdog unit expires during the grace period of the AWDG,
  *    the reset cause should not be overwritten by the functional watchdog unit!
- *  - If the AWDG initialization fails the caller has to ensure that the board reboots
+ *  - If the AWDG initialization fails, the caller has to ensure that the board reboots
  *    into recovery mode.
- *  - The QMC project needs possible timeout times of >= 7 days, this should be asserted wherever
- *    the AWDG is configured. Can not be done in this module as it would influence testability.
- *
+ *  - The QMC 2G project needs possible timeout times of >= 7 days, which should be asserted wherever
+ *    the AWDG is configured. This assertion can not be done in this module as it would influence 
+ *    testability.
+ *  - The initial seed (384 bit of min-entropy) for initializing the used CTR_DRBG implementation from mbedtls comes 
+ *    from the DRBG in CAAM and is passed to the CM4 via the bootloader (CAAM usage is reserved to the CM7).  
+ *    However, as stated below reseeding is disabled as no access to an entropy source is possible afterwards.
+ * 
+ * Limitations:
+ *  - The CM4 does not have access to the secure element or other entropy providers. Hence, the used software
+ *    DRBG only receives entropy provided by CAAM's DRBG once. Therefore, prediction resistance was turned off and
+ *    the reseeding interval was increased to INT32_MAX - 1 requests which is below the maximum allowed 2^48 requests
+ *    without reseeding according to NIST SP 800-90A. If reseeding is still triggered, it will fail and the AWDG is 
+ *    disabled.
+ *    For a genuine application we expect that the AWDG_ValidateTicket() call which fetches random data from the 
+ *    DRBG is called at max in 10s interval. Hence, the AWDG could operate ~680 years (beyond the lifetime of the device) 
+ *    before it would be disabled.
  */
 #include "awdg_api.h"
 #include "awdg_int.h"
@@ -103,34 +115,32 @@ STATIC_TEST_VISIBLE awdg_t gs_awdg;
  ******************************************************************************/
 
 /*!
- * @brief Function that mbedtls calls when entropy is needed for the random number generator
- *        More details here: tls.mbed.org/module-level-design-rng
+ * @brief Function that mbedtls calls when entropy is needed for the random number generator.
+ *        More details here: mbed-tls.readthedocs.io/projects/api/en/development/api/file/ctr__drbg_8h
  *
  * @startuml
  * start
  *  :ret = -1;
  *  if () then (gs_awdg.wasEntropyUsed == false && len <= AWDG_RNG_SEED_LENGTH)
  *     :gs_awdg.wasEntropyUsed = true
- *     output = gs_awdg.rngSeed
- *     gs_awdg.rngSeed = 0
+ *     ~*pOutput = ~*gs_awdg.rngSeed
+ *     ~*gs_awdg.rngSeed = 0
  *     ret = 0;
  *  else ()
- *     ret = -1;
+ *     :ret = -1;
  *  endif
  * :return ret;
  * stop
  * @enduml
  *
- * tls.mbed.org/img/plantuml/VLBDJiCm3BxdAQpTnmDC58q_LLmu53WZDp7CKfT6YJjfRuzJsf6DGgLARVtzEZNR91Xbs7V6e9K-mcq87LiKxhqnGMTiEQ0NMDs_DkyFpLsz0apGFDVduqSliGz7OweAdZmBOyU9eAfCeGZhcypSb0WD89JD-Q0Fex3U9sH3YMG2pOF9QmCV97O7D5cVDEOi6NwzNl_WPwIZHUpi6TMJN8dAgRHOhL4YUjVlmG_xbk9V_GfWUnHAv_tw89C7i1UA1-pq7UrEF-WHX4YExQYdADRktf9cnxRJLA3N_tl8Y5_zPjhYFl9mOIU5LRaNyiwC7T0vpZ4rlaD129YIpalAMt1PSUmw9FQV83kw95wDaYMj9ayn4y-Mk23yCluOvH7aWjzfI-h5MPgjEkQ__Wi0
- *
  * Zeros the the gs_awdg.rngSeed buffer after the seed was consumed.
  *
- * @param pParam User-supplied parameter, in our case NULL
- * @param pOutput The data that needs to be filled with entropy
- * @param len The length of the output data to be filled
+ * @param pParam User-supplied parameter, in our case NULL.
+ * @param pOutput The data that needs to be filled with entropy.
+ * @param len The length of the output data to be filled.
  * @return Zero if success, any other value if an error occurred.
  */
-static int mbedtls_custom_entropy_func(void *pParam, unsigned char *pOutput, size_t len)
+STATIC_TEST_VISIBLE int mbedtls_custom_entropy_func(void *pParam, unsigned char *pOutput, size_t len)
 {
     int ret = -1;
     (void)pParam;
@@ -172,25 +182,25 @@ static void AWDG_FreeMbedtlsInternal(void)
  *      :ret = false
  *      mbedtls_ctr_drbg_init(&gs_awdg.ctrDrbg)
  *      mbedtls_pk_init(&gs_awdg.pk)
- *      gs_awdg.rngSeed = rngSeed
+ *      ~*gs_awdg.rngSeed = ~*pRngSeed
  *      gs_awdg.rngSeedLen = rngSeedLen;
  *      if (mbedtls_ctr_drbg_seed(&gs_awdg.ctrDrbg, mbedtls_custom_entropy_func, NULL, NULL, 0U)) then (failed)
- *         : *detailedReturn = kStatus_AWDG_InitCtrDrbgSeedError
+ *         : *pDetailedReturn = kStatus_AWDG_InitCtrDrbgSeedError
  *         ret = false;
- *      elseif (mbedtls_pk_parse_public_key(&gs_awdg.pk, eccPublicKey, keyLen)) then (failed)
- *         : *detailedReturn = kStatus_AWDG_InitParseEccKeyError
+ *      elseif (mbedtls_pk_parse_public_key(&gs_awdg.pk, pEccPublicKey, keyLen)) then (failed)
+ *         : *pDetailedReturn = kStatus_AWDG_InitParseEccKeyError
  *         ret = false;
  *      elseif (mbedtls_pk_can_do(&gs_awdg.pk, AWDG_EXPECTED_KEY_TYPE)) then (false)
- *         : *detailedReturn = kStatus_AWDG_InitParseEccKeyError
+ *         : *pDetailedReturn = kStatus_AWDG_InitParseEccKeyError
  *         ret = false;
  *      elseif (mbedtls_pk_get_bitlen(&gs_awdg.pk) != AWDG_EXPECTED_CURVE_SIZE_BIT) then (true)
- *         : *detailedReturn = kStatus_AWDG_InitParseEccKeyError
+ *         : *pDetailedReturn = kStatus_AWDG_InitParseEccKeyError
  *         ret = false;
  *      else (else)
- *         : *detailedReturn = kStatus_AWDG_InitInitializedNew
+ *         : *pDetailedReturn = kStatus_AWDG_InitInitializedNew
  *         ret = true;
  *      endif
- *      if (ret == false)
+ *      if (ret) then (false)
  *         :AWDG_FreeMbedtlsInternal();
  *      endif
  * :return ret;
@@ -198,16 +208,14 @@ static void AWDG_FreeMbedtlsInternal(void)
  * @enduml
  *
  * @param pRngSeed Pointer to a byte array containing the RNG seed.
- * @param rngSeedLen Length of the RNG seed.
  * @param pEccPublicKey Pointer to a byte array containing the ECC public key.
  * @param keyLen Length of the ECC public key.
  * @param pDetailedReturn To this memory location a more detailed return value is written.
  * @return An boolean.
- * @retval true the function succeeded.
- * @retval false the function failed.
+ * @retval true The function succeeded.
+ * @retval false The function failed.
  */
 static bool AWDG_SetupMbedtlsInternal(const uint8_t *const pRngSeed,
-                                      const uint32_t rngSeedLen,
                                       const uint8_t *const pEccPublicKey,
                                       const uint32_t keyLen,
                                       awdg_init_status_t *const pDetailedReturn)
@@ -220,16 +228,18 @@ static bool AWDG_SetupMbedtlsInternal(const uint8_t *const pRngSeed,
     /* init random number generator context */
     mbedtls_ctr_drbg_init(&gs_awdg.ctrDrbg);
     mbedtls_ctr_drbg_set_entropy_len(&gs_awdg.ctrDrbg, AWDG_RNG_SEED_LENGTH);
-    /* disable reseeding (because we don't update the entropy source) */
+    /* disable reseeding (after the initial seed we have no access to an entropy source anymore) */
     mbedtls_ctr_drbg_set_prediction_resistance(&gs_awdg.ctrDrbg, MBEDTLS_CTR_DRBG_PR_OFF);
-    mbedtls_ctr_drbg_set_reseed_interval(&gs_awdg.ctrDrbg, INT_MAX);
+    /* allowed maximum is 2^48 according to NIST SP 800-90A 
+     * -1 as mbedtls seems to never trigger reseeding if INT32_MAX is set and we want to trigger it */
+    mbedtls_ctr_drbg_set_reseed_interval(&gs_awdg.ctrDrbg, INT32_MAX - 1);
 
     /* init public key */
     mbedtls_pk_init(&gs_awdg.pk);
 
-    /* copy seed - length was already checked */
-    (void)memcpy(gs_awdg.rngSeed, pRngSeed, rngSeedLen);
-    gs_awdg.rngSeedLen = rngSeedLen;
+    /* copy seed - pRngSeed length was already checked in AWDG_Init() */
+    (void)memcpy(gs_awdg.rngSeed, pRngSeed, AWDG_RNG_SEED_LENGTH);
+    gs_awdg.rngSeedLen = AWDG_RNG_SEED_LENGTH;
 
     /* seed rng */
     if (0 != mbedtls_ctr_drbg_seed(&gs_awdg.ctrDrbg, mbedtls_custom_entropy_func, NULL, NULL, 0U))
@@ -315,7 +325,7 @@ awdg_init_status_t AWDG_Init(const uint32_t initialTimeoutMs,
         ret = kStatus_AWDG_InitLogicalWatchdogUnitError;
     }
     /* setup mbedtls */
-    else if (false == AWDG_SetupMbedtlsInternal(pRngSeed, rngSeedLen, pEccPublicKey, keyLen, &setupMbedtlsRet))
+    else if (false == AWDG_SetupMbedtlsInternal(pRngSeed, pEccPublicKey, keyLen, &setupMbedtlsRet))
     {
         ret = setupMbedtlsRet;
     }
@@ -350,7 +360,7 @@ awdg_init_status_t AWDG_Init(const uint32_t initialTimeoutMs,
         ret = kStatus_AWDG_InitInitializedNew;
     }
 
-    /* error happend - perform cleanup */
+    /* error happened - perform cleanup */
     if ((kStatus_AWDG_InitInitializedResumed != ret) && (kStatus_AWDG_InitInitializedNew != ret))
     {
         /* was mbedtls initialized ? if so cleanup */
@@ -366,8 +376,11 @@ awdg_init_status_t AWDG_Init(const uint32_t initialTimeoutMs,
 /* has to be run while interrupts are disabled */
 lwdg_tick_status_t AWDG_Tick(void)
 {
+    /* to comply with CERT C rule PRE31-C we buffer variables from the volatile struct */
+    uint8_t tmpLwdgsCount = gs_awdg.watchdogUnit.lwdgsCount;
+    (void) tmpLwdgsCount;
     /* must be that way if initialization was programmed correctly */
-    assert(gs_awdg.watchdogUnit.lwdgsCount > 0U);
+    assert(tmpLwdgsCount > 0U);
 
     return LWDGU_Tick(&gs_awdg.watchdogUnit);
 }
@@ -482,6 +495,7 @@ awdg_defer_watchdog_status_t AWDG_DeferWatchdog(void)
     {
         kickRet = LWDGU_KickOne(&gs_awdg.watchdogUnit, 0U);
         /* must be true if LWDGU unit behaves as described */
+        (void)kickRet;
         assert(kStatus_LWDG_KickKicked == kickRet);
         ret = kStatus_AWDG_DeferWatchdogOk;
     }
@@ -500,6 +514,7 @@ uint32_t AWDG_GetRemainingTicks(void)
 
     lwdgRet = LWDGU_GetRemainingTicksWatchdog(&gs_awdg.watchdogUnit, 0U, &remainingTicks);
     /* must be true if LWDGU unit behaves as described */
+    (void)lwdgRet;
     assert(kStatus_LWDG_Ok == lwdgRet);
 
     return remainingTicks;

@@ -79,9 +79,9 @@ void MID_getMech(mid_get_mech_t* sMechMeasFcn)
         sMechMeasFcn->sStartup.fltCurrentStartup                 = sMechMeasFcn->fltIqAccelerate;
         sMechMeasFcn->sStartup.bOpenLoop                         = TRUE;
         GFLIB_RampInit_FLT(0.0F, &sMechMeasFcn->sStartup.sSpeedRampOpenLoopParams);
-        sMechMeasFcn->sStartup.f16PosGen                         = 0.0F;
-        sMechMeasFcn->sStartup.f16PosMerged                      = 0.0F;
-        sMechMeasFcn->sStartup.f16RatioMerging                   = 0.0F;
+        sMechMeasFcn->sStartup.f16PosGen                         = 0;
+        sMechMeasFcn->sStartup.f16PosMerged                      = 0;
+        sMechMeasFcn->sStartup.f16RatioMerging                   = 0;
         sMechMeasFcn->sStartup.fltSpeedRampOpenLoop              = 0.0F;
     }
     

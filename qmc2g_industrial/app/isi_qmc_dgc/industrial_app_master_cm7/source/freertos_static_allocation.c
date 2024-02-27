@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -18,7 +18,6 @@
 /*******************************************************************************
  * Variables
  ******************************************************************************/
-//TODO: adjust stack sizes
 static StaticTask_t xIdleTaskTCB;
 static StackType_t  uxIdleTaskStack[configMINIMAL_STACK_SIZE];      /* Note: size is in 32 bit words, not bytes! */
 static StaticTask_t xTimerTaskTCB;

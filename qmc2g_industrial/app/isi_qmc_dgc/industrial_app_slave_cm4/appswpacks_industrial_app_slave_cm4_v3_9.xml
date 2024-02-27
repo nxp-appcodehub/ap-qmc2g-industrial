@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ksdk:examples xmlns:ksdk="http://nxp.com/ksdk/2.0/ksdk_manifest_v3.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://nxp.com/ksdk/2.0/ksdk_manifest_v3.0.xsd manifest.xsd">
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ns2:examples xmlns:ns2="http://nxp.com/ksdk/2.0/ksdk_manifest_v3.0.xsd">
 	<externalDefinitions>
 		<definition extID="cm4_MIMXRT1176xxxxx"/>
 		<definition extID="platform.devices.MIMXRT1176_system.MIMXRT1176"/>
@@ -16,13 +16,13 @@
 		<projects>
 			<project type="com.crt.advproject.projecttype.exe" nature="org.eclipse.cdt.core.cnature"/>
 		</projects>
-		<memory>
-			<memoryBlock id="LMEM_CODE_TCM_isi_qmc_dgc" name="LMEM_CODE_TCM" addr="1ffe0000" size="00020000" type="RAM" access="RW"/>
-			<memoryBlock id="LMEM_SYSTEM_TCM_isi_qmc_dgc" name="LMEM_SYSTEM_TCM" addr="20000000" size="0001c000" type="RAM" access="RW"/>
-			<memoryBlock id="NCACHE_REGION_isi_qmc_dgc" name="NCACHE_REGION" addr="2001c000" size="00003f00" type="RAM" access="RW"/>
-			<memoryBlock id="secwd_init_data_isi_qmc_dgc" name="secwd_init_data" addr="2001ff00" size="00000100" type="RAM" access="RW"/>
-			<memoryBlock id="SRAM_OC_ECC1_isi_qmc_dgc" name="SRAM_OC_ECC1" addr="20340000" size="00010000" type="RAM" access="RW"/>
-		</memory>
+        <memory>
+            <memoryBlock addr="000000001FFE0000" size="0000000000020000" type="RAM" access="RO" id="LMEM_CODE_TCM.qmc2g_industrial_M4SLAVE" name="LMEM_CODE_TCM"/>
+            <memoryBlock addr="0000000020000000" size="000000000001C000" type="RAM" access="RO" id="LMEM_SYSTEM_TCM.qmc2g_industrial_M4SLAVE" name="LMEM_SYSTEM_TCM"/>
+            <memoryBlock addr="000000002001C000" size="0000000000003F00" type="RAM" access="RO" id="NCACHE_REGION.qmc2g_industrial_M4SLAVE" name="NCACHE_REGION"/>
+            <memoryBlock addr="000000002001FF00" size="0000000000000100" type="RAM" access="RO" id="SECWD_INIT_DATA.qmc2g_industrial_M4SLAVE" name="SECWD_INIT_DATA"/>
+            <memoryBlock addr="0000000020340000" size="0000000000010000" type="RAM" access="RO" id="RPC_SHM.qmc2g_industrial_M4SLAVE" name="RPC_SHM"/>
+        </memory>
 		<toolchainSettings>
 			<toolchainSetting id_refs="com.nxp.mcuxpresso">
 				<buildConfigurations>
@@ -35,19 +35,166 @@
 					<buildConfiguration instance_of="com.nxp.mcuxpresso.ide.build_config.debug" id="com.nxp.mcuxpresso.ide.build_config.debug_sbl" name="Debug_SBL">
 						<description>CM4 application will be loaded and executed by SBL</description>
 					</buildConfiguration>
+					<buildConfiguration instance_of="com.nxp.mcuxpresso.ide.build_config.release" id="com.nxp.mcuxpresso.ide.build_config.release_sbl" name="Release_SBL">
+						<description>CM4 application will be loaded and executed by SBL</description>
+					</buildConfiguration>
 				</buildConfigurations>
 				<buildSteps>
-					<postBuildStep build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">arm-none-eabi-size "${BuildArtifactFileName}"; arm-none-eabi-objcopy -v -O binary "${BuildArtifactFileName}" "${BuildArtifactFileBaseName}.bin" ; # checksum -p ${TargetChip} -d "${BuildArtifactFileBaseName}.bin";</postBuildStep>
+					<postBuildStep build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">arm-none-eabi-size "${BuildArtifactFileName}"; arm-none-eabi-objcopy -v -O binary "${BuildArtifactFileName}" "${BuildArtifactFileBaseName}.bin" ; # checksum -p ${TargetChip} -d "${BuildArtifactFileBaseName}.bin";</postBuildStep>
 				</buildSteps>
-				<option id="gnu.cpp.compiler.option.preprocessor.def" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
+				<option id="gnu.cpp.compiler.option.preprocessor.def" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.release  com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
 					<value>__NEWLIB__</value>
 					<value>__MULTICORE_M4SLAVE</value>
 				</option>
-				<option id="com.crt.advproject.cpp.prefixmap" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
+				<option id="com.crt.advproject.cpp.prefixmap" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
 					<value>"$(&lt;D)/"=</value>
 				</option>
-				<option id="com.crt.advproject.cpp.specs" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>com.crt.advproject.cpp.specs.newlibnano</value>
+				<option id="com.crt.advproject.cpp.specs" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
+				 <value>com.crt.advproject.cpp.specs.newlibnano</value>
+                </option>
+                <option id="gnu.c.compiler.option.preprocessor.def.symbols" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+                    <value>CPU_MIMXRT1176DVMAA</value>
+                    <value>CPU_MIMXRT1176DVMAA_cm4</value>
+                    <value>FSL_RTOS_BM</value>
+                    <value>SDK_OS_BAREMETAL</value>
+                    <value>XIP_EXTERNAL_FLASH=1</value>
+                    <value>XIP_BOOT_HEADER_ENABLE=0</value>
+                    <value>SERIAL_PORT_TYPE_UART=1</value>
+                    <value>SDK_DEBUGCONSOLE=1</value>
+                    <value>CR_INTEGER_PRINTF</value>
+                    <value>PRINTF_FLOAT_ENABLE=0</value>
+                    <value>__MCUXPRESSO</value>
+                    <value>__USE_CMSIS</value>
+                    <value>DEBUG</value>
+                    <value>__NEWLIB__</value>
+                    <value>MULTICORE_APP=1</value>
+                    <value>__MULTICORE_M4SLAVE</value>
+                    <value>MBEDTLS_CONFIG_FILE='"ksdk_mbedtls_config_reduced.h"'</value>
+                </option>
+                <option id="gnu.c.compiler.option.debugging.other" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>-gdwarf-4</value>
+                </option>
+                <option id="gnu.c.compiler.option.misc.other" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>-c -ffunction-sections -fdata-sections -ffreestanding -fno-builtin</value>
+                </option>
+                <option id="com.crt.advproject.gcc.prefixmap" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>"$(&lt;D)/"=</value>
+                </option>
+                <option id="com.crt.advproject.gcc.hdrlib" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>com.crt.advproject.gcc.hdrlib.newlibnano</value>
+                </option>
+                <option id="com.crt.advproject.gcc.specs" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>com.crt.advproject.gcc.specs.newlibnano</value>
+                </option>
+                <option id="gnu.both.asm.option.flags.crt" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>-c -x assembler-with-cpp -D__NEWLIB__ -D__MULTICORE_M4SLAVE</value>
+                </option>
+                <option id="com.crt.advproject.gas.hdrlib" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>com.crt.advproject.gas.hdrlib.newlibnano</value>
+                </option>
+                <option id="com.crt.advproject.gas.specs" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>com.crt.advproject.gas.specs.newlibnano</value>
+                </option>
+                <option id="gnu.cpp.link.option.libs" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release"/>
+                <option id="gnu.cpp.link.option.paths" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release"/>
+                <option id="gnu.cpp.link.option.other" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release"/>
+                <option id="com.crt.advproject.link.cpp.lto" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>false</value>
+                </option>
+                <option id="com.crt.advproject.link.cpp.hdrlib" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>com.crt.advproject.cpp.link.hdrlib.newlibnano.semihost</value>
+                </option>
+                <option id="com.crt.advproject.link.cpp.nanofloat" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>false</value>
+                </option>
+                <option id="com.crt.advproject.link.cpp.nanofloat.scanf" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>false</value>
+                </option>
+                <option id="com.crt.advproject.link.memory.data.cpp" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>LMEM_SYSTEM_TCM</value>
+                </option>
+                <option id="com.crt.advproject.link.memory.sections.cpp" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release"/>
+                <option id="com.crt.advproject.link.cpp.multicore.slave" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>M4SLAVE</value>
+                </option>
+                <option id="gnu.c.link.option.libs" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release"/>
+                <option id="gnu.c.link.option.paths" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release"/>
+                <option id="gnu.c.link.option.other" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>-Map="${BuildArtifactFileBaseName}.map"</value>
+                    <value>--gc-sections</value>
+                    <value>-print-memory-usage</value>
+                    <value>--sort-section=alignment</value>
+                    <value>--cref</value>
+                </option>
+                <option id="com.crt.advproject.link.gcc.lto" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>false</value>
+                </option>
+                <option id="com.crt.advproject.link.gcc.hdrlib" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>com.crt.advproject.gcc.link.hdrlib.newlibnano.semihost</value>
+                </option>
+                <option id="com.crt.advproject.link.gcc.nanofloat" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>false</value>
+                </option>
+                <option id="com.crt.advproject.link.gcc.nanofloat.scanf" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>false</value>
+                </option>
+                <option id="com.crt.advproject.link.toram" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>true</value>
+                </option>
+                <option id="com.crt.advproject.link.memory.load.image" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl">
+                    <value>false;LMEM_CODE_TCM</value>
+                </option>
+                <option id="com.crt.advproject.link.memory.heapAndStack" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>&amp;Heap:Default;Post Data;Default&amp;Stack:Default;End;Default</value>
+                </option>
+                <option id="com.crt.advproject.link.memory.data" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>LMEM_SYSTEM_TCM</value>
+                </option>
+                <option id="com.crt.advproject.link.memory.sections" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release"/>
+                <option id="com.crt.advproject.link.gcc.multicore.slave" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release_sbl com.nxp.mcuxpresso.ide.build_config.release">
+                    <value>M4SLAVE</value>
+                </option>
+                <option id="gnu.c.compiler.option.preprocessor.def.symbols" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug">
+                    <value>CPU_MIMXRT1176DVMAA</value>
+                    <value>CPU_MIMXRT1176DVMAA_cm4</value>
+                    <value>FSL_RTOS_BM</value>
+                    <value>SDK_OS_BAREMETAL</value>
+                    <value>XIP_EXTERNAL_FLASH=0</value>
+                    <value>XIP_BOOT_HEADER_ENABLE=0</value>
+                    <value>SERIAL_PORT_TYPE_UART=1</value>
+                    <value>SDK_DEBUGCONSOLE=1</value>
+                    <value>CR_INTEGER_PRINTF</value>
+                    <value>PRINTF_FLOAT_ENABLE=0</value>
+                    <value>__MCUXPRESSO</value>
+                    <value>__USE_CMSIS</value>
+                    <value>DEBUG</value>
+                    <value>__NEWLIB__</value>
+                    <value>MULTICORE_APP=1</value>
+                    <value>__MULTICORE_M4SLAVE</value>
+                    <value>MBEDTLS_CONFIG_FILE='"ksdk_mbedtls_config_reduced.h"'</value>
+                    <value>NO_SBL</value>
+                </option>
+                <option id="gnu.c.compiler.option.preprocessor.def.symbols" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.release_sbl">
+                    <value>CPU_MIMXRT1176DVMAA</value>
+                    <value>CPU_MIMXRT1176DVMAA_cm4</value>
+                    <value>FSL_RTOS_BM</value>
+                    <value>SDK_OS_BAREMETAL</value>
+                    <value>XIP_EXTERNAL_FLASH=1</value>
+                    <value>XIP_BOOT_HEADER_ENABLE=0</value>
+                    <value>SERIAL_PORT_TYPE_UART=1</value>
+                    <value>SDK_DEBUGCONSOLE=0</value>
+                    <value>CR_INTEGER_PRINTF</value>
+                    <value>PRINTF_FLOAT_ENABLE=0</value>
+                    <value>__MCUXPRESSO</value>
+                    <value>__USE_CMSIS</value>
+                    <value>NDEBUG</value>
+                    <value>__NEWLIB__</value>
+                    <value>MULTICORE_APP=1</value>
+                    <value>__MULTICORE_M4SLAVE</value>
+                    <value>MBEDTLS_CONFIG_FILE='"ksdk_mbedtls_config_reduced.h"'</value>
+                </option>
+                <option id="com.crt.advproject.gcc.exe.debug.option.optimization.level" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.release_sbl">
+                    <value>gnu.c.optimization.level.size</value>
 				</option>
 				<option id="gnu.c.compiler.option.preprocessor.def.symbols" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.release">
 					<value>CPU_MIMXRT1176DVMAA</value>
@@ -69,126 +216,7 @@
 					<value>MBEDTLS_CONFIG_FILE='"ksdk_mbedtls_config_reduced.h"'</value>
 					<value>NO_SBL</value>
 				</option>
-				<option id="gnu.c.compiler.option.misc.other" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>-c -ffunction-sections -fdata-sections -ffreestanding -fno-builtin</value>
-				</option>
-				<option id="com.crt.advproject.gcc.prefixmap" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>"$(&lt;D)/"=</value>
-				</option>
-				<option id="com.crt.advproject.gcc.hdrlib" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>com.crt.advproject.gcc.hdrlib.newlibnano</value>
-				</option>
-				<option id="com.crt.advproject.gcc.specs" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>com.crt.advproject.gcc.specs.newlibnano</value>
-				</option>
-				<option id="gnu.both.asm.option.flags.crt" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>-c -x assembler-with-cpp -D__NEWLIB__ -D__MULTICORE_M4SLAVE</value>
-				</option>
-				<option id="com.crt.advproject.gas.hdrlib" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>com.crt.advproject.gas.hdrlib.newlibnano</value>
-				</option>
-				<option id="com.crt.advproject.gas.specs" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>com.crt.advproject.gas.specs.newlibnano</value>
-				</option>
-				<option id="gnu.cpp.link.option.libs" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug"/>
-				<option id="gnu.cpp.link.option.paths" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug"/>
-				<option id="gnu.cpp.link.option.other" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug"/>
-				<option id="com.crt.advproject.link.cpp.lto" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>false</value>
-				</option>
-				<option id="com.crt.advproject.link.cpp.hdrlib" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>com.crt.advproject.cpp.link.hdrlib.newlibnano.semihost</value>
-				</option>
-				<option id="com.crt.advproject.link.cpp.nanofloat" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>false</value>
-				</option>
-				<option id="com.crt.advproject.link.cpp.nanofloat.scanf" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>false</value>
-				</option>
-				<option id="com.crt.advproject.link.memory.data.cpp" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>LMEM_SYSTEM_TCM</value>
-				</option>
-				<option id="com.crt.advproject.link.memory.sections.cpp" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug"/>
-				<option id="com.crt.advproject.link.cpp.multicore.slave" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>M4SLAVE</value>
-				</option>
-				<option id="gnu.c.link.option.libs" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug"/>
-				<option id="gnu.c.link.option.paths" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug"/>
-				<option id="gnu.c.link.option.other" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>-Map="${BuildArtifactFileBaseName}.map"</value>
-					<value>--gc-sections</value>
-					<value>-print-memory-usage</value>
-					<value>--sort-section=alignment</value>
-					<value>--cref</value>
-				</option>
-				<option id="com.crt.advproject.link.gcc.lto" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>false</value>
-				</option>
-				<option id="com.crt.advproject.link.gcc.hdrlib" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>com.crt.advproject.gcc.link.hdrlib.newlibnano.semihost</value>
-				</option>
-				<option id="com.crt.advproject.link.gcc.nanofloat" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>false</value>
-				</option>
-				<option id="com.crt.advproject.link.gcc.nanofloat.scanf" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>false</value>
-				</option>
-				<option id="com.crt.advproject.link.toram" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>true</value>
-				</option>
-				<option id="com.crt.advproject.link.memory.heapAndStack" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>&amp;Heap:Default;Post Data;Default&amp;Stack:Default;End;Default</value>
-				</option>
-				<option id="com.crt.advproject.link.memory.data" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>LMEM_SYSTEM_TCM</value>
-				</option>
-				<option id="com.crt.advproject.link.memory.sections" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug"/>
-				<option id="com.crt.advproject.link.gcc.multicore.slave" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>M4SLAVE</value>
-				</option>
-				<option id="gnu.c.compiler.option.preprocessor.def.symbols" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl">
-					<value>CPU_MIMXRT1176DVMAA</value>
-					<value>CPU_MIMXRT1176DVMAA_cm4</value>
-					<value>FSL_RTOS_BM</value>
-					<value>SDK_OS_BAREMETAL</value>
-					<value>XIP_EXTERNAL_FLASH=1</value>
-					<value>XIP_BOOT_HEADER_ENABLE=0</value>
-					<value>SERIAL_PORT_TYPE_UART=1</value>
-					<value>SDK_DEBUGCONSOLE=1</value>
-					<value>CR_INTEGER_PRINTF</value>
-					<value>PRINTF_FLOAT_ENABLE=0</value>
-					<value>__MCUXPRESSO</value>
-					<value>__USE_CMSIS</value>
-					<value>DEBUG</value>
-					<value>__NEWLIB__</value>
-					<value>MULTICORE_APP=1</value>
-					<value>__MULTICORE_M4SLAVE</value>
-					<value>MBEDTLS_CONFIG_FILE='"ksdk_mbedtls_config_reduced.h"'</value>
-				</option>
-				<option id="com.crt.advproject.link.memory.load.image" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>false;LMEM_CODE_TCM</value>
-				</option>
-				<option id="gnu.c.compiler.option.preprocessor.def.symbols" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug">
-					<value>CPU_MIMXRT1176DVMAA</value>
-					<value>CPU_MIMXRT1176DVMAA_cm4</value>
-					<value>FSL_RTOS_BM</value>
-					<value>SDK_OS_BAREMETAL</value>
-					<value>XIP_EXTERNAL_FLASH=0</value>
-					<value>XIP_BOOT_HEADER_ENABLE=0</value>
-					<value>SERIAL_PORT_TYPE_UART=1</value>
-					<value>SDK_DEBUGCONSOLE=1</value>
-					<value>CR_INTEGER_PRINTF</value>
-					<value>PRINTF_FLOAT_ENABLE=0</value>
-					<value>__MCUXPRESSO</value>
-					<value>__USE_CMSIS</value>
-					<value>DEBUG</value>
-					<value>__NEWLIB__</value>
-					<value>MULTICORE_APP=1</value>
-					<value>__MULTICORE_M4SLAVE</value>
-					<value>MBEDTLS_CONFIG_FILE='"ksdk_mbedtls_config_reduced.h"'</value>
-					<value>NO_SBL</value>
-				</option>
-			</toolchainSetting>
+	          </toolchainSetting>
 		</toolchainSettings>
 		<include_paths>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/component/lists" project_relative_path="component/lists" type="c_include"/>
@@ -199,7 +227,6 @@
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/utilities" project_relative_path="utilities" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/drivers" project_relative_path="drivers" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/board" project_relative_path="board" type="c_include"/>
-			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/source" project_relative_path="source" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/mbedtls/include" project_relative_path="mbedtls/include" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/mbedtls/library" project_relative_path="mbedtls/library" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/mbedtls/port/ksdk" project_relative_path="mbedtls/port/ksdk" type="c_include"/>
@@ -252,6 +279,7 @@
 			<files mask="fsl_wdog.h"/>
 			<files mask="fsl_xbara.h"/>
 			<files mask="fsl_xbarb.h"/>
+			<files mask="fsl_tempsensor.h"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/drivers" project_relative_path="drivers" type="src">
 			<files mask="fsl_anatop_ai.c"/>
@@ -274,6 +302,7 @@
 			<files mask="fsl_wdog.c"/>
 			<files mask="fsl_xbara.c"/>
 			<files mask="fsl_xbarb.c"/>
+			<files mask="fsl_tempsensor.c"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/device" project_relative_path="device" type="c_include">
 			<files mask="fsl_device_registers.h"/>
@@ -360,6 +389,12 @@
 			<files mask="debug_log_levels.h"/>
 			<files mask="mem.h"/>
 			<files mask="testing.h"/>
+		</source>
+			<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/source/soft_mpu" project_relative_path="source/soft_mpu" type="src">
+			<files mask="soft_mpu_api.c"/>
+		</source>
+			<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/source/soft_mpu" project_relative_path="source/soft_mpu" type="c_include">
+			<files mask="soft_mpu_api.h"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/mbedtls/include/mbedtls" project_relative_path="mbedtls/include/mbedtls" type="c_include">
 			<files mask="aes.h"/>
@@ -602,5 +637,9 @@
 			<files mask="fsl_flexspi_nor_boot.h"/>
 			<files mask="isi_qmc_dgc_flexspi_nor_config.h"/>
 		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4" project_relative_path="./" type="other">
+			<files mask="isi_qmc_dgc_industrial_app_slave_cm4 JLink Release.launch"/>
+			<files mask="isi_qmc_dgc_industrial_app_slave_cm4 JLink Debug.launch"/>
+		</source>
 	</example>
-</ksdk:examples>
+</ns2:examples>

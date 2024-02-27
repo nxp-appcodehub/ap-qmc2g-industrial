@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 NXP
+ * Copyright 2019-2023 NXP
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -25,7 +25,7 @@
  *
  */
 
-#define FMSTR_DISABLE 0 // TODO: set to 0 after this configuration is ready to be used
+#define FMSTR_DISABLE 0
 
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -64,14 +64,21 @@ typedef struct __attribute__((__packed__)) RECORDER_INFO
 	uint8_t              RecordOrigin;		//The reason why this record was created
 } recorder_info_t;
 
-//extern struct RECORDER LogRecorder;	//konfigurace a info k Rec2
 
 qmc_status_t FlashRecorderInit( recorder_t *prec);
 qmc_status_t FlashRecorderFormat( recorder_t *prec);
 qmc_status_t FlashWriteRecord( void *pt, recorder_t *prec);
 void *FlashGetRecord( uint32_t idr, recorder_t *prec, void* record, TickType_t ticks);
 int FlashGetStatusInfo( recorder_status_t *rstat, recorder_t *prec);
-uint32_t FlashGetLastIdr( recorder_t *prec);
 uint32_t FlashGetFirstIdr( recorder_t *prec);
+bool FlashNextWriteEraseSector( recorder_t *prec);
+uint32_t FlashGetLastIdr( recorder_t *prec);
 
+static inline uint32_t FlashGetMaxNumRecords( recorder_t *prec)
+{
+	uint64_t tmp = ((uint64_t)prec->AreaLength / prec->PageSize) * (prec->PageSize / prec->RecordSize);
+	if( tmp > UINT32_MAX)
+		return 0;
+	return (uint32_t)tmp;
+}
 #endif	// __FLASH_RECORDER_H__

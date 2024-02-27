@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -8,9 +8,9 @@
  * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
-#ifndef __MCINIT_H
-#define __MCINIT_H
+#ifndef MCINIT_H
+#define MCINIT_H
 
 #include <mcinit_qmc2g_imxrt1170.h>
 
-#endif /* _MCINIT_H_ */
+#endif /* MCINIT_H */

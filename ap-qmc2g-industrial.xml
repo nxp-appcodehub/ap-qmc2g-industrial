@@ -1,4 +1,4 @@
-<data:item xmlns:data="data" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="data ../../xsd/alp.xsd" id="ap-qmc2g-industrial" type="sw_pack" format="projectfile" name="QMC2G Industrial">
+<data:item xmlns:data="data" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="data ../../xsd/alp.xsd" id="ap-qmc2g-industrial" type="sw_pack" format="projectfile" versionSchema="1.0.0" name="QMC2G Industrial">
     <display_title>
         i.MX RT INDUSTRIAL DRIVE DEVELOPMENT PLATFORM
     </display_title>
@@ -13,10 +13,11 @@
     </families>
     <nxp_compatible_hw>
         <hw id="ISI-QMC-DGC-02"></hw>
+        <hw id="I-MX-RT-INDUSTRIAL-DRIVE-DEV-PLA"></hw>
     </nxp_compatible_hw>
     <peripherals>
+        <peripheral name="usb"></peripheral>
         <peripheral name="adc"></peripheral>
-        <peripheral name="can"></peripheral>
         <peripheral name="clocks"></peripheral>
         <peripheral name="display"></peripheral>
         <peripheral name="dma"></peripheral>
@@ -24,23 +25,23 @@
         <peripheral name="flash"></peripheral>
         <peripheral name="gpio"></peripheral>
         <peripheral name="i2c"></peripheral>
+        <peripheral name="can"></peripheral>
+        <peripheral name="watchdog"></peripheral>
         <peripheral name="pwm"></peripheral>
         <peripheral name="sensor"></peripheral>
         <peripheral name="spi"></peripheral>
-        <peripheral name="uart"></peripheral>
-        <peripheral name="usb"></peripheral>
-        <peripheral name="watchdog"></peripheral>
         <peripheral name="timer"></peripheral>
+        <peripheral name="uart"></peripheral>
     </peripherals>
     <categories>
-        <category name="industrial"></category>
-        <category name="rtos"></category>
         <category name="sec_provi"></category>
-        <category name="security"></category>
         <category name="sensor"></category>
+        <category name="industrial"></category>
+        <category name="security"></category>
         <category name="motor_control"></category>
-        <category name="graphics"></category>
         <category name="cc_devices"></category>
+        <category name="rtos"></category>
         <category name="tsn"></category>
+        <category name="graphics"></category>
     </categories>
 </data:item>

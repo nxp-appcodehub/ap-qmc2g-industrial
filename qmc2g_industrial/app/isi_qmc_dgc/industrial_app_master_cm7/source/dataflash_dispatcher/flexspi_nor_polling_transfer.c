@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -28,7 +28,7 @@
  ******************************************************************************/
 
 //void flexspi_octal_flash_init(void);
-void flexspi1_octal_bus_init();
+//void flexspi1_octal_bus_init();
 
 status_t flexspi_nor_octalflash_read_status(FLEXSPI_Type *base, uint32_t *buffer);
 status_t flexspi_nor_octalflash_read_data(FLEXSPI_Type *base, uint32_t addr, uint32_t *buffer, size_t size);

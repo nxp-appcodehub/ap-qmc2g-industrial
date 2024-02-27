@@ -23,7 +23,7 @@ struct stats {
     /* Stats snapshot */
     int32_t min;
     int32_t max;
-    int32_t mean;
+    int64_t mean;
     uint64_t ms;
     uint64_t variance;
 
@@ -40,7 +40,7 @@ struct stats {
 struct hist {
     uint32_t slots[MAX_SLOTS];
     int n_slots;
-    int slot_size;
+    unsigned int slot_size;
 };
 
 void stats_reset(struct stats *s);

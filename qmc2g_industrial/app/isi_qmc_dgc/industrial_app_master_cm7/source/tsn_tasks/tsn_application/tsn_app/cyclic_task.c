@@ -135,7 +135,7 @@ static void cyclic_net_receive(struct cyclic_task *c_task)
     struct tsn_task *task = c_task->task;
     struct tsn_common_hdr *hdr;
     int rx_frame;
-    uint32_t traffic_latency;
+    int32_t traffic_latency;
 
     for (i = 0; i < c_task->num_peers; i++) {
         sock = &c_task->rx_socket[i];
@@ -203,7 +203,7 @@ static void cyclic_net_receive(struct cyclic_task *c_task)
  *               len - length of the buffer
  *
  */
-int cyclic_net_transmit(struct cyclic_task *c_task, int msg_id, void *buf, int len)
+int cyclic_net_transmit(struct cyclic_task *c_task, uint16_t msg_id, void *buf, uint16_t len)
 {
     struct tsn_task *task = c_task->task;
     struct socket *sock = &c_task->tx_socket;
@@ -327,6 +327,17 @@ void cyclic_task_set_period(struct cyclic_task *c_task, unsigned int period_ns)
     struct tsn_task_params *params = &c_task->params;
 
     params->task_period_ns = period_ns;
+
+    if(period_ns > APP_PERIOD_MAX )
+    {
+    	params->task_period_ns = APP_PERIOD_MAX;
+    }
+    else
+    {
+    	params->task_period_ns = period_ns;
+
+    }
+
     params->transfer_time_ns = period_ns / 2;
 
     if (c_task->type == CYCLIC_CONTROLLER)
@@ -402,6 +413,7 @@ int cyclic_task_init(struct cyclic_task *c_task,
     struct tsn_stream *rx_stream, *tx_stream;
     int i;
     int rc;
+    char traf_latency[] = "traffic latency";
 
 #if PRINT_LEVEL == VERBOSE_DEBUG
     INF("cyclic task type: %d, id: %u\n\n", c_task->type, c_task->id);
@@ -453,7 +465,7 @@ int cyclic_task_init(struct cyclic_task *c_task,
         c_task->rx_socket[i].net_sock = tsn_net_sock_rx(c_task->task, i);
         c_task->rx_socket[i].stats.traffic_latency_min = 0xffffffff;
 
-        stats_init(&c_task->rx_socket[i].stats.traffic_latency, 31, "traffic latency", NULL);
+        stats_init(&c_task->rx_socket[i].stats.traffic_latency, 31, traf_latency, NULL);
         hist_init(&c_task->rx_socket[i].stats.traffic_latency_hist, 100, 1000);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -42,7 +42,7 @@ qmc_status_t RPC_SetSnvsOutput(uint16_t gpioState);
 *
 * This function is meant to be called by the main function / startup task.
 */
-void RPC_Init();
+void RPC_Init(void);
 
 /*!
  * @brief Processes incoming events from the CM4.
@@ -51,5 +51,27 @@ void RPC_Init();
  *
  */
 void RPC_HandleISR(void);
+
+/*!
+ * @brief Forwards a memory write request to the M4.
+ *
+ * It is expected that this function is (mostly) used during the early stages of the application startup.
+ * Hence, it can not rely on FreeRTOS being already functional.
+ * Therefore, this function only uses bare metal code and should only be called when interrupts are disabled.
+ * 
+ * Only accesses to certain parts of the CCM and ANADIG memory regions which
+ * do not influence the M4's (secure watchdog's) behaviour are allowed (see 
+ * qmc2g_industrial_M4SLAVE/source/rpc/rpc_api.c).
+ * Other accesses are seen as security violation and the system will be reset with
+ * "kQMC_ResetSecureWd" as reason.
+ *
+ * @param[in] write Pointer to a qmc_mem_write_t structure containing details about the memory write.
+ * @return A qmc_status_t status code.
+ * @retval kStatus_QMC_ErrArgInvalid
+ * A NULL pointer was given.
+ * @retval kStatus_QMC_Ok
+ * The remote call finished successfully.
+ */
+qmc_status_t RPC_MemoryWriteIntsDisabled(const qmc_mem_write_t *write);
 
 #endif /* _API_RPC_INTERNAL_H_ */

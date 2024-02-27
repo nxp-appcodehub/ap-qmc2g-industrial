@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -8,8 +8,8 @@
  * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
  
-#ifndef __M1_PMSM_APPCONFIG_H
-#define __M1_PMSM_APPCONFIG_H
+#ifndef M1_PMSM_APPCONFIG_H
+#define M1_PMSM_APPCONFIG_H
 
 #include "trigonometric.h"
 
@@ -129,7 +129,7 @@
 //-----------------------------------------------------------------------------------------------------------
 #define M1_U_DCB_TRIP 			(28.0F)  	/* [V], brake is on when DC bus reaches this voltage */
 #define M1_U_DCB_UNDERVOLTAGE 	(19.0F)  	/* [V], DC bus under voltage threshold */
-#define M1_U_DCB_OVERVOLTAGE 	(30.8F)  	/* [V], DC bus over voltage threshold */
+#define M1_U_DCB_OVERVOLTAGE 	(45.0F)  	/* [V], DC bus over voltage threshold */
 #define M1_N_OVERSPEED 			(4500.0F) 	/* [RPM], mechanical over speed threshold */
 #define M1_N_MIN 				(300.0F)   	/* [RPM], the minimum mechanical speed that is required for speed command when sensorless approach is used */
   
@@ -159,7 +159,7 @@
 #define M1_ALIGN_DURATION_TIME	(0.5F)  /* [s], alignment stage duration */
 #define M1_BOOTSTRAP_CHARGE_TIME (0.05) /* [s], charging bootstrap capacitor duration, must be smaller than alignment duration */
 #define M1_BOOTSTRAP_DUTY       (0.1)   /* [n/a], duty used in bootstrap capacitor charging */
-#define M1_ALIGN_DURATION		(uint16_t)(M1_ALIGN_DURATION_TIME * M1_FAST_LOOP_FREQ)
+#define M1_ALIGN_DURATION		(uint16_t)(M1_ALIGN_DURATION_TIME * M1_FAST_LOOP_FREQ) /* Must be less than 32767 */
 #define M1_BOOTSTRAP_CHARGE_DURATION   (uint16_t)(M1_BOOTSTRAP_CHARGE_TIME * M1_FAST_LOOP_FREQ)
 
   
@@ -209,9 +209,9 @@
 #define M1_SPEED_PI_PROP_SENSORLESS_GAIN              (0.005F)		/* proportional gain */
 #define M1_SPEED_PI_INTEG_SENSORLESS_GAIN             (0.00002F)	/* integral gain */
 #define M1_SPEED_PI_DESAT_GAIN			   (0.5F)
-#define M1_SPEED_LOOP_HIGH_LIMIT           (3.0F)			/* [A], current output upper limitation */
-#define M1_SPEED_LOOP_LOW_LIMIT            (-3.0F)			/* [A], current output lower limitation */
-#define M1_CL_SPEED_RAMP			   	   (8000.0F) 		/* [RPM/s], (mechanical) speed accelerating rate during closed-loop */
+#define M1_SPEED_LOOP_HIGH_LIMIT           (7.0F)			/* [A], current output upper limitation */
+#define M1_SPEED_LOOP_LOW_LIMIT            (-7.0F)			/* [A], current output lower limitation */
+#define M1_CL_SPEED_RAMP			   	   (4000.0F) 		/* [RPM/s], (mechanical) speed accelerating rate during closed-loop */
 #define M1_SPEED_CUTOFF_FREQ    		   (100.0F)          /* [Hz], cutoff frequency of IIR1 low pass filter for speed from sensor or observer */
 #define M1_SPEED_LOOP_IQ_FWD_GAIN 		   (0.5F)		    /* [A], Iq feed forward gain */
 
@@ -300,7 +300,7 @@ Scale Values:
 #define M1_QDC_TO_ATT						(0.85F)		 /* attenuation for tracking observer, which is to estimate rotor speed from real QDC position */
 #define M1_QDC_TO_FREQ						(300.0)		 /* [Hz], oscillating frequency for tracking observer */
 
-#define M1_QDC_TIMER_FREQUENCY  			(M1_QDC_CLOCK/EXPON(2,M1_QDC_TIMER_PRESCALER)) 			/* [Hz], the clock frequency for the timer within QDC */
+#define M1_QDC_TIMER_FREQUENCY  			(M1_QDC_CLOCK/EXPONENT(2,M1_QDC_TIMER_PRESCALER)) 			/* [Hz], the clock frequency for the timer within QDC */
 #define M1_SPEED_CAL_CONST  				((60.0*M1_QDC_TIMER_FREQUENCY/(4*M1_ENCODER_LINES*M1_N_MAX)) * 134217728)	/* A constant to calculate mechanical speed out of QDC HW feature, Q5.27 */
 #define M1_QDC_TO_KP_GAIN					(2.0F*M1_QDC_TO_ATT*2*PI*M1_QDC_TO_FREQ)
 #define M1_QDC_TO_KI_GAIN					(2*PI*M1_QDC_TO_FREQ * 2*PI*M1_QDC_TO_FREQ/M1_FAST_LOOP_FREQ)

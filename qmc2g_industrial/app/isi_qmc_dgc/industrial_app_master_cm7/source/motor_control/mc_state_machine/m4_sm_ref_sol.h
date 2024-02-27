@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -8,8 +8,8 @@
  * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
  
-#ifndef _M4_SM_REF_SOL_H_
-#define _M4_SM_REF_SOL_H_
+#ifndef M4_SM_REF_SOL_H
+#define M4_SM_REF_SOL_H
 
 #include "sm_ref_sol_comm.h"
 #include "m4_pmsm_appconfig.h"
@@ -48,5 +48,5 @@ extern "C" {
 }
 #endif
 
-#endif /* _M4_SM_REF_SOL_H_ */
+#endif /* M4_SM_REF_SOL_H */
 

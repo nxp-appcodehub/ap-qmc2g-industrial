@@ -1,0 +1,115 @@
+# Copyright 2024 NXP 
+# 
+# NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
+# in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
+# installing, activating and/or otherwise using the software, you are agreeing that you have read,
+# and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
+# the applicable license terms, then you may not retain, install, activate or otherwise use the software.
+
+.DEFAULT: all
+
+## section only for 'clean' target
+# CDT's generated makefile contains a clean target containing so many files, it can't be executed on windows
+# this is a workaround to invoke a per file delete instead, without the need to switch to writing the makefiles
+# manualy.
+# if make is called with 'clean' as the first argument, prepare some special workaround to limit command line length 
+ifeq (clean,$(firstword $(MAKECMDGOALS)))
+
+
+# implement a string length function
+!chars := A B C D E F G H I J K L M N O P Q R S T U V W X Y Z
+!chars += a b c d e f g h i j k l m n o p q r s t u v w x y z
+!chars += 0 1 2 3 4 5 6 7 8 9
+!chars += ` ~ ! @ \# $$ % ^ & * ( ) - _ = +
+!chars += { } [ ] \ : ; ' " < > , . / ? |
+
+!empty :=
+!space := $(!empty) $(!empty)
+
+# actual function, calling to an external tool is not possible...
+!strlen = $(strip $(eval !strlen_tmp := $(subst $(!space),x,$1))$(foreach a,$(!chars),$(eval !strlen_tmp := $$(subst $$a,x,$(!strlen_tmp))))$(eval !strlen_tmp := $(subst x,x ,$(!strlen_tmp)))$(words $(!strlen_tmp)))
+
+# calculate the length without leaving make
+# uses the command and arguments from the 'clean: ' target to aproximate the length
+!rmcmdlen := $(call !strlen, $(RM) $(EXECUTABLES) $(OBJS) $(C_DEPS) $(BUILD_ARTIFACT))
+
+# use the shell to check if the 32k limit might be reached
+!rmistolong := $(shell echo $$(($(!rmcmdlen) > 32000 )) )
+
+#cleanup make environment
+
+undefine !rmcmdlen
+undefine !empty
+undefine !space
+undefine !chars
+undefine !strlen
+undefine !strlen_tmp
+
+# use the default clean if the commandline is not to long
+ifeq (0,${!rmistolong})
+undefine !rmistolong
+else
+# use the workaround if the commandline is to long
+#
+# do not run any target exept for ones with + commands, this will skip 'clean' (and all other targets) 
+# and assume they are already done
+MAKEFLAGS+=  -t -j
+
+# get the files that exist and really need to be removed
+cleanfiles := $(strip $(foreach f, $(EXECUTABLES) $(OBJS) $(C_DEPS) $(BUILD_ARTIFACT),$(wildcard $(f))))
+# cleanfiles := $(EXECUTABLES) $(OBJS) $(C_DEPS) $(BUILD_ARTIFACT)
+
+# create a .clean target name for them
+cleantargets:=$(patsubst %,%.clean,$(cleanfiles))
+
+# they do not exist as files on disk
+.PHONY: $(cleantargets)
+
+# add targets as an order dependency to 'clean' to get them executed prior to 'clean'
+clean: | $(cleantargets) $(info make: Using 'clean' workaround from 'makefile.defs', command line length is over 32k. )
+
+# # add a %.clean pattern rule for each file, with a + to force execution
+$(cleantargets): %.clean : % 
+	+@${RM} $<
+
+# make will remove all existing files prior accepting it needs nothing to do for 'clean'
+endif
+endif
+## end of section only for 'clean' target, 
+
+
+
+## ragel state machine compiler rules
+# A ragel state machine compiler source can be turned into a c source file
+# https://www.colm.net/open-source/ragel/
+#
+# if the ragel state machine compiler is installed it's used to compile it to the c parser
+# if not a warning message is printed instead
+
+
+RAGEL_MODE= -G1 
+# ragel can compile a .rl file to a .c parser
+#   -T0                  Table driven FSM (default)
+#   -T1                  Faster table driven FSM
+#   -F0                  Flat table driven FSM
+#   -F1                  Faster flat table-driven FSM
+#   -G0                  Goto-driven FSM
+#   -G1                  Faster goto-driven FSM
+#   -G2                  Really fast goto-driven FSM
+
+
+RAGEL:=$(shell which ragel 2>&1)
+RAGEL_FLAGS?= -C ${RAGEL_MODE}
+
+ifneq (,${RAGEL})
+%.c : %.rl
+	${RAGEL} ${RAGEL_FLAGS} -o "$@" "$<" && touch "$@"
+else
+# generated c files are not to be removed if they can not be regenerated
+.PRECIOUS: %.c
+%.c : %.rl
+	@echo "# ragel state machine compiler not found"
+	@echo "# ragel ${RAGEL_FLAGS}" -o "$@" "$<"
+endif
+
+source/webservice/webservice.o: ../source/web_root.zip

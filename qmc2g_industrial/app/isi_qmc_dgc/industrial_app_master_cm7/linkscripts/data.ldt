@@ -9,118 +9,112 @@
  */
 
 <#if memory.name=="SRAM_ITC_cm7">
-		/* default project */
-	    *(.ramfunc*)
-	    KEEP(*(CodeQuickAccess))
-	    *(RamFunction)
-	    /* default project */
-	    *freertos_kernel*(*.text*)
-	    *interrupts.o*(*.text*)
-	    *fsl_clock.o*(*.text*)
-	    
-	  
-        
-        /*tsn_tasks.c */
-        *tsn_tasks.o*(.text.null_loop)
-       	
-       	/*tsn_app/cyclic_task.c */
-     	*cyclic_task.o*(*.text*)   
-     	
-     	/*tsn_app/tsn_task.c */
-     	*tsn_task.o*(*.text*)
-     	
-     	/*tsn_board.c - rest of the file is in flash, even if it was excluded */
-     	*tsn_board.o(.text.BOARD_GetRunTimeCounterValue)
-     	*tsn_board.o(.text.GPT_GetCurrentTimerCount)
-     	
-     	/*tsn_common/log.c */
-     	*tsn_common/log.o(*.text*)
-     	
-     	/*tsn_common/lwip_ethernetif.c */
-     	*lwip_ethernetif.o(*.text*)
-     	
-     	/*tsn_common/memcpy.c */
-        *memcpy.o*(*.text*)
-        
-        /*tsn_common/memcpy.c */
-        *sdk_printf.o*(*.text*)
-        
-        /*tsn_common/stats_task.c */
-        *tsn_common/stats_task.o*(*.text*)
-        
-        /*tsn_common/stats.c */
-        *tsn_common/stats.o*(*.text*)
-        
-       
-                
-        *libavb-freertos.a:(*.text*)
-        *libavb-core.a:(*.text*)    
-       
-       
-        *freertos/main.o(*.text*)
-        
-        *application_util.o(*.text*)
-        
-        *api_motorcontrol.o(.text.MC_ExecuteMotorCommandFromTsn)
-        *api_motorcontrol.o(.text.MC_GetMotorStatusforTsn)
-        *api_motorcontrol.o(.text.isMotorCommandInRange)
-        
-       
-        
-        *fsl_component_serial_manager.o*(*.text*)
-        *fsl_component_serial_port_uart.o*(*.text*)
-        *fsl_adapter_lpuart.o*(*.text*)
-        *fsl_debug_console.o*(*.text*)
-        *fsl_str.o*(*.text*)
-        *fsl_component_generic_list.o*(*.text*)
-        
-        *tsn_tasks*(*.rodata*)
-		*libavb-freertos.a:(*.rodata*)
-		*libavb-core.a:(*.rodata*)
-		*libc_nano.a:(*.rodata*)
-		*libm.a:(*.rodata*)
-        
-       
-        
-	    
+
+    /* default project */
+    *(.ramfunc*)
+    KEEP(*(CodeQuickAccess))
+    *(RamFunction)
+
+    /* default project */
+    *freertos_kernel*(*.text*)
+    *interrupts.o*(*.text*)
+    *fsl_clock.o*(*.text*)
+    /*tsn_tasks.c */
+    *tsn_tasks.o*(.text.null_loop)
+
+    /*tsn_app/cyclic_task.c */
+    *cyclic_task.o*(*.text*)
+
+    /*tsn_app/tsn_task.c */
+    *tsn_task.o*(*.text*)
+
+    /*tsn_board.c - rest of the file is in flash, even if it was excluded */
+    *tsn_board.o(.text.BOARD_GetRunTimeCounterValue)
+    *tsn_board.o(.text.GPT_GetCurrentTimerCount)
+
+    /*tsn_common/log.c */
+    *tsn_common/log.o(*.text*)
+
+    /*tsn_common/lwip_ethernetif.c */
+    *lwip_ethernetif.o(*.text*)
+
+    /*tsn_common/memcpy.c */
+    *memcpy.o*(*.text*)
+
+    /*tsn_common/memcpy.c */
+    *sdk_printf.o*(*.text*)
+
+    /*tsn_common/stats_task.c */
+    *tsn_common/stats_task.o*(*.text*)
+
+    /*tsn_common/stats.c */
+    *tsn_common/stats.o*(*.text*)
+
+    *libavb-freertos.a:(*.text*)
+    *libavb-core.a:(*.text*)
+
+    *freertos/main.o(*.text*)
+
+    *application_util.o(*.text*)
+
+    *api_motorcontrol.o(.text.MC_ExecuteMotorCommandFromTsn)
+    *api_motorcontrol.o(.text.MC_GetMotorStatusforTsn)
+    *api_motorcontrol.o(.text.isMotorCommandInRange)
+
+    *fsl_component_serial_manager.o*(*.text*)
+    *fsl_component_serial_port_uart.o*(*.text*)
+    *fsl_adapter_lpuart.o*(*.text*)
+    *fsl_debug_console.o*(*.text*)
+    *fsl_str.o*(*.text*)
+    *fsl_component_generic_list.o*(*.text*)
+
+    *tsn_tasks*(*.rodata*)
+    *libavb-freertos.a:(*.rodata*)
+    *libavb-core.a:(*.rodata*)
+    *libc_nano.a:(*.rodata*)
+    *libm.a:(*.rodata*)
 </#if>
 <#if memory.name=="SRAM_OC1">
-		/* default project */
-		*freertos_kernel*(*.constdata)
-		*freertos_kernel*(*.rodata)		
-		*freertos_kernel*(*.constdata*)
-		*freertos_kernel*(*.rodata*)
- 
- 	 
-		
-		*libgcc.a:(*.text*)
-		*libm.a:(*.text*)  
-        *libc_nano.a:(*.text*)
-        
-        *fsl_cache.o*(*.text*)
-        *fsl_enet_qos.o*(*.text*)
-        
-        *libavb-freertos.a:(.data.freertos)
-        
-        *lwip*(*.text*)
-        
-        *lvgl*(*.data*)
-        *vglite*(*.data*)
+    /* default project */
+    *freertos_kernel*(*.constdata)
+    *freertos_kernel*(*.rodata)
+    *freertos_kernel*(*.constdata*)
+    *freertos_kernel*(*.rodata*)
+    *libgcc.a:(*.text*)
+    *libm.a:(*.text*)
+    *libc_nano.a:(*.text*)
+
+    *fsl_cache.o*(*.text*)
+    *fsl_enet_qos.o*(*.text*)
+
+    *libavb-freertos.a:(.data.freertos)
+
+    *lwip*(*.text*)
+
+    *lvgl*(*.data*)
+    *vglite*(*.data*)
+
+    /*Move CAAM write targets out of TCM*/
+    *altcp_tls_mbedtls*(*.data*)
+    *se_session.o*(*.data*)
+    *se_mbedtls.o*(*.data*)
+    *se_hostlib*(*.data*)
+    *api_usermanagement*(*.data)
+    *datalogger_tasks*(*.data)
 </#if>
 
 <#if memory.name=="BOARD_OCTAL_RAM">
-		/* 
-		*tsn_tasks*(*.rodata*)
-		*libavb-freertos.a:(*.rodata*)
-		*libavb-core.a:(*.rodata*)
-		*libc_nano.a:(*.rodata*)
-		*libm.a:(*.rodata*)
-       
-        */
+    /*
+    *tsn_tasks*(*.rodata*)
+    *libavb-freertos.a:(*.rodata*)
+    *libavb-core.a:(*.rodata*)
+    *libc_nano.a:(*.rodata*)
+    *libm.a:(*.rodata*)
+    */
 </#if>
 
 
-        *(.data.$${memory.alias})
-        *(.data.$${memory.name})
-        *(.data.$${memory.alias}.*)
-        *(.data.$${memory.name}.*)
+    *(.data.$${memory.alias})
+    *(.data.$${memory.name})
+    *(.data.$${memory.alias}.*)
+    *(.data.$${memory.name}.*)

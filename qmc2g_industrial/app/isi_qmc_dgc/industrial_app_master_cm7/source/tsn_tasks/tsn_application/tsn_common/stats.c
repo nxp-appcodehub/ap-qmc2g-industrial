@@ -7,6 +7,7 @@
 
 #include "stats.h"
 #include "log.h"
+#include "limits.h"
 
 /*	stats_reset
  *
@@ -143,6 +144,9 @@ void stats_compute(struct stats *s)
 int hist_init(struct hist *hist, unsigned int n_slots, unsigned slot_size)
 {
     /* One extra slot for last bucket. */
+
+	if(n_slots >= UINT_MAX)
+		return -1;
 
     if ((n_slots + 1) > MAX_SLOTS)
         return -1;

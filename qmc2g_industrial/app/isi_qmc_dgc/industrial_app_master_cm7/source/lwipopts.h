@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -52,6 +52,16 @@
  */
 #define LWIP_SO_RCVTIMEO        1
 
+/**
+ * LWIP_TCPIP_CORE_LOCKING==1: use a global mutex that is held during TCPIP thread operations
+ */
+#define LWIP_TCPIP_CORE_LOCKING 1
+
+/**
+ * LWIP_USE_WATCHDOG==1: use a functional watchdog assigned to the webservice
+ */
+#define LWIP_USE_WATCHDOG 		1
+
 #else
 /**
  * NO_SYS==1: Bare metal lwIP
@@ -65,8 +75,8 @@
  * LWIP_SOCKET==0: Disable Socket API (require to use sockets.c)
  */
 #define LWIP_SOCKET             0
-
 #endif
+
 
 /* Ethernet MTU. */
 #ifndef ETHER_MTU
@@ -95,17 +105,46 @@
 
 /* TCP sender buffer space (bytes). */
 #ifndef TCP_SND_BUF
-#define TCP_SND_BUF             (10 * TCP_MSS)
+#define TCP_SND_BUF             (14 * TCP_MSS)
 #endif
 
 /* TCP receive window. */
 #ifndef TCP_WND
-#define TCP_WND                 (14 * TCP_MSS)
+#define TCP_WND                 (8 * TCP_MSS)
+#endif
+
+/* enable windows scaling */
+#ifndef LWIP_WND_SCALE
+#define LWIP_WND_SCALE                  1
+#endif
+
+/* but keep a small rcv window for reception */
+#ifndef TCP_RCV_SCALE                   
+#define TCP_RCV_SCALE                   0
 #endif
 
 /* Enable backlog*/
 #ifndef TCP_LISTEN_BACKLOG
 #define TCP_LISTEN_BACKLOG      1
+#endif
+
+/* enable the altcp API */
+#ifndef LWIP_ALTCP
+#define LWIP_ALTCP                      1
+#endif
+
+/* enable TLS support for altcp API. */
+#ifndef LWIP_ALTCP_TLS
+#define LWIP_ALTCP_TLS                  1
+#endif
+
+/* enable mbedTLS support */
+#ifndef LWIP_ALTCP_TLS_MBEDTLS
+#define LWIP_ALTCP_TLS_MBEDTLS	      	1
+#endif
+
+#ifndef ALTCP_MBEDTLS_AUTHMODE
+#define ALTCP_MBEDTLS_AUTHMODE                        MBEDTLS_SSL_VERIFY_NONE
 #endif
 
 /* ---------- ICMP options ---------- */
@@ -137,7 +176,7 @@
 /* ---------- Pbuf options ---------- */
 /* PBUF_POOL_SIZE: the number of buffers in the pbuf pool. */
 #ifndef PBUF_POOL_SIZE
-#define PBUF_POOL_SIZE                  ((TCP_WND / TCP_MSS) + 8)
+#define PBUF_POOL_SIZE                  ((TCP_WND / TCP_MSS) * 2)
 #endif
 /* PBUF_POOL_BUFSIZE: the size of each pbuf in the pbuf pool. */
 /* Default value is defined in lwip\src\include\lwip\opt.h as LWIP_MEM_ALIGN_SIZE(TCP_MSS+40+PBUF_LINK_ENCAPSULATION_HLEN+PBUF_LINK_HLEN)*/
@@ -189,11 +228,19 @@
 #endif
 
 #ifndef MEMP_NUM_TCPIP_MSG_INPKT
-#define MEMP_NUM_TCPIP_MSG_INPKT        ((TCP_WND / TCP_MSS) + 2)
+#define MEMP_NUM_TCPIP_MSG_INPKT        ((TCP_WND / TCP_MSS) * 2)
 #endif
 
 #ifndef MEMP_NUM_TCP_SEG
 #define MEMP_NUM_TCP_SEG                TCP_SND_QUEUELEN
+#endif
+
+/**
+ *  If LWIP_USE_WATCHDOG==1, extern declare the functional watchdog and define the required macro to enable lwip to call it
+ */
+#if LWIP_USE_WATCHDOG
+	extern void lwip_KickFunctionalWatchdog();
+	#define LWIP_TCPIP_THREAD_ALIVE lwip_KickFunctionalWatchdog
 #endif
 
 /* ---------- Statistics options ---------- */
@@ -311,7 +358,7 @@ Some MCU allow computing and verifying the IP, UDP, TCP and ICMP checksums by ha
 #endif
 
 #define TCPIP_MBOX_SIZE                 32
-#define TCPIP_THREAD_STACKSIZE	        1024
+#define TCPIP_THREAD_STACKSIZE	        (1024*4)
 #define TCPIP_THREAD_PRIO	            4
 
 #define ETHERIF_THREAD_STACKSIZE	    256

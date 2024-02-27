@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -25,7 +25,7 @@
  * @brief This structure is meant to be instantiated once as a global variable. It acts as a the shared memory interface between the Data Hub task and the motor control loops.
  */
 typedef struct _mc_control_shm {
-	volatile _Atomic bool       bIsTsnCommandInjectionOn;            /*!< Defines, whether the TSN Receive interrupt service routine is allowed to inject a MotorCommand for execution by Slow Motor Control Loop. */
+	volatile _Atomic bool       bIsTsnCommandInjectionOn[MC_MAX_MOTORS];            /*!< Defines, whether the TSN Receive interrupt service routine is allowed to inject a MotorCommand for execution by Slow Motor Control Loop. */
 	volatile mc_motor_command_t sCommands[MC_MAX_MOTORS];            /*!< Array of MotorCommand that holds the motor commands for each of the four motors. Commands are read by the Slow Motor Control Loop and written by the Data Hub task; TSN Receive can also write them. */
 	volatile _Atomic bool       bWriteInProgress[MC_MAX_MOTORS];     /*!< Array of booleans that act as mutexes for the corresponding entries in the commands : MotorCommand[] array. */
 	volatile mc_motor_status_t  sStatus[MC_MAX_MOTORS];              /*!< Array of MotorStatus that holds the motor status for each of the four motors. The status is written by the Fast Motor Control Loop and  Slow Motor Control Loop; it is read by the Data Hub task. */
@@ -49,6 +49,8 @@ typedef struct _mc_control_shm {
 
  /*!
  * @brief Internal function used by the Data Hub task to write a mc_motor_command_t to the shared memory.
+ *
+ * @note If used from additional places, it can lead to race condition issues!
  *
  * @param[in] cmd Motor command to be set for execution
  */

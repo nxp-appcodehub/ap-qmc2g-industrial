@@ -20,6 +20,7 @@
 // SDK Includes
 //-----------------------------------------------------------------------
 #include "qmc2_types.h"
+#include "api_logging.h"
 //------------------------------------------------------------------------------
 // Defines
 //------------------------------------------------------------------------------
@@ -49,8 +50,8 @@ sss_status_t QMC2_FWU_RevertRecoveryImage(fw_header_t *fwHeader);
 sss_status_t QMC2_FWU_BackUpCfgData(header_t *fwHeader);
 /* Authenticate function using SE */
 //sss_status_t SBL_Authenticate(header_t *header, uint32_t *fwVerInSe);
-sss_status_t QMC2_FWU_Program(boot_data_t *boot, log_entry_t *log);
-sss_status_t QMC2_FWU_SdToFwuStorage(boot_data_t *boot, log_entry_t *log);
+sss_status_t QMC2_FWU_Program(boot_data_t *boot, log_event_code_t *log);
+sss_status_t QMC2_FWU_SdToFwuStorage(boot_data_t *boot, log_event_code_t *log);
 
 sss_status_t QMC2_FWU_SdToFwStorage(void);
 ////////////////////////////////////////////////////////////////////////////////

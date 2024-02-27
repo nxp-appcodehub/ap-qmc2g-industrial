@@ -28,8 +28,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HALL_CALIB_H_
-#define HALL_CALIB_H_
+#ifndef HALL_CALIB_H
+#define HALL_CALIB_H
 
 #include "mid_def.h"
 
@@ -46,4 +46,4 @@ extern void MID_calibHall(mid_calib_hall_t* sHallCalibFcn);
 }
 #endif
 
-#endif /* HALL_CALIB_H_ */
+#endif /* HALL_CALIB_H */

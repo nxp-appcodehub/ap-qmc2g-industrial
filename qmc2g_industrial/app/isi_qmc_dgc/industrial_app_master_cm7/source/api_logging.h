@@ -11,6 +11,7 @@
 #ifndef _API_LOGGING_H_
 #define _API_LOGGING_H_
 
+#include <stdint.h>
 #include "api_qmc_common.h"
 #include "stdbool.h"
 #include "FreeRTOS.h"
@@ -35,9 +36,11 @@
 typedef enum _log_record_type_id
 {
     kLOG_DefaultData        = 0x01U, /*!< Identifier for log_recorddata_default_t. */
-	kLOG_FaultDataWithID	= 0x02U, /*!< Identifier for log_recorddata_fault_with_id_t. */
-	kLOG_FaultDataWithoutID = 0x03U, /*!< Identifier for log_recorddata_fault_without_id_t. */
-	kLOG_SystemData         = 0x04U  /*!< Identifier for log_recorddata_system_t. */
+    kLOG_FaultDataWithID    = 0x02U, /*!< Identifier for log_recorddata_fault_with_id_t. */
+    kLOG_FaultDataWithoutID = 0x03U, /*!< Identifier for log_recorddata_fault_without_id_t. */
+    kLOG_SystemData         = 0x04U, /*!< Identifier for log_recorddata_system_t. */
+    kLOG_ErrorCount         = 0x05U, /*!< Identifier for log_recorddata_error_count_t. */
+    kLOG_UsrMgmt            = 0x06U, /*!< Identifier for log_recorddata_UsrMgmt_t. */
 } log_record_type_id_t;
 
 /*!
@@ -45,14 +48,27 @@ typedef enum _log_record_type_id
  */
 typedef enum _log_source_id
 {
-    LOG_SRC_Unspecified      = 0x00U, /*!< Unspecified source */
-    LOG_SRC_Webservice       = 0x01U, /*!< Log written by the Web Service */
-    LOG_SRC_FaultHandling    = 0x02U, /*!< Log written by the Fault Handling */
-    LOG_SRC_CloudService     = 0x03U, /*!< Log written by the Cloud Service */
-    LOG_SRC_LocalService     = 0x04U, /*!< Log written by the Local Service */
-    LOG_SRC_AnomalyDetection = 0x05U, /*!< Log written by the Anomaly Detection */
-    LOG_SRC_MotorControl     = 0x06U, /*!< Log written by the Motor Control e.g. via DataHub task */
-	LOG_SRC_SecureWatchdog   = 0x07U, /*!< Log written by the Secure Watchdog */
+    LOG_SRC_Unspecified                        = 0x00U, /*!< Unspecified source */
+    LOG_SRC_Webservice                         = 0x01U, /*!< Log written by the Web Service */
+    LOG_SRC_FaultHandling                      = 0x02U, /*!< Log written by the Fault Handling */
+    LOG_SRC_CloudService                       = 0x03U, /*!< Log written by the Cloud Service */
+    LOG_SRC_LocalService                       = 0x04U, /*!< Log written by the Local Service */
+    LOG_SRC_BoardService                       = 0x05U, /*!< Log written by the Board Service */
+    LOG_SRC_AnomalyDetection                   = 0x06U, /*!< Log written by the Anomaly Detection */
+    LOG_SRC_MotorControl                       = 0x07U, /*!< Log written by the Motor Control e.g. via DataHub task */
+    LOG_SRC_SecureWatchdog                     = 0x08U, /*!< Log written based on a secure watchdog reset detection. */
+    LOG_SRC_TaskStartup                        = 0x09U, /*!< Log written by the Startup Task */
+    LOG_SRC_RpcModule                          = 0x0AU, /*!< Log written by the RPC module */
+    LOG_SRC_SecureWatchdogServiceRequestNonce  = 0x0BU, /*!< Log written by the Secure Watchdog Service (getting nonce) */
+    LOG_SRC_SecureWatchdogServiceRequestTicket = 0x0CU, /*!< Log written by the Secure Watchdog Service (requesting ticket) */
+    LOG_SRC_SecureWatchdogServiceKick          = 0x0DU, /*!< Log written by the Secure Watchdog Service (kick) */
+    LOG_SRC_FunctionalWatchdog                 = 0x0EU, /*!< Log written based on a functional watchdog reset detection. */
+    LOG_SRC_PowerLossInterrupt                 = 0x0FU, /*!< Log written based on a power loss event detection. */
+    LOG_SRC_LoggingService                     = 0x10U, /*!< Log written by the Logging Service */
+    LOG_SRC_TSN                                = 0x11U, /*!< Log written by the TSN */
+    LOG_SRC_DataHub                            = 0x12U, /*!< Log written by the DataHub */
+	LOG_SRC_SecureBootloader 				   = 0x13U, /*!< Log written by the Secure Bootloader */
+    LOG_SRC_UsrMgmt                            = 0x14U, /*!< Log written by the Identity Management */
 } log_source_id_t;
 
 /*!
@@ -71,72 +87,124 @@ typedef enum _log_category_id
  */
 typedef enum _log_event_code
 {
-	/* Fault Handling*/
-	LOG_EVENT_AfeDbCommunicationError		= 0x00U,
-	LOG_EVENT_AfePsbCommunicationError		= 0x01U,
-	LOG_EVENT_DBTempSensCommunicationError	= 0x02U,
-	LOG_EVENT_DbOverTemperature				= 0x03U,
-	LOG_EVENT_EmergencyStop					= 0x04U,
-	LOG_EVENT_FaultBufferOverflow			= 0x05U,
-	LOG_EVENT_FaultQueueOverflow			= 0x06U,
-	LOG_EVENT_GD3000_Desaturation			= 0x07U,
-	LOG_EVENT_GD3000_LowVLS					= 0x08U,
-	LOG_EVENT_GD3000_OverCurrent			= 0x09U,
-	LOG_EVENT_GD3000_OverTemperature		= 0x0AU,
-	LOG_EVENT_GD3000_PhaseError				= 0x0BU,
-	LOG_EVENT_GD3000_Reset					= 0x0CU,
-	LOG_EVENT_InvalidFaultSource			= 0x0DU,
-	LOG_EVENT_McuOverTemperature			= 0x0EU,
-	LOG_EVENT_NoFault						= 0x0FU,
-	LOG_EVENT_NoFaultBS						= 0x10U,
-	LOG_EVENT_NoFaultMC						= 0x11U,
-	LOG_EVENT_OverCurrent					= 0x12U,
-	LOG_EVENT_OverDcBusVoltage				= 0x13U,
-	LOG_EVENT_OverLoad						= 0x14U,
-	LOG_EVENT_OverSpeed						= 0x15U,
-	LOG_EVENT_PmicOverTemperature			= 0x16U,
-	LOG_EVENT_PmicUnderVoltage1				= 0x17U,
-	LOG_EVENT_PmicUnderVoltage2				= 0x18U,
-	LOG_EVENT_PmicUnderVoltage3				= 0x19U,
-	LOG_EVENT_PmicUnderVoltage4				= 0x1AU,
-	LOG_EVENT_PsbOverTemperature1			= 0x1BU,
-	LOG_EVENT_PsbOverTemperature2			= 0x1CU,
-	LOG_EVENT_RotorBlocked					= 0x1DU,
-	LOG_EVENT_UnderDcBusVoltage				= 0x1EU,
+    /* Fault Handling*/
+    LOG_EVENT_AfeDbCommunicationError      = 0x00U,
+    LOG_EVENT_AfePsbCommunicationError     = 0x01U,
+    LOG_EVENT_DBTempSensCommunicationError = 0x02U,
+    LOG_EVENT_DbOverTemperature            = 0x03U,
+    LOG_EVENT_EmergencyStop                = 0x04U,
+    LOG_EVENT_FaultBufferOverflow          = 0x05U,
+    LOG_EVENT_FaultQueueOverflow           = 0x06U,
+    LOG_EVENT_GD3000_Desaturation          = 0x07U,
+    LOG_EVENT_GD3000_LowVLS                = 0x08U,
+    LOG_EVENT_GD3000_OverCurrent           = 0x09U,
+    LOG_EVENT_GD3000_OverTemperature       = 0x0AU,
+    LOG_EVENT_GD3000_PhaseError            = 0x0BU,
+    LOG_EVENT_GD3000_Reset                 = 0x0CU,
+    LOG_EVENT_InvalidFaultSource           = 0x0DU,
+    LOG_EVENT_McuOverTemperature           = 0x0EU,
+    LOG_EVENT_NoFault                      = 0x0FU,
+    LOG_EVENT_NoFaultBS                    = 0x10U,
+    LOG_EVENT_NoFaultMC                    = 0x11U,
+    LOG_EVENT_OverCurrent                  = 0x12U,
+    LOG_EVENT_OverDcBusVoltage             = 0x13U,
+    LOG_EVENT_OverLoad                     = 0x14U,
+    LOG_EVENT_OverSpeed                    = 0x15U,
+    LOG_EVENT_PmicOverTemperature          = 0x16U,
+    LOG_EVENT_PmicUnderVoltage             = 0x17U,
+    LOG_EVENT_PsbOverTemperature1          = 0x19U,
+    LOG_EVENT_PsbOverTemperature2          = 0x1AU,
+    LOG_EVENT_RotorBlocked                 = 0x1BU,
+    LOG_EVENT_UnderDcBusVoltage            = 0x1CU,
 
-	/* Local Service */
-	LOG_EVENT_Button1Pressed				= 0x1FU,
-	LOG_EVENT_Button2Pressed				= 0x20U,
-	LOG_EVENT_Button3Pressed				= 0x21U,
-	LOG_EVENT_Button4Pressed				= 0x22U,
-	LOG_EVENT_EmergencyButtonPressed		= 0x23U,
-	LOG_EVENT_LidOpenButton					= 0x24U,
-	LOG_EVENT_LidOpenSd						= 0x25U,
-	LOG_EVENT_TamperingButton				= 0x26U,
-	LOG_EVENT_TamperingSd					= 0x27U,
+    /* Local Service */
+    LOG_EVENT_Button1Pressed         = 0x1DU,
+    LOG_EVENT_Button2Pressed         = 0x1EU,
+    LOG_EVENT_Button3Pressed         = 0x1FU,
+    LOG_EVENT_Button4Pressed         = 0x20U,
+    LOG_EVENT_EmergencyButtonPressed = 0x21U,
+    LOG_EVENT_LidOpenButton          = 0x22U,
+    LOG_EVENT_LidOpenSd              = 0x23U,
+    LOG_EVENT_TamperingButton        = 0x24U,
+    LOG_EVENT_TamperingSd            = 0x25U,
 
-	/* Secure Watchdog */
-	LOG_EVENT_ResetRequest					= 0x28U,
-	LOG_EVENT_ResetWatchdog					= 0x29U,
+    /* Secure Watchdog */
+    LOG_EVENT_ResetSecureWatchdog = 0x26U,
 
-	/* Webservice / Authentication */
-	LOG_EVENT_AccountResumed				= 0x2AU,
-	LOG_EVENT_AccountSuspended				= 0x2BU,
-	LOG_EVENT_LoginFailure					= 0x2CU,
-	LOG_EVENT_SessionTimeout				= 0x2DU,
-	LOG_EVENT_TerminateSession				= 0x2EU,
-	LOG_EVENT_UserLogin						= 0x2FU,
-	LOG_EVENT_UserLogout					= 0x30U,
+    /* Webservice / Authentication */
+    LOG_EVENT_AccountResumed   = 0x27U,
+    LOG_EVENT_AccountSuspended = 0x28U,
+    LOG_EVENT_LoginFailure     = 0x29U,
+    LOG_EVENT_SessionTimeout   = 0x2AU,
+    LOG_EVENT_TerminateSession = 0x2BU,
+    LOG_EVENT_UserLogin        = 0x2CU,
+    LOG_EVENT_UserLogout       = 0x2DU,
 
-	/* Motor control / DataHub */
-	LOG_EVENT_QueueingCommandFailedInternal = 0x31U,
-	LOG_EVENT_QueueingCommandFailedTSN      = 0x32U,
-	LOG_EVENT_QueueingCommandFailedQueue    = 0x33U,
+    /* Motor control / DataHub */
+    LOG_EVENT_QueueingCommandFailedInternal = 0x2EU,
+    LOG_EVENT_QueueingCommandFailedTSN      = 0x2FU,
+    LOG_EVENT_QueueingCommandFailedQueue    = 0x30U,
 
-	/* General */
-	LOG_EVENT_InvalidArgument				= 0x34U,
+    /* RPC module */
+    LOG_EVENT_ResetRequest      = 0x31U,
+    LOG_EVENT_InvalidResetCause = 0x32U,
 
+    /* General */
+    LOG_EVENT_InvalidArgument  = 0x33U,
+    LOG_EVENT_RPCCallFailed    = 0x34U,
+    LOG_EVENT_AWDTExpired      = 0x35U,
+    LOG_EVENT_SignatureInvalid = 0x36U,
+    LOG_EVENT_Timeout          = 0x37U,
+    LOG_EVENT_SyncError        = 0x38U,
+    LOG_EVENT_InternalError    = 0x39U,
+    LOG_EVENT_NoBufsError      = 0x3AU,
+    LOG_EVENT_ConnectionError  = 0x3BU,
+    LOG_EVENT_RequestError     = 0x3CU,
+    LOG_EVENT_JsonParsingError = 0x3DU,
+    LOG_EVENT_RangeError       = 0x3EU,
+	LOG_EVENT_PowerLoss        = 0x3FU,
+	
+	/* Functional Watchdog */
+    LOG_EVENT_ResetFunctionalWatchdog = 0x40U,
+	LOG_EVENT_FunctionalWatchdogKickFailed = 0x41U,
+	LOG_EVENT_FunctionalWatchdogInitFailed = 0x42U,
+
+	/* Secure Bootloader */
+	LOG_EVENT_Scp03ConnFailed 			= 0x43U, /* SCP03 connection Failed. */
+	LOG_EVENT_Scp03KeyReconFailed		= 0x44U, /* Key reconstruction Failed. */
+	LOG_EVENT_NewFWReverted				= 0x45U, /* Program Backup image.*/
+	LOG_EVENT_NewFWRevertFailed			= 0x46U, /* Program Backup image Failed.*/
+	LOG_EVENT_NewFWCommitted 			= 0x47U, /* Commit new version of FW into SE and create new Backup Image. */
+	LOG_EVENT_NewFWCommitFailed			= 0x48U, /* Commit new version of FW into SE and create new Backup Image Failed. */
+	LOG_EVENT_AwdtExpired				= 0x49U, /* Authenticated WDOG expired, reboot keeping this state in SNVS_LP_GPR to go into maintenance mode. */
+	LOG_EVENT_CfgDataBackedUp			= 0x4AU, /* Backed up configuration data. */
+	LOG_EVENT_CfgDataBackUpFailed		= 0x4BU, /* Backing up configuration data failed. */
+	LOG_EVENT_MainFwAuthFailed			= 0x4CU, /* Main FW authentication failed. */
+	LOG_EVENT_FwuAuthFailed				= 0x4DU, /* FWU authentication failed. */
+	LOG_EVENT_StackError				= 0x4EU, /* Stack Error/Corruption detected. */
+	LOG_EVENT_KeyRevocation				= 0x4FU, /* Key Revocation request. */
+	LOG_EVENT_InvalidFwuVersion			= 0x50U, /* Invalid FWU version */
+	LOG_EVENT_ExtMemOprFailed			= 0x51U, /* External Memory Operation Failed */
+	LOG_EVENT_BackUpImgAuthFailed		= 0x52U, /* Back Up Image Authentication Failed */
+	LOG_EVENT_SdCardFailed				= 0x53U, /* SD Card Failed */
+	LOG_EVENT_HwInitDeinitFailed		= 0x54U, /* HW Init Failed */
+	LOG_EVENT_SvnsLpGprOpFailed			= 0x55U, /* SNVS LP GPR read or write failed.*/
+	LOG_EVENT_Scp03KeyRotationFailed	= 0x56U, /* Key rotation Failed. */
+	LOG_EVENT_DecommissioningFailed		= 0x57U, /* Decommissioning failed. */
+	LOG_EVENT_VerReadFromSeFailed		= 0x58U, /* Reading version from SE failed. */
+	LOG_EVENT_FwExecutionFailed			= 0x59U, /* Booting of the main FW failed. */
+	LOG_EVENT_FwuCommitFailed			= 0x5AU, /* Commit of the FWU failed. */
+	LOG_EVENT_DeviceDecommissioned		= 0x5BU, /* Device decommissioned. */
+	LOG_EVENT_RpcInitFailed				= 0x5CU, /* RPC initialization failed. */
+	LOG_EVENT_UnknownFWReturnStatus		= 0x5DU, /* Unknown Firmware return status. */
+	LOG_EVENT_NoLogEntry				= 0x5EU, /* There is not log entry. */
+
+    /* Webservice / Authentication */
+    LOG_EVENT_UserCreated      = 0x5FU,
+    LOG_EVENT_UserUpdate       = 0x60U,
+    LOG_EVENT_UserRemoved      = 0x61U,
 } log_event_code_t;
+
 
 
 
@@ -158,14 +226,38 @@ typedef struct _log_recorddata_default
 } log_recorddata_default_t;
 
 /*!
- * @brief Structure that defines a motor or PSB specific fault log entry.
+ * @brief Structure that defines a log entry with an associated counter.
+ */
+typedef struct _log_recorddata_error_count
+{
+    log_source_id_t   source;
+    log_category_id_t category;
+    uint16_t          errorCode;
+    uint16_t          user;
+    uint16_t          count;
+}   log_recorddata_error_count_t;
+
+/*!
+ * @brief Structure that defines a log entry with an with a subject user account.
+ */
+typedef struct _log_recorddata_UsrMgmt
+{
+    log_source_id_t   source;
+    log_category_id_t category;
+    log_event_code_t  eventCode;
+    uint16_t          user;
+    uint16_t          subject;
+}   log_recorddata_UsrMgmt_t;
+
+/*!
+ * @brief Structure that defines fault log entry further specified by an ID. ID can relate to a motor, PSB or PMIC.
  */
 typedef struct _log_recorddata_fault_with_id_t
 {
     log_source_id_t   source;
     log_category_id_t category;
     log_event_code_t  eventCode;
-    uint8_t			  motorId;
+    uint8_t       id;
 } log_recorddata_fault_with_id_t;
 
 /*!
@@ -199,6 +291,8 @@ typedef union _log_recorddata
     log_recorddata_fault_with_id_t faultDataWithID;
     log_recorddata_fault_without_id_t faultDataWithoutID;
     log_recorddata_system_t systemData;
+    log_recorddata_error_count_t errorCount;
+    log_recorddata_UsrMgmt_t usrMgmt;
 } log_recorddata_t;
 
 /*!
@@ -215,21 +309,21 @@ typedef struct _log_record
  * @brief An encrypted log record
  */
 typedef struct __attribute__((__packed__)) _log_enc_data {
-	uint8_t keyiv_enc[LCRYPTO_EX_RSA_KEY_SIZE];
-	uint8_t lr_enc[ MAKE_EVEN(sizeof(log_record_t))];
+  uint8_t keyiv_enc[LCRYPTO_EX_RSA_KEY_SIZE];
+  uint8_t lr_enc[ MAKE_EVEN(sizeof(log_record_t))];
 } log_enc_data;
 
 typedef struct __attribute__((__packed__)) _log_encrypted_record {
-	size_t length;
-	log_enc_data data;
-	uint8_t data_signature[LCRYPTO_EX_SIGN_SIZE];
+  size_t length;
+  log_enc_data data;
+  uint8_t data_signature[LCRYPTO_EX_SIGN_SIZE];
 } log_encrypted_record_t;
 
 typedef struct {
-	StaticQueue_t Queue;
-	QueueHandle_t QueueHandle;
-	qmc_msg_queue_handle_t MsgQueueHandle;
-	uint8_t       QueueBuffer[DATALOGGER_DYNAMIC_RCV_QUEUE_DEPTH * sizeof( log_encrypted_record_t)];
+  StaticQueue_t Queue;
+  QueueHandle_t QueueHandle;
+  qmc_msg_queue_handle_t MsgQueueHandle;
+  uint8_t       QueueBuffer[DATALOGGER_DYNAMIC_RCV_QUEUE_DEPTH * sizeof( log_encrypted_record_t)];
 } log_static_queue_t;
 
 /*******************************************************************************

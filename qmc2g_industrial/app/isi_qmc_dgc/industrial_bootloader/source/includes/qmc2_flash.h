@@ -37,30 +37,6 @@
 //------------------------------------------------------------------------------
 // Global Variables
 //------------------------------------------------------------------------------
-#define OCTAL_FLASH_FLEXSPI FLEXSPI1
-#define OCTAL_RAM_FLEXSPI FLEXSPI1
-#define OCTAL_FLASH_SIZE_A1 0x10000
-#define OCTAL_RAM_SIZE_A2 0x8000
-#define OCTAL_FLASH_SIZE (OCTAL_FLASH_SIZE_A1*1024U)
-#define OCTAL_FLASH_PAGE_SIZE 256U
-#define	OCTAL_FLASH_SECTOR_SIZE 4096U
-
-//LUT sequences
-#define OCTALFLASH_CMD_LUT_SEQ_IDX_READDATA 		0
-#define OCTALFLASH_CMD_LUT_SEQ_IDX_READID 			1
-#define OCTALRAM_CMD_LUT_SEQ_IDX_READDATA 			2
-#define OCTALRAM_CMD_LUT_SEQ_IDX_WRITEDATA 			3
-#define OCTALFLASH_CMD_LUT_SEQ_IDX_READSTATUS		4
-#define OCTALFLASH_CMD_LUT_SEQ_IDX_READCFG2			6
-#define OCTALFLASH_CMD_LUT_SEQ_IDX_WRITECFG2		8
-#define OCTALFLASH_CMD_LUT_SEQ_IDX_WRITECFG2_SPI	13
-#define OCTALFLASH_CMD_LUT_SEQ_IDX_WRITEENABLE		7
-#define OCTALFLASH_CMD_LUT_SEQ_IDX_WRITEENABLE_SPI	10
-#define OCTALFLASH_CMD_LUT_SEQ_IDX_WRITEDATA 		11
-#define OCTALFLASH_CMD_LUT_SEQ_IDX_ERASESECTOR 		12
-#define OCTALFLASH_CMD_LUT_SEQ_IDX_READCFG			9
-
-#define CUSTOM_LUT_LENGTH 64
 
 //------------------------------------------------------------------------------
 // Prototypes

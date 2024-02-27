@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -8,8 +8,8 @@
  * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
-#ifndef _STATE_MACHINE_H_
-#define _STATE_MACHINE_H_
+#ifndef STATE_MACHINE_H
+#define STATE_MACHINE_H
 
 #include "stdint.h"
 #include "mlib_types.h"
@@ -38,7 +38,7 @@ typedef uint32_t sm_app_fault;
 typedef void (*pfcn_void_void)(void);
 
 /*! @brief Application state identification enum */
-typedef enum _sm_app_state
+typedef enum sm_app_state
 {
     kSM_AppFault = 0,
     kSM_AppInit = 1,
@@ -47,7 +47,7 @@ typedef enum _sm_app_state
 } sm_app_state_t;
 
 /*! @brief User state machine functions structure */
-typedef struct _sm_app_state_fcn
+typedef struct sm_app_state_fcn
 {
     pfcn_void_void Fault;
     pfcn_void_void Init;
@@ -56,7 +56,7 @@ typedef struct _sm_app_state_fcn
 } sm_app_state_fcn_t;
 
 /*! @brief User state-transition functions structure */
-typedef struct _sm_app_trans_fcn
+typedef struct sm_app_trans_fcn
 {
     pfcn_void_void FaultStop;
     pfcn_void_void InitFault;
@@ -68,7 +68,7 @@ typedef struct _sm_app_trans_fcn
 } sm_app_trans_fcn_t;
 
 /*! @brief State machine control structure */
-typedef struct _sm_app_ctrl
+typedef struct sm_app_ctrl
 {
     sm_app_state_fcn_t const *psStateFast; /* State functions */
     sm_app_state_fcn_t const *psStateSlow; /* State functions slow*/
@@ -127,5 +127,5 @@ ALWAYS_INLINE static inline void SM_StateMachineSlow(sm_app_ctrl_t *sAppCtrl)
 }
 #endif
 
-#endif //_STATE_MACHINE_H_
+#endif /* STATE_MACHINE_H */
 

@@ -13,6 +13,7 @@
 #include "api_fault.h"
 #include "api_rpc.h"
 #include "api_board.h"
+#include "api_logging.h"
 #include "fsl_tempsensor.h"
 #include "nafe1x388.h"
 #include "nafe_hal_flexio.h"
@@ -28,7 +29,11 @@
 #define DELAY_MS				300u		/* Temperature measurement frequency */
 #define CHANNEL_AMT				2u			/* Amount of channels used in AFE */
 #define CONT_SAMPLE_AMT			1u			/* Amount of readings per channel */
-#define WAKEUPS_BEFORE_TEMPS	5u			/* Iterations of the infinite loop before temperatures are measured */
+#define WAKEUPS_BEFORE_TEMPS	5			/* Iterations of the infinite loop before temperatures are measured */
+
+#if (CHANNEL_AMT > MAX_LOGICAL_CHANNELS)
+#error "Only MAX_LOGICAL_CHANNELS are supported by the AFE. (16 for NAFE11388)"
+#endif
 
 #define R_25 					47000u		/* Thermistor resistance at 25 °C */
 #define BETA 					4101u		/* Thermistor beta */
@@ -215,32 +220,56 @@ extern EventGroupHandle_t g_systemStatusEventGroupHandle;
  */
 qmc_status_t BoardServiceInit()
 {
-	tmpsns_config_t config;
 	flexio_spi_master_config_t masterConfig = { 0 };
 	FLEXIO_SPI_MasterGetDefaultConfig(&masterConfig);
 	masterConfig.baudRate_Bps = SPI_BAUDRATE;
 	masterConfig.phase = kFLEXIO_SPI_ClockPhaseSecondEdge;
+
+	if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogBoardService) != kStatus_QMC_Ok)
+	{
+		FAULT_RaiseFaultEvent(kFAULT_FunctionalWatchdogInitFail);
+	}
 
 	NAFE_HAL_init(&gs_FlexioSPIHandle[0], &masterConfig, BOARD_BOOTCLOCKOVERDRIVERUN_FLEXIO1_CLK_ROOT);
 	NAFE_HAL_init(&gs_FlexioSPIHandle[1], &masterConfig, BOARD_BOOTCLOCKOVERDRIVERUN_FLEXIO1_CLK_ROOT);
 	NAFE_HAL_init(&gs_FlexioSPIHandle[2], &masterConfig, BOARD_BOOTCLOCKOVERDRIVERUN_FLEXIO2_CLK_ROOT);
 	NAFE_HAL_init(&gs_FlexioSPIHandle[3], &masterConfig, BOARD_BOOTCLOCKOVERDRIVERUN_FLEXIO2_CLK_ROOT);
 
-	RPC_SelectPowerStageBoardSpiDevice(kQMC_SpiMotorDriver);
+    if (RPC_SelectPowerStageBoardSpiDevice(kQMC_SpiMotorDriver) != kStatus_QMC_Ok)
+    {
+    	return kStatus_QMC_Err;
+    }
+
 	helper_FLEXIO_SPI_Set_TIMCTL(GD3000_ON_PSB, gs_FlexioSPIHandle);
 	for (mc_motor_id_t motorId = kMC_Motor1; motorId < MC_MAX_MOTORS; motorId++)
 	{
 		GD3000_init(gs_sMGD3000Array[motorId], &gs_FlexioSPIHandle[motorId]);
 	}
 
-	TMPSNS_GetDefaultConfig(&config);
-	TMPSNS_Init(TMPSNS, &config);
-	TMPSNS_DisableInterrupt(TMPSNS, kTEMPSENSOR_LowTempInterruptStatusEnable);
-	TMPSNS_DisableInterrupt(TMPSNS, kTEMPSENSOR_HighTempInterruptStatusEnable);
-	TMPSNS_DisableInterrupt(TMPSNS, kTEMPSENSOR_PanicTempInterruptStatusEnable);
 	DisableIRQ(TMPSNS_LOW_HIGH_IRQn);
 
 	gs_BSInitialized = true;
+
+	if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogBoardService) != kStatus_QMC_Ok)
+	{
+		log_record_t logEntryWithoutId = {
+				.rhead = {
+						.chksum				= 0,
+						.uuid				= 0,
+						.ts = {
+							.seconds		= 0,
+							.milliseconds	= 0
+						}
+				},
+				.type = kLOG_SystemData,
+				.data.systemData.source = LOG_SRC_BoardService,
+				.data.systemData.category = LOG_CAT_General,
+				.data.systemData.eventCode = LOG_EVENT_FunctionalWatchdogKickFailed
+		};
+
+		LOG_QueueLogEntry(&logEntryWithoutId, false);
+	}
+
 	return kStatus_QMC_Ok;
 }
 
@@ -251,6 +280,26 @@ qmc_status_t BoardServiceInit()
  */
 void BoardServiceTask(void *pvParameters)
 {
+	if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogBoardService) != kStatus_QMC_Ok)
+	{
+		log_record_t logEntryWithoutId = {
+			.rhead = {
+					.chksum				= 0,
+					.uuid				= 0,
+					.ts = {
+						.seconds		= 0,
+						.milliseconds	= 0
+					}
+			},
+			.type = kLOG_SystemData,
+			.data.systemData.source = LOG_SRC_BoardService,
+			.data.systemData.category = LOG_CAT_General,
+			.data.systemData.eventCode = LOG_EVENT_FunctionalWatchdogKickFailed
+		};
+
+		LOG_QueueLogEntry(&logEntryWithoutId, false);
+	}
+
 #if (MC_HAS_AFE_ANY_MOTOR != 0)
 	double PSBTemp1 = 0;
 	double PSBTemp2 = 0;
@@ -263,173 +312,271 @@ void BoardServiceTask(void *pvParameters)
 	int wakeupCounter = 0;
 	bool DBOvertemperatureReported = false;
 	bool MCUOvertemperatureReported = false;
+	bool SPISwitchFailReported = false;
 	bool communicationOK = true;
 	TickType_t xLastWakeTime = xTaskGetTickCount();
 
 #if (MC_HAS_AFE_ANY_MOTOR != 0)
-    RPC_SelectPowerStageBoardSpiDevice(kQMC_SpiAfe);
-	helper_FLEXIO_SPI_Set_TIMCTL(AFE_ON_PSB, gs_FlexioSPIHandle);
-	for (mc_motor_id_t motorId = kMC_Motor1; motorId <= kMC_Motor4; motorId++)
-	{
-		if (!MC_PSBx_HAS_AFE(motorId))
-			continue;
-		gs_DevHdl[motorId].sysConfig->enabledChnMask = 0x0003;
-
-		status = (qmc_status_t) NAFE_init(&gs_DevHdl[motorId], &gs_XferHdl);
-
-		if (status == kStatus_QMC_Ok)
+    if (RPC_SelectPowerStageBoardSpiDevice(kQMC_SpiAfe) == kStatus_QMC_Ok)
+    {
+		helper_FLEXIO_SPI_Set_TIMCTL(AFE_ON_PSB, gs_FlexioSPIHandle);
+		for (mc_motor_id_t motorId = kMC_Motor1; motorId <= kMC_Motor4; motorId++)
 		{
-			gs_AfePSBInitialized[motorId] = true;
+			if (!MC_PSBx_HAS_AFE(motorId))
+				continue;
+			gs_DevHdl[motorId].sysConfig->enabledChnMask = 0x0003;
+
+			status = (qmc_status_t) NAFE_init(&gs_DevHdl[motorId], &gs_XferHdl);
+
+			if (status == kStatus_QMC_Ok)
+			{
+				gs_AfePSBInitialized[motorId] = true;
+			}
+			else
+			{
+				fault_source_t src = kFAULT_AfePsbCommunicationError;
+				src |= motorId;
+				FAULT_RaiseFaultEvent(src);
+				gs_communicationErrorReported = true;
+			}
 		}
-		else
+    }
+	else
+	{
+		if (!SPISwitchFailReported)
 		{
-			fault_source_t src = kFAULT_AfePsbCommunicationError;
-			src |= motorId;
+			fault_source_t src = kFAULT_RpcCallFailed;
 			FAULT_RaiseFaultEvent(src);
-			gs_communicationErrorReported = true;
+			SPISwitchFailReported = true;
 		}
 	}
-	RPC_SelectPowerStageBoardSpiDevice(kQMC_SpiMotorDriver);
-	helper_FLEXIO_SPI_Set_TIMCTL(GD3000_ON_PSB, gs_FlexioSPIHandle);
+
+    if (RPC_SelectPowerStageBoardSpiDevice(kQMC_SpiMotorDriver) == kStatus_QMC_Ok)
+    {
+    	if (SPISwitchFailReported)
+    	{
+			fault_source_t src = kFAULT_NoFault;
+			FAULT_RaiseFaultEvent(src);
+			SPISwitchFailReported = false;
+    	}
+
+    	helper_FLEXIO_SPI_Set_TIMCTL(GD3000_ON_PSB, gs_FlexioSPIHandle);
+    }
+    else
+    {
+		if (!SPISwitchFailReported)
+		{
+			fault_source_t src = kFAULT_RpcCallFailed;
+			FAULT_RaiseFaultEvent(src);
+			SPISwitchFailReported = true;
+		}
+    }
+
 #endif  /* #if (MC_HAS_AFE_ANY_MOTOR != 0) */
 
 	for (;;)
 	{
+		if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogBoardService) != kStatus_QMC_Ok)
+		{
+			log_record_t logEntryWithoutId = {
+				.rhead = {
+						.chksum				= 0,
+						.uuid				= 0,
+						.ts = {
+							.seconds		= 0,
+							.milliseconds	= 0
+						}
+				},
+				.type = kLOG_SystemData,
+				.data.systemData.source = LOG_SRC_BoardService,
+				.data.systemData.category = LOG_CAT_General,
+				.data.systemData.eventCode = LOG_EVENT_FunctionalWatchdogKickFailed
+			};
+
+			LOG_QueueLogEntry(&logEntryWithoutId, false);
+		}
+
 		wakeupCounter = (wakeupCounter + 1) % (WAKEUPS_BEFORE_TEMPS + 1);
 
-		/*=========================== Motor status polling ===========================*/
-		for (mc_motor_id_t motorId = kMC_Motor1; motorId < MC_MAX_MOTORS; motorId++)
+		if (!SPISwitchFailReported)
 		{
-			GD3000_getSR(gs_sMGD3000Array[motorId], &gs_FlexioSPIHandle[motorId]);
-
-			if(gs_sMGD3000Array[motorId]->ui8ResetRequest)
+			/*=========================== Motor status polling ===========================*/
+			for (mc_motor_id_t motorId = kMC_Motor1; motorId < MC_MAX_MOTORS; motorId++)
 			{
-				GD3000_init(gs_sMGD3000Array[motorId], &gs_FlexioSPIHandle[motorId]);
-				gs_sMGD3000Array[motorId]->ui8ResetRequest = 0;
-			}
-			else if(gs_sMGD3000Array[motorId]->sStatus.uStatus0.B.desaturation || \
-					gs_sMGD3000Array[motorId]->sStatus.uStatus0.B.lowVls || \
-					gs_sMGD3000Array[motorId]->sStatus.uStatus0.B.overCurrent || \
-					gs_sMGD3000Array[motorId]->sStatus.uStatus0.B.overTemp || \
-					gs_sMGD3000Array[motorId]->sStatus.uStatus0.B.framingErr || \
-					gs_sMGD3000Array[motorId]->sStatus.uStatus0.B.phaseErr)
-			{
-				GD3000_clearFlags(&gs_FlexioSPIHandle[motorId]);
-			}
+				GD3000_getSR(gs_sMGD3000Array[motorId], &gs_FlexioSPIHandle[motorId]);
 
+				if(gs_sMGD3000Array[motorId]->ui8ResetRequest)
+				{
+					GD3000_init(gs_sMGD3000Array[motorId], &gs_FlexioSPIHandle[motorId]);
+					gs_sMGD3000Array[motorId]->ui8ResetRequest = 0;
+				}
+				else if(gs_sMGD3000Array[motorId]->sStatus.uStatus0.B.desaturation || \
+						gs_sMGD3000Array[motorId]->sStatus.uStatus0.B.lowVls || \
+						gs_sMGD3000Array[motorId]->sStatus.uStatus0.B.overCurrent || \
+						gs_sMGD3000Array[motorId]->sStatus.uStatus0.B.overTemp || \
+						gs_sMGD3000Array[motorId]->sStatus.uStatus0.B.framingErr || \
+						gs_sMGD3000Array[motorId]->sStatus.uStatus0.B.phaseErr)
+				{
+					GD3000_clearFlags(&gs_FlexioSPIHandle[motorId]);
+				}
+
+			}
 		}
 
 		if (wakeupCounter == WAKEUPS_BEFORE_TEMPS)
 		{
 #if (MC_HAS_AFE_ANY_MOTOR != 0)
-			RPC_SelectPowerStageBoardSpiDevice(kQMC_SpiAfe);
-			helper_FLEXIO_SPI_Set_TIMCTL(AFE_ON_PSB, gs_FlexioSPIHandle);
-			int index_g_PSBTemps = 0;
-			for (mc_motor_id_t motorId = kMC_Motor1; motorId <= kMC_Motor4; motorId++)
-			{
-				if (!MC_PSBx_HAS_AFE(motorId))
-					continue;
+		    if (RPC_SelectPowerStageBoardSpiDevice(kQMC_SpiAfe) == kStatus_QMC_Ok)
+		    {
+		    	if (SPISwitchFailReported)
+		    	{
+					fault_source_t src = kFAULT_NoFault;
+					FAULT_RaiseFaultEvent(src);
+					SPISwitchFailReported = false;
+		    	}
 
-				if (!gs_AfePSBInitialized[motorId])
+				helper_FLEXIO_SPI_Set_TIMCTL(AFE_ON_PSB, gs_FlexioSPIHandle);
+				int index_g_PSBTemps = 0;
+				for (mc_motor_id_t motorId = kMC_Motor1; motorId <= kMC_Motor4; motorId++)
 				{
-					status = (qmc_status_t) NAFE_init(&gs_DevHdl[motorId], &gs_XferHdl);
-
-					if (status == kStatus_QMC_Ok)
+					if (!MC_PSBx_HAS_AFE(motorId))
 					{
-						gs_AfePSBInitialized[motorId] = true;
+						index_g_PSBTemps += 2; /* Move the index past the current PSB */
+						continue;
+					}
+
+					if (!gs_AfePSBInitialized[motorId])
+					{
+						status = (qmc_status_t) NAFE_init(&gs_DevHdl[motorId], &gs_XferHdl);
+
+						if (status == kStatus_QMC_Ok)
+						{
+							gs_AfePSBInitialized[motorId] = true;
+						}
+						else
+						{
+							/* Already reported in the Board Service Init task. Skip this iteration. */
+							communicationOK = false;
+							index_g_PSBTemps += 2; /* Move the index past the current PSB */
+							continue;
+						}
+					}
+
+					bool PSBTempOK = true;
+
+					/* Read and check temperature measured from TEMP_AFE (PSB Temp 1) */
+					gs_Result = 0;
+					PSBTemp1 = 0;
+					gs_XferHdl.requestedChn = 0;
+					gs_XferHdl.sampleMode = kNafeSampleMode_scsrBlock;
+					status = (qmc_status_t) NAFE_startSample(&gs_DevHdl[motorId], &gs_XferHdl);
+					if (status != kStatus_QMC_Ok)
+					{
+						fault_source_t src = kFAULT_AfePsbCommunicationError;
+						src |= motorId;
+						FAULT_RaiseFaultEvent(src);
+						communicationOK = false;
+						gs_communicationErrorReported = true;
+						gs_AfePSBInitialized[motorId] = false;
+						index_g_PSBTemps += 2; /* Move the index past the current PSB */
+						continue;
+					}
+
+					PSBTemp1 = CalculateTemperatureFromVoltage(gs_Result);
+					if (PSBTemp1 > g_PSB_TEMP1_THRESHOLD)
+					{
+						fault_source_t src = kMC_PsbOverTemperature1;
+						src |= motorId;
+						FAULT_RaiseFaultEvent(src);
+						PSBOvertemperatureReported[motorId] = true;
+						g_psbFaults[motorId] |= kMC_PsbOverTemperature1;
+						PSBTempOK = false;
 					}
 					else
 					{
-						/* Already reported in the Board Service Init task. Skip this iteration. */
-						communicationOK = false;
-						continue;
+						g_psbFaults[motorId] &= ~(kMC_PsbOverTemperature1);
 					}
-				}
-
-				bool PSBTempOK = true;
-
-				/* Read and check temperature measured from TEMP_AFE (PSB Temp 1) */
-				gs_Result = 0;
-				PSBTemp1 = 0;
-				gs_XferHdl.requestedChn = 0;
-				gs_XferHdl.sampleMode = kNafeSampleMode_scsrBlock;
-				status = (qmc_status_t) NAFE_startSample(&gs_DevHdl[motorId], &gs_XferHdl);
-				if (status != kStatus_QMC_Ok)
-				{
-					fault_source_t src = kFAULT_AfePsbCommunicationError;
-					src |= motorId;
-					FAULT_RaiseFaultEvent(src);
-					communicationOK = false;
-					gs_communicationErrorReported = true;
-					gs_AfePSBInitialized[motorId] = false;
-					continue;
-				}
-
-				PSBTemp1 = CalculateTemperatureFromVoltage(gs_Result);
-				if (PSBTemp1 > g_PSB_TEMP1_THRESHOLD)
-				{
-					fault_source_t src = kMC_PsbOverTemperature1;
-					src |= motorId;
-					FAULT_RaiseFaultEvent(src);
-					PSBOvertemperatureReported[motorId] = true;
-					g_psbFaults[motorId] |= kMC_PsbOverTemperature1;
-					PSBTempOK = false;
-				}
-				else
-				{
-					g_psbFaults[motorId] &= ~(kMC_PsbOverTemperature1);
-				}
-				g_PSBTemps[index_g_PSBTemps++] = PSBTemp1;
+					g_PSBTemps[index_g_PSBTemps++] = PSBTemp1;
 
 
-				/* Read and check temperature measured from TEMP_AFE1 (PSB Temp 2) */
-				gs_Result = 0;
-				PSBTemp2 = 0;
-				gs_XferHdl.requestedChn = 1;
-				gs_XferHdl.sampleMode = kNafeSampleMode_scsrBlock;
-				status = (qmc_status_t) NAFE_startSample(&gs_DevHdl[motorId], &gs_XferHdl);
-				if (status != kStatus_QMC_Ok)
-				{
-					fault_source_t src = kFAULT_AfePsbCommunicationError;
-					src |= motorId;
-					FAULT_RaiseFaultEvent(src);
-					communicationOK = false;
-					gs_communicationErrorReported = true;
-					gs_AfePSBInitialized[motorId] = false;
-					continue;
-				}
-
-				PSBTemp2 = CalculateTemperatureFromVoltage(gs_Result);
-				if (PSBTemp2 > g_PSB_TEMP2_THRESHOLD)
-				{
-					fault_source_t src = kMC_PsbOverTemperature2;
-					src |= motorId;
-					FAULT_RaiseFaultEvent(src);
-					PSBOvertemperatureReported[motorId] = true;
-					g_psbFaults[motorId] |= kMC_PsbOverTemperature2;
-					PSBTempOK = false;
-				}
-				else
-				{
-					g_psbFaults[motorId] &= ~(kMC_PsbOverTemperature2);
-				}
-				g_PSBTemps[index_g_PSBTemps++] = PSBTemp2;
-
-
-				/* If both temperatures are OK and a fault was previously reported, send a Nofault */
-				if (PSBTempOK)
-				{
-					if (PSBOvertemperatureReported[motorId])
+					/* Read and check temperature measured from TEMP_AFE1 (PSB Temp 2) */
+					gs_Result = 0;
+					PSBTemp2 = 0;
+					gs_XferHdl.requestedChn = 1;
+					gs_XferHdl.sampleMode = kNafeSampleMode_scsrBlock;
+					status = (qmc_status_t) NAFE_startSample(&gs_DevHdl[motorId], &gs_XferHdl);
+					if (status != kStatus_QMC_Ok)
 					{
-						fault_source_t src = kMC_NoFaultBS;
+						fault_source_t src = kFAULT_AfePsbCommunicationError;
 						src |= motorId;
 						FAULT_RaiseFaultEvent(src);
-						PSBOvertemperatureReported[motorId] = false;
+						communicationOK = false;
+						gs_communicationErrorReported = true;
+						gs_AfePSBInitialized[motorId] = false;
+						index_g_PSBTemps += 1; /* Move the index past the current PSB */
+						continue;
+					}
+
+					PSBTemp2 = CalculateTemperatureFromVoltage(gs_Result);
+					if (PSBTemp2 > g_PSB_TEMP2_THRESHOLD)
+					{
+						fault_source_t src = kMC_PsbOverTemperature2;
+						src |= motorId;
+						FAULT_RaiseFaultEvent(src);
+						PSBOvertemperatureReported[motorId] = true;
+						g_psbFaults[motorId] |= kMC_PsbOverTemperature2;
+						PSBTempOK = false;
+					}
+					else
+					{
+						g_psbFaults[motorId] &= ~(kMC_PsbOverTemperature2);
+					}
+					g_PSBTemps[index_g_PSBTemps++] = PSBTemp2;
+
+
+					/* If both temperatures are OK and a fault was previously reported, send a Nofault */
+					if (PSBTempOK)
+					{
+						if (PSBOvertemperatureReported[motorId])
+						{
+							fault_source_t src = kMC_NoFaultBS;
+							src |= motorId;
+							FAULT_RaiseFaultEvent(src);
+							PSBOvertemperatureReported[motorId] = false;
+						}
 					}
 				}
-			}
-			RPC_SelectPowerStageBoardSpiDevice(kQMC_SpiMotorDriver);
-			helper_FLEXIO_SPI_Set_TIMCTL(GD3000_ON_PSB, gs_FlexioSPIHandle);
+		    }
+		    else
+		    {
+				if (!SPISwitchFailReported)
+				{
+					fault_source_t src = kFAULT_RpcCallFailed;
+					FAULT_RaiseFaultEvent(src);
+					SPISwitchFailReported = true;
+				}
+		    }
+
+		    if (RPC_SelectPowerStageBoardSpiDevice(kQMC_SpiMotorDriver) == kStatus_QMC_Ok)
+		    {
+		    	if (SPISwitchFailReported)
+		    	{
+					fault_source_t src = kFAULT_NoFault;
+					FAULT_RaiseFaultEvent(src);
+					SPISwitchFailReported = false;
+		    	}
+
+		    	helper_FLEXIO_SPI_Set_TIMCTL(GD3000_ON_PSB, gs_FlexioSPIHandle);
+		    }
+		    else
+		    {
+				if (!SPISwitchFailReported)
+				{
+					fault_source_t src = kFAULT_RpcCallFailed;
+					FAULT_RaiseFaultEvent(src);
+					SPISwitchFailReported = true;
+				}
+		    }
 #endif  /* #if (MC_HAS_AFE_ANY_MOTOR != 0) */
 
 			/* Check the temperature measured by the sensor on the digital board */
@@ -455,20 +602,24 @@ void BoardServiceTask(void *pvParameters)
 			}
 
 			/* Check the temperature of the MCU */
-			MCUTemp = 0;
-			TMPSNS_StartMeasure(TMPSNS);
-			MCUTemp = TMPSNS_GetCurrentTemperature(TMPSNS);
-			TMPSNS_StopMeasure(TMPSNS);
-
-			g_MCUTemp = MCUTemp;
-
-			if (MCUTemp > g_MCU_TEMP_THRESHOLD)
-			{
-				fault_source_t src = kFAULT_McuOverTemperature;
-				FAULT_RaiseFaultEvent(src);
-				MCUOvertemperatureReported = true;
-				systemTempOK = false;
+			if (RPC_GetMcuTemperature(&MCUTemp) == kStatus_QMC_Ok)
+ 			{
+				g_MCUTemp = MCUTemp;
+				if (MCUTemp > g_MCU_TEMP_THRESHOLD)
+				{
+					fault_source_t src = kFAULT_McuOverTemperature;
+					FAULT_RaiseFaultEvent(src);
+					MCUOvertemperatureReported = true;
+					systemTempOK = false;
+				}
 			}
+			else
+			{
+				fault_source_t src = kFAULT_RpcCallFailed;
+ 				FAULT_RaiseFaultEvent(src);
+				communicationOK = false;
+				gs_communicationErrorReported = true;				
+ 			}
 
 			/* If the DB and MCU temperatures and all the communications were OK but had been reported as faulty previously, send a NoFault */
 			if (systemTempOK && communicationOK && (DBOvertemperatureReported || MCUOvertemperatureReported || gs_communicationErrorReported))
@@ -536,9 +687,13 @@ qmc_status_t SelfTest(void)
 
 	/* Check the AFEs - BEGIN */
 #if (MC_HAS_AFE_ANY_MOTOR != 0)
-    RPC_SelectPowerStageBoardSpiDevice(kQMC_SpiAfe);
+    if (RPC_SelectPowerStageBoardSpiDevice(kQMC_SpiAfe) != kStatus_QMC_Ok)
+    {
+    	return kStatus_QMC_Err;
+    }
+
 	helper_FLEXIO_SPI_Set_TIMCTL(AFE_ON_PSB, gs_FlexioSPIHandle);
-	for (unsigned int motorId = ((unsigned int) kMC_Motor1); motorId <= MC_MAX_MOTORS; motorId++)
+	for (unsigned int motorId = ((unsigned int) kMC_Motor1); motorId < MC_MAX_MOTORS; motorId++)
 	{
 		if (!MC_PSBx_HAS_AFE(motorId))
 			continue;
@@ -551,7 +706,12 @@ qmc_status_t SelfTest(void)
 			return kStatus_QMC_Err;
 		}
 	}
-	RPC_SelectPowerStageBoardSpiDevice(kQMC_SpiMotorDriver);
+
+    if (RPC_SelectPowerStageBoardSpiDevice(kQMC_SpiMotorDriver) != kStatus_QMC_Ok)
+    {
+    	return kStatus_QMC_Err;
+    }
+
 	helper_FLEXIO_SPI_Set_TIMCTL(GD3000_ON_PSB, gs_FlexioSPIHandle);
 #endif  /* #if (MC_HAS_AFE_ANY_MOTOR != 0) */
 	/* Check the AFEs - END */
@@ -582,4 +742,3 @@ qmc_status_t SelfTest(void)
 
     return kStatus_QMC_Ok;
 }
-

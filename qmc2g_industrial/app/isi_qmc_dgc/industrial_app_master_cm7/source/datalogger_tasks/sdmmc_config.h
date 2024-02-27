@@ -1,12 +1,12 @@
 /*
- * Copyright 2020-2022 NXP
+ * Copyright 2020-2023 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef _SDMMC_CONFIG_H_
-#define _SDMMC_CONFIG_H_
+#ifndef H_SDMMC_CONFIG_H_
+#define H_SDMMC_CONFIG_H_
 
 #ifdef SD_ENABLED
 #include "fsl_sd.h"

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -68,12 +68,12 @@ void helper_FLEXIO_SPI_Set_TIMCTL(spi_selection_t choice, FLEXIO_SPI_Type *baseA
  * @param[in, out] base Pointer to the FLEXIO_SPI_Type structure.
  * @param[in] bitcount Amount of bits to transfer
  */
-void helper_FLEXIO_SPI_SetSCKTimerBitcount(FLEXIO_SPI_Type *base, uint32_t bitcount)
+void helper_FLEXIO_SPI_SetSCKTimerBitcount(FLEXIO_SPI_Type *base, uint16_t bitcount)
 {
     uint16_t timerCmp = 0;
 
-    timerCmp = ((uint16_t)bitcount * 2U - 1U) << 8U;
-    timerCmp |= ((uint16_t) base->flexioBase->TIMCMP[base->timerIndex[0]]) & 0x00FF;
+    timerCmp = ((bitcount * 2U) -  1U) << 8U;
+    timerCmp |= base->flexioBase->TIMCMP[base->timerIndex[0]] & 0x00FF;
 
     base->flexioBase->TIMCMP[base->timerIndex[0]] = FLEXIO_TIMCMP_CMP(timerCmp);
 }
@@ -106,18 +106,18 @@ status_t helper_FLEXIO_SPI_WriteBlockingWithBitcount(FLEXIO_SPI_Type *base,
     uint32_t waitTimes;
 #endif /* #if SPI_RETRY_TIMES */
 
-    while (0U != framesAmt--)
+    while (0U < framesAmt)
     {
         /* Wait until data transfer complete. */
 #if SPI_RETRY_TIMES
         waitTimes = SPI_RETRY_TIMES;
         while ((0U == (FLEXIO_SPI_GetStatusFlags(base) & (uint32_t)kFLEXIO_SPI_TxBufferEmptyFlag)) &&
-               (0U != --waitTimes))
+               (0U < --waitTimes))
     	{
     		SDK_DelayAtLeastUs(SPI_WAIT_US, BOARD_BOOTCLOCKRUN_CORE_CLOCK);
     	}
 
-        if (waitTimes == 0U)
+        if (waitTimes <= 0U)
         {
             return kStatus_FLEXIO_SPI_Timeout;
         }
@@ -152,6 +152,8 @@ status_t helper_FLEXIO_SPI_WriteBlockingWithBitcount(FLEXIO_SPI_Type *base,
         	/* Larger than 32 bit frames would require shifter buffer chaining. */
         	return kStatus_Fail;
         }
+
+        framesAmt--;
     }
 
     return kStatus_Success;

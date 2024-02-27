@@ -97,7 +97,7 @@ struct tsn_stream *tsn_conf_get_stream(int index)
  *  params:      index - selects task from the structure
  *
  */
-struct cyclic_task *tsn_conf_get_cyclic_task(int index)
+struct cyclic_task *tsn_conf_get_cyclic_task(unsigned int index)
 {
     struct cyclic_task *c_task;
 

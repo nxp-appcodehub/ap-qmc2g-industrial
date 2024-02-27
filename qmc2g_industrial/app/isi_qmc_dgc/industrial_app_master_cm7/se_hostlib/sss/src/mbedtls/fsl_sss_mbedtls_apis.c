@@ -2769,16 +2769,19 @@ sss_status_t sss_mbedtls_digest_finish(sss_mbedtls_digest_t *context, uint8_t *d
     }
 
     retval = kStatus_SSS_Success;
+
+	if (context->md_ctx.md_ctx) {
+		mbedtls_md_free(&context->md_ctx);
+	}
+
 exit:
 #endif //SSS_HAVE_TESTCOUNTERPART
+
     return retval;
 }
 
 void sss_mbedtls_digest_context_free(sss_mbedtls_digest_t *context)
 {
-    // if (context->md_ctx) {
-    //     mbedtls_md_free(&context->md_ctx);
-    // }
     memset(context, 0, sizeof(*context));
 }
 

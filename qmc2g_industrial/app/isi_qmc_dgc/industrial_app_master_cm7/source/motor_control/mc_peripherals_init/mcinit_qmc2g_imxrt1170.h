@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -8,8 +8,8 @@
  * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
-#ifndef MCINIT_QMC2G_IMXRT1170_H_
-#define MCINIT_QMC2G_IMXRT1170_H_
+#ifndef MCINIT_QMC2G_IMXRT1170_H
+#define MCINIT_QMC2G_IMXRT1170_H
 
 #include <mc_hal_drivers/mcdrv_adc_imxrt117x.h>
 #include <mc_hal_drivers/mcdrv_pwm3ph_pwma_imxrt117x.h>
@@ -42,7 +42,7 @@
 #define MCRSP_VER       "0.0.1"        /* motor control package version */
 
 /* Application info */
-typedef struct _app_ver
+typedef struct app_ver
 {
     char    cBoardID[15];
     char    cMotorType[4];
@@ -141,4 +141,4 @@ extern mcdrv_pwm3ph_pwma_t g_sM1Pwm3ph,g_sM2Pwm3ph,g_sM3Pwm3ph,g_sM4Pwm3ph;
 
 //extern GD3000_T g_sM1GD3000, g_sM2GD3000, g_sM3GD3000, g_sM4GD3000;
 
-#endif /* MCINIT_QMC2G_IMXRT1170_H_ */
+#endif /* MCINIT_QMC2G_IMXRT1170_H */

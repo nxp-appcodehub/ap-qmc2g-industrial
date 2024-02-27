@@ -28,7 +28,7 @@
 /*******************************************************************************
  * Variables
  ******************************************************************************/
-volatile log_keys_t g_sbl_prov_keys __attribute__((section(".noinit_RAM5_FIX0")));
+log_keys_t g_sbl_prov_keys __attribute__((section(".noinit_RAM5_FIX0")));
 
 static StaticSemaphore_t gs_CAAM_Mutex;
 SemaphoreHandle_t g_CAAM_xSemaphore = NULL;
@@ -107,11 +107,17 @@ qmc_status_t LCRYPTO_encrypt_aes256_cbc( uint8_t *dst, const uint8_t *src, size_
 	if( xSemaphoreTake( g_CAAM_xSemaphore, ticks ) == pdTRUE )
 	{
 		mbedtls_aes_init( &pctx->ctx );
-		mbedtls_aes_setkey_enc( &pctx->ctx, pctx->key, 256);
+		if( mbedtls_aes_setkey_enc( &pctx->ctx, pctx->key, 256) != 0)
+		{
+			dbgLcryptPRINTF("Encrypt1 AES CTR failed. LCRYPTO.\r\n");
+			mbedtls_aes_free( &pctx->ctx );
+			xSemaphoreGive( g_CAAM_xSemaphore );
+			return kStatus_QMC_Err;
+		}
 
 		if( mbedtls_aes_crypt_cbc( &pctx->ctx, MBEDTLS_AES_ENCRYPT, size, pctx->iv, src, dst) != 0)
 		{
-			dbgLcryptPRINTF("Encrypt AES CBC failed. LCRYPTO.\r\n");
+			dbgLcryptPRINTF("Encrypt2 AES CBC failed. LCRYPTO.\r\n");
 			mbedtls_aes_free( &pctx->ctx );
 			xSemaphoreGive( g_CAAM_xSemaphore );
 			return kStatus_QMC_Err;
@@ -136,11 +142,17 @@ qmc_status_t LCRYPTO_decrypt_aes256_cbc( uint8_t *dst, const uint8_t *src, size_
 	if( xSemaphoreTake( g_CAAM_xSemaphore, ticks ) == pdTRUE )
 	{
 		mbedtls_aes_init( &pctx->ctx );
-		mbedtls_aes_setkey_enc( &pctx->ctx, pctx->key, 256);
+		if( mbedtls_aes_setkey_enc( &pctx->ctx, pctx->key, 256) != 0)
+		{
+			dbgLcryptPRINTF("Decrypt1 AES CTR failed. LCRYPTO.\r\n");
+			mbedtls_aes_free( &pctx->ctx );
+			xSemaphoreGive( g_CAAM_xSemaphore );
+			return kStatus_QMC_Err;
+		}
 
 		if( mbedtls_aes_crypt_cbc( &pctx->ctx, MBEDTLS_AES_DECRYPT, size, pctx->iv, src, dst) != 0)
 		{
-			dbgLcryptPRINTF("Decrypt AES CBC failed. LCRYPTO.\r\n");
+			dbgLcryptPRINTF("Decrypt2 AES CBC failed. LCRYPTO.\r\n");
 			mbedtls_aes_free( &pctx->ctx );
 			xSemaphoreGive( g_CAAM_xSemaphore );
 			return kStatus_QMC_Err;
@@ -165,12 +177,19 @@ qmc_status_t LCRYPTO_crypt_aes256_ctr( uint8_t *dst, const uint8_t *src, size_t 
 	if( xSemaphoreTake( g_CAAM_xSemaphore, ticks ) == pdTRUE )
 	{
 		mbedtls_aes_init( &pctx->ctx );
-		mbedtls_aes_setkey_enc( &pctx->ctx, pctx->key, 256);
+
+		if( mbedtls_aes_setkey_enc( &pctx->ctx, pctx->key, 256) != 0)
+		{
+			dbgLcryptPRINTF("Encrypt1 AES CTR failed. LCRYPTO.\r\n");
+			mbedtls_aes_free( &pctx->ctx );
+			xSemaphoreGive( g_CAAM_xSemaphore );
+			return kStatus_QMC_Err;
+		}
 
 		size_t nc_off = 0;
 		if( mbedtls_aes_crypt_ctr( &pctx->ctx, size, &nc_off, pctx->iv, NULL, src, dst) != 0)
 		{
-			dbgLcryptPRINTF("Encrypt AES CTR failed. LCRYPTO.\r\n");
+			dbgLcryptPRINTF("Encrypt2 AES CTR failed. LCRYPTO.\r\n");
 			mbedtls_aes_free( &pctx->ctx );
 			xSemaphoreGive( g_CAAM_xSemaphore );
 			return kStatus_QMC_Err;
@@ -283,7 +302,7 @@ qmc_status_t LCRYPTO_SE_sign_ECC( uint8_t *pdst, size_t *pdst_len, const uint8_t
 		return kStatus_QMC_Err;
 	}
 
-	status = sss_asymmetric_sign_digest( &ctx_sign, psrc, src_len, pdst, pdst_len);
+	status = sss_asymmetric_sign_digest( &ctx_sign, (uint8_t*)psrc, src_len, pdst, pdst_len);
 	if(status != kStatus_SSS_Success)
 	{
 		sss_key_object_free( &key_pair);
@@ -371,4 +390,9 @@ qmc_status_t LCRYPTO_SE_get_sha384( uint8_t *pdst, size_t *dst_len, const uint8_
 
 	sss_digest_context_free( &ctx_digest);
 	return kStatus_QMC_Ok;
+}
+
+void LCRYPTO_zeroize( uint8_t *buf, size_t len)
+{
+	mbedtls_platform_zeroize( (void *)buf, len);
 }

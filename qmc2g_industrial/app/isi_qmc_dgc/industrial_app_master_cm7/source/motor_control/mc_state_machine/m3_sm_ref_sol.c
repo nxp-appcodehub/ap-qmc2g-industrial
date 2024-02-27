@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -1886,7 +1886,7 @@ RAM_FUNC_CRITICAL static void M3_StateRunSpinSlow(void)
         /* Set up speed feed-forward environment when switching from speed-control to position-control */
         if(g_sM3Drive.eControl_1 == kControlMode_SpeedFOC)
         {
-        	if(g_sM3Drive.sPosition.bIsRandomPosition == TRUE)
+        	if(g_sM3Drive.sPosition.bIsRandomPosition == FALSE)
         	{
         		g_sM3Drive.sPosition.i32Q16PosRef_1 = g_sM3Drive.sPosition.i32Q16PosCmd;
         	}

@@ -40,6 +40,39 @@ typedef enum
 /*!
  * @brief Sends a POST request with the given configuration to a server.
  *
+ * @startuml
+ * start
+ * :Prepare POST request to server pHostname and path pPath
+ * pBuffer is used as buffer for headers and response;
+ * :Initialize request headers;
+ * if () then (fail)
+ *  :return kStatus_HTTPS_CLIENT_ErrHeaders;
+ *  stop
+ * endif
+ * :Add "Content-Type: application/json" header;
+ * if () then (fail)
+ *  :return kStatus_HTTPS_CLIENT_ErrHeaders;
+ *  stop
+ * endif
+ * :Send prepared request with body pJson to server using secure sockets;
+ * if () then (fail)
+ *  :return kStatus_HTTPS_CLIENT_ErrSend;
+ *  stop
+ * endif
+ * :Check response content type;
+ * if () then (not JSON)
+ *  :return kStatus_HTTPS_CLIENT_ErrResponseContentType;
+ *  stop
+ * endif
+ * :Return response using pResponse and its length using pResponseLen;
+ * if (response status code) then (not "200 OK")
+ *  :return kStatus_HTTPS_CLIENT_ErrResponseStatus;
+ *  stop
+ * endif
+ * :return kStatus_HTTPS_CLIENT_Ok;
+ * stop
+ * @enduml
+ * 
  * @param[in] pHostname Pointer to the hostname string to which to connect to.
  * @param[in] hostnameLen Length (without null terminator) of the hostname string.
  * @param[in] pPath Pointer to the path string to which to send the request to.

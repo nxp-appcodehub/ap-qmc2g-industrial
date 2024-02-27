@@ -80,7 +80,7 @@ extern const header_t fw_hdr;
  ******************************************************************************/
 
 static bool          isLeapYear(uint16_t year);
-static qmc_weekday_t computeDayOfWeek(qmc_datetime_t *dt);
+static qmc_weekday_t computeDayOfWeek(const qmc_datetime_t *dt);
 static void getTime_OverflowProtectionTimerCallback(TimerHandle_t xTimer);
 
 /*******************************************************************************
@@ -128,7 +128,11 @@ qmc_status_t BOARD_GetDbTemperature(float* temperature)
 		return kStatus_QMC_ErrArgInvalid;
 
 	/* take mutex */
-	xSemaphoreTake(gSmComlock, portMAX_DELAY);
+	if (xSemaphoreTake(gSmComlock, portMAX_DELAY) != pdTRUE)
+	{
+		/* Failed to take mutex */
+		goto i2c_error;
+	}
 
 	retVal = LPI2C_MasterStart(BOARD_GENERAL_I2C_BASEADDR, PCT2075_I2C_ADDRESS, kLPI2C_Write);
 	if (retVal != kStatus_Success)
@@ -178,7 +182,11 @@ qmc_status_t BOARD_GetDbTemperature(float* temperature)
 	}
 
 	/* return mutex */
-	xSemaphoreGive(gSmComlock);
+	if (xSemaphoreGive(gSmComlock) != pdTRUE)
+	{
+		/* Failed to return mutex */
+		goto i2c_error;
+	}
 
 	/* Compute 11-bit temperature value */
 	Temperature_11_bit = ((int16_t) (TemperatureData[0] << 8 | TemperatureData[1])) >> 5;
@@ -189,7 +197,7 @@ qmc_status_t BOARD_GetDbTemperature(float* temperature)
 
 i2c_error:
 	/* return mutex */
-	xSemaphoreGive(gSmComlock);
+	(void) xSemaphoreGive(gSmComlock);
 	return kStatus_QMC_Err;
 }
 
@@ -219,7 +227,11 @@ qmc_status_t BOARD_SetDbTemperatureAlarm(float threshold, float hysteresis)
 	thresholdData[0]   = TOS_REG;                         /* Register */
 
 	/* take mutex */
-	xSemaphoreTake(gSmComlock, portMAX_DELAY);
+	if (xSemaphoreTake(gSmComlock, portMAX_DELAY) != pdTRUE)
+	{
+		/* Failed to take mutex */
+		goto i2c_error;
+	}
 
 	/* set hysteresis value */
 	retVal = LPI2C_MasterStart(BOARD_GENERAL_I2C_BASEADDR, PCT2075_I2C_ADDRESS, kLPI2C_Write);
@@ -274,13 +286,17 @@ qmc_status_t BOARD_SetDbTemperatureAlarm(float threshold, float hysteresis)
 	}
 
 	/* return mutex */
-	xSemaphoreGive(gSmComlock);
+	if (xSemaphoreGive(gSmComlock) != pdTRUE)
+	{
+		/* Failed to give mutex */
+		goto i2c_error;
+	}
 
 	return kStatus_QMC_Ok;
 
 i2c_error:
 	/* return mutex */
-	xSemaphoreGive(gSmComlock);
+	(void) xSemaphoreGive(gSmComlock);
 	return kStatus_QMC_Err;
 }
 
@@ -292,7 +308,7 @@ i2c_error:
  * @param temperature Pointer to write the temperature to
  * @param psb Sensor to read the temperature from
  */
-qmc_status_t BOARD_GetPsbTemperature(float* temperature, qmc_psb_temperature_id_t psb)
+qmc_status_t BOARD_GetPsbTemperature(double* temperature, qmc_psb_temperature_id_t psb)
 {
 	if (temperature == NULL)
 	{
@@ -336,12 +352,14 @@ qmc_status_t BOARD_SetDigitalOutput(qmc_output_cmd_t mode, qmc_output_id_t pin)
 	uint16_t pins_disp_b2  = pin & (kQMC_UserOutput1 | kQMC_UserOutput2 | kQMC_UserOutput3 | kQMC_UserOutput4);
 	uint16_t pins_snvs     = pin & (kQMC_UserOutput5 | kQMC_UserOutput6 | kQMC_UserOutput7 | kQMC_UserOutput8);
 	uint8_t  snvsLastStateBackup;
-	static uint8_t snvsLastState /*= kQMC_CM4_SnvsUserOutputsInitState*/=0; //TODO: fix initialization once RPC implementation is available
+	static uint8_t snvsLastState = 0;
 
     qmc_status_t retval = kStatus_QMC_Ok;
 
 	/* input sanitation and limit checks */
 	if(pin != (pins_disp_b2 | pins_snvs))
+		return kStatus_QMC_ErrArgInvalid;
+	if(0 == pin)
 		return kStatus_QMC_ErrArgInvalid;
 
 	/* qmc_output_id_t needs a shift to be used as mask */
@@ -378,7 +396,7 @@ qmc_status_t BOARD_SetDigitalOutput(qmc_output_cmd_t mode, qmc_output_id_t pin)
     	if(pins_snvs)
     	{
     		snvsLastState ^= (pins_snvs >> 4);
-    		retval = RPC_SetSnvsOutput(snvsLastState | (pins_snvs >> 4));
+    		retval = RPC_SetSnvsOutput(pins_snvs | snvsLastState);
     	}
     	break;
     default:
@@ -542,9 +560,9 @@ qmc_status_t BOARD_SetLifecycle(qmc_lifecycle_t lc)
 		switch (lc)
 		{
 		case kQMC_LcOperational:
-			if (currentLc == kQMC_LcMaintenance || currentLc == kQMC_LcError)
+			if (currentLc == kQMC_LcMaintenance)
 			{
-				xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Maintenance | QMC_SYSEVENT_LIFECYCLE_Error);
+				xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Maintenance);
 				xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Operational);
 				return kStatus_QMC_Ok;
 			}
@@ -553,8 +571,8 @@ qmc_status_t BOARD_SetLifecycle(qmc_lifecycle_t lc)
 		case kQMC_LcMaintenance:
 			if (currentLc == kQMC_LcOperational || currentLc == kQMC_LcError || currentLc == kQMC_LcCommissioning)
 			{
-				xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Operational || QMC_SYSEVENT_LIFECYCLE_Error\
-						|| QMC_SYSEVENT_LIFECYCLE_Commissioning);
+				xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Operational | QMC_SYSEVENT_LIFECYCLE_Error\
+						| QMC_SYSEVENT_LIFECYCLE_Commissioning);
 				xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LIFECYCLE_Maintenance);
 				return kStatus_QMC_Ok;
 			}
@@ -676,7 +694,7 @@ qmc_status_t BOARD_ConvertTimestamp2Datetime(const qmc_timestamp_t* timestamp, q
 
     /* split days into full months and remaining days */
     for(i = 1; i < (sizeof(gs_daysInYearPerMonth)/sizeof(uint16_t)); i++) {
-    	if(days < ((isLeap && (i>1)) ? gs_daysInYearPerMonth[i]+1 : gs_daysInYearPerMonth[i]) )
+    	if(days <= ((isLeap && (i>1)) ? gs_daysInYearPerMonth[i]+1 : gs_daysInYearPerMonth[i]) )
     		break;
     }
     dt->month = i;
@@ -706,7 +724,7 @@ qmc_status_t BOARD_ConvertDatetime2Timestamp(const qmc_datetime_t* dt, qmc_times
 	/* input sanitation and limit checks */
 	if((NULL == dt) || (NULL == timestamp) )
 	    return kStatus_QMC_ErrArgInvalid;
-	if( (dt->hour > 23) || (dt->minute > 59) || (dt->second > 59) || (dt->millisecond > 999) || (dt->dayOfWeek < 0) || (dt->dayOfWeek > 6) )
+	if( (dt->hour > 23) || (dt->minute > 59) || (dt->second > 59) || (dt->millisecond > 999) || (dt->dayOfWeek < 0) || (dt->dayOfWeek > 6) || (dt->day == 0) )
         return kStatus_QMC_ErrRange;
 	isLeap = isLeapYear(dt->year);
     switch(dt->month)
@@ -729,6 +747,12 @@ qmc_status_t BOARD_ConvertDatetime2Timestamp(const qmc_datetime_t* dt, qmc_times
              break;
     default: return kStatus_QMC_ErrRange;
     }
+
+    /* check whether day of week matches the date */
+#if FEATURE_BOARD_SANITY_CHECK_DAY_OF_WEEK
+    if(dt->dayOfWeek != computeDayOfWeek(dt))
+    	return kStatus_InvalidArgument;
+#endif /* FEATURE_BOARD_SANITY_CHECK_DAY_OF_WEEK */
 
     /* compute days since the epoch (01.01.1970 00:00:00.000) */
 	daysSinceEpoch = (dt->year - 1970)*DAYS_PER_YEAR + LEAP_YEARS_SINCE_EPOCH(dt->year) + gs_daysInYearPerMonth[dt->month-1] + dt->day-1;
@@ -835,7 +859,7 @@ static bool isLeapYear(uint16_t year)
 	return true;
 }
 
-static qmc_weekday_t computeDayOfWeek(qmc_datetime_t *dt)
+static qmc_weekday_t computeDayOfWeek(const qmc_datetime_t *dt)
 {
 	uint16_t year = dt->year;
 

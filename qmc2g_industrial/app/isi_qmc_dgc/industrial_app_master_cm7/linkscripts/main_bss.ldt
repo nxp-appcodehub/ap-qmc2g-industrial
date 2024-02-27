@@ -8,14 +8,11 @@
  * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
-       *(EXCLUDE_FILE(
-						*freertos_kernel*
-						*lwip*
-						*application_util.o
-						*fsl_debug_console.o
-						*lvgl*
-						*vglite*
-		) *.bss*)
-	
-		
-		
+    *(EXCLUDE_FILE(
+        *freertos_kernel*
+        *lwip*
+        *application_util.o
+        *fsl_debug_console.o
+        *lvgl*
+        *vglite*
+    ) *.bss*)

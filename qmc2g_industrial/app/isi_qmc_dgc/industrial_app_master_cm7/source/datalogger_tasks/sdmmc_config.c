@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2022 NXP
+ * Copyright 2020-2023 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -91,7 +91,7 @@ void BOARD_SDMMC_SD_CD_PORT_IRQ_HANDLER(void)
     {
         if (s_cd.callback != NULL)
         {
-            s_cd.callback(BOARD_SDCardGetDetectStatus(), s_cd.userData);
+            s_cd.callback(BOARD_SDCardGetDetectStatus()==true, s_cd.userData);
         }
     }
     /* Clear interrupt flag.*/
@@ -139,7 +139,7 @@ void BOARD_SDCardDetectInit(sd_cd_t cd, void *userData)
 
         /* set IRQ priority */
         NVIC_SetPriority(BOARD_SDMMC_SD_CD_IRQ, BOARD_SDMMC_SD_CD_IRQ_PRIORITY);
-        GPIO_PortClearInterruptFlags(BOARD_SDMMC_SD_CD_GPIO_BASE, ~0);
+        GPIO_PortClearInterruptFlags(BOARD_SDMMC_SD_CD_GPIO_BASE, ~(uint32_t)0);
         /* Open card detection pin NVIC. */
         EnableIRQ(BOARD_SDMMC_SD_CD_IRQ);
 

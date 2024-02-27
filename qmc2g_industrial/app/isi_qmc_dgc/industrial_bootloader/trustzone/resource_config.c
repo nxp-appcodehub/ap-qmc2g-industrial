@@ -10,7 +10,7 @@ product: TEE v4.0
 processor: MIMXRT1176xxxxx
 package_id: MIMXRT1176DVMAA
 mcu_data: ksdk2_0
-processor_version: 10.0.0
+processor_version: 13.0.2
 board: MIMXRT1170-EVK
 toolOptions:
   _legacy_source_names_: 'no'
@@ -69,58 +69,57 @@ functional_group:
             domains: [{template: NO_ACCESS}]}, {id: ADC_ETC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPADC1, enabled: 'false',
             locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPADC2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
           {id: DAC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: IEE__IEE_RT1170, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: IEE_APC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: DMA0, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: DMAMUX0, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: LPUART1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART2, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: LPUART3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART4, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART5, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: LPUART6, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART7, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: LPUART8, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART9, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART10, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: FLEXIO1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: FLEXIO2, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: AOI1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AOI2, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CAN1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: CAN2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: FLEXSPI1, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: FLEXSPI2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SEMC, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PIT1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: KPP, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: IOMUXC_GPR, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: IOMUXC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPT1, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPT2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: GPT3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPT4, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: GPT5, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPT6, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPI2C1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: LPI2C2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPI2C3, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: LPI2C4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPSPI1, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPSPI2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: LPSPI3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPSPI4, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: GPIO1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO2, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: GPIO4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO5, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: GPIO6, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: EMVSIM1, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: EMVSIM2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: TMR1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: TMR2, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: TMR3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: TMR4, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ENC1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: ENC2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ENC3, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: ENC4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PWM1, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PWM2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: PWM3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PWM4, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: CMP1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CMP2, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CMP3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: CMP4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SPDIF, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: SAI1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SAI2, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SAI3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: ASRC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: USDHC1, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: USDHC2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ENET_1G, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ENET, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: USBHSDCD1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: USB_OTG2, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: USB_OTG1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: USBPHY1, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: USBPHY2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: ENET_QOS, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CSI, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: LCDIF, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LCDIFV2, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: DSI_HOST, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: MIPI_CSI2RX, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PXP, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: VIDEO_MUX, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPC_SET_POINT_CTRL,
+            domains: [{template: NO_ACCESS}]}, {id: IEE_APC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART1, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: LPUART3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART4, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: LPUART5, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART6, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART7, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: LPUART8, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART9, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: LPUART10, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: FLEXIO1, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: FLEXIO2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: AOI1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AOI2, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: CAN1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CAN2, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: FLEXSPI1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: FLEXSPI2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SEMC, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: PIT1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: KPP, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: IOMUXC_GPR, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: IOMUXC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPT1, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: GPT2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPT3, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPT4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: GPT5, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPT6, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: LPI2C1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPI2C2, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPI2C3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: LPI2C4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPSPI1, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: LPSPI2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPSPI3, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPSPI4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: GPIO1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO2, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: GPIO3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO4, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO5, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: GPIO6, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: EMVSIM1, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: EMVSIM2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: TMR1, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: TMR2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: TMR3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: TMR4, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: ENC1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ENC2, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ENC3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: ENC4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PWM1, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: PWM2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PWM3, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PWM4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: CMP1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CMP2, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: CMP3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CMP4, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SPDIF, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: SAI1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SAI2, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: SAI3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ASRC, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: USDHC1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: USDHC2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ENET_1G, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: ENET, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: USBHSDCD1, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: USB_OTG2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: USB_OTG1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: USBPHY1, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: USBPHY2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ENET_QOS, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CSI, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: LCDIF, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LCDIFV2, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: DSI_HOST, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: MIPI_CSI2RX,
+            enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PXP, enabled: 'false', locked: unlock, eal: disabled, domains: [
+              {template: NO_ACCESS}]}, {id: VIDEO_MUX, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPC_SET_POINT_CTRL,
             enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SRC, enabled: 'false', locked: unlock, eal: disabled, domains: [
               {template: NO_ACCESS}]}, {id: IOMUXC_LPSR, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: IOMUXC_LPSR_GPR,
             enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: RTWDOG4, enabled: 'false', locked: unlock, eal: disabled, domains: [
@@ -131,50 +130,49 @@ functional_group:
             locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPI2C5, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
           {id: LPI2C6, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CAN3, enabled: 'false', locked: unlock, eal: disabled,
             domains: [{template: NO_ACCESS}]}, {id: SAI4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: RDC_SEMAPHORE1,
-            enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: MUA, enabled: 'false', locked: unlock, eal: disabled, domains: [
-              {template: NO_ACCESS}]}, {id: MUB, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO7, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO8, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: GPIO9, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO10, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: GPIO11, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO12, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: RDC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: ALL}]},
-          {id: KEY_MANAGER, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ANADIG_MISC, enabled: 'false', locked: unlock,
-            eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PGMC_PPC0, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: SNVS, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: IOMUXC_SNVS, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: IOMUXC_SNVS_GPR, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SRAM,
-            enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO13, enabled: 'false', locked: unlock, eal: disabled, domains: [
-              {template: NO_ACCESS}]}, {id: ROMCP, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: DCDC, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: OCOTP, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: ALL}]},
-          {id: PIT2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SSARC_HP, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: SSARC_LP, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CCM, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CCM_OBS, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: SEMA4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: RDC_SEMAPHORE2, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: XRDC2_D1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: XRDC2_D0, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPU, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CDOG, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00040000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00050000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00060000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00070000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00080000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00090000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x000A0000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x000B0000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x000C0000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x000D0000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x000E0000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x000F0000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00100000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00110000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00120000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00130000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}]
+            enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: MUB, enabled: 'false', locked: unlock, eal: disabled, domains: [
+              {template: NO_ACCESS}]}, {id: GPIO7, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO8, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO9, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: GPIO10, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO11, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: GPIO12, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: RDC, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: ALL}]}, {id: KEY_MANAGER, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: ANADIG_MISC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PGMC_PPC0, enabled: 'false', locked: unlock,
+            eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SNVS, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: IOMUXC_SNVS,
+            enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: IOMUXC_SNVS_GPR, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: SRAM, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO13, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ROMCP, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: DCDC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: OCOTP, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: ALL}]}, {id: PIT2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SSARC_HP, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SSARC_LP, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: CCM, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CCM_OBS, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: SEMA4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: RDC_SEMAPHORE2,
+            enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: XRDC2_D1, enabled: 'false', locked: unlock, eal: disabled, domains: [
+              {template: NO_ACCESS}]}, {id: XRDC2_D0, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00040000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00050000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00060000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00070000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00080000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00090000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x000A0000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x000B0000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x000C0000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x000D0000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x000E0000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x000F0000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00100000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00110000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00120000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00130000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPU, base_region: {
+              start: '0x00000000', size: '0x00100000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CDOG, base_region: {
+              start: '0x00000000', size: '0x00100000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}]
     - mscs:
       - msc:
         - checker_id: 'MSC'
-        - slaves: [{id: SIM_DISP, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+        - slaves: [{id: ROMCP, base_region: {start: '0x00000000', size: '0x00040000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: SIM_DISP, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
           {id: SIM_M4, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: SIM_M7, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: ROMCP, base_region: {start: '0x00000000', size: '0x00040000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}]
+          {id: SIM_M7, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}]
     - mrcs:
       - mrc:
         - checker_id: 'MRC'
@@ -224,58 +222,57 @@ functional_group:
             domains: [{template: NO_ACCESS}]}, {id: ADC_ETC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPADC1, enabled: 'false',
             locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPADC2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
           {id: DAC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: IEE__IEE_RT1170, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: IEE_APC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: DMA0, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: DMAMUX0, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: LPUART1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART2, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: LPUART3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART4, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART5, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: LPUART6, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART7, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: LPUART8, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART9, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART10, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: FLEXIO1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: FLEXIO2, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: AOI1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AOI2, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CAN1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: CAN2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: FLEXSPI1, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: FLEXSPI2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SEMC, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PIT1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: KPP, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: IOMUXC_GPR, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: IOMUXC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPT1, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPT2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: GPT3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPT4, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: GPT5, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPT6, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPI2C1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: LPI2C2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPI2C3, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: LPI2C4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPSPI1, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPSPI2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: LPSPI3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPSPI4, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: GPIO1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO2, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: GPIO4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO5, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: GPIO6, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: EMVSIM1, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: EMVSIM2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: TMR1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: TMR2, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: TMR3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: TMR4, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ENC1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: ENC2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ENC3, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: ENC4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PWM1, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PWM2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: PWM3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PWM4, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: CMP1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CMP2, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CMP3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: CMP4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SPDIF, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: SAI1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SAI2, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SAI3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: ASRC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: USDHC1, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: USDHC2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ENET_1G, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ENET, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: USBHSDCD1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: USB_OTG2, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: USB_OTG1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: USBPHY1, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: USBPHY2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: ENET_QOS, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CSI, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: LCDIF, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LCDIFV2, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: DSI_HOST, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: MIPI_CSI2RX, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PXP, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: VIDEO_MUX, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPC_SET_POINT_CTRL,
+            domains: [{template: NO_ACCESS}]}, {id: IEE_APC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART1, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: LPUART3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART4, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: LPUART5, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART6, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART7, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: LPUART8, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPUART9, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: LPUART10, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: FLEXIO1, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: FLEXIO2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: AOI1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AOI2, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: CAN1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CAN2, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: FLEXSPI1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: FLEXSPI2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SEMC, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: PIT1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: KPP, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: IOMUXC_GPR, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: IOMUXC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPT1, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: GPT2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPT3, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPT4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: GPT5, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPT6, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: LPI2C1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPI2C2, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPI2C3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: LPI2C4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPSPI1, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: LPSPI2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPSPI3, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPSPI4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: GPIO1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO2, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: GPIO3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO4, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO5, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: GPIO6, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: EMVSIM1, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: EMVSIM2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: TMR1, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: TMR2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: TMR3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: TMR4, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: ENC1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ENC2, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ENC3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: ENC4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PWM1, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: PWM2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PWM3, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PWM4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: CMP1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CMP2, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: CMP3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CMP4, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SPDIF, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: SAI1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SAI2, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: SAI3, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ASRC, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: USDHC1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: USDHC2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ENET_1G, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: ENET, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: USBHSDCD1, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: USB_OTG2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: USB_OTG1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: USBPHY1, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: USBPHY2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ENET_QOS, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CSI, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: LCDIF, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LCDIFV2, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: DSI_HOST, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: MIPI_CSI2RX,
+            enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PXP, enabled: 'false', locked: unlock, eal: disabled, domains: [
+              {template: NO_ACCESS}]}, {id: VIDEO_MUX, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPC_SET_POINT_CTRL,
             enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SRC, enabled: 'false', locked: unlock, eal: disabled, domains: [
               {template: NO_ACCESS}]}, {id: IOMUXC_LPSR, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: IOMUXC_LPSR_GPR,
             enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: RTWDOG4, enabled: 'false', locked: unlock, eal: disabled, domains: [
@@ -286,50 +283,49 @@ functional_group:
             locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: LPI2C5, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
           {id: LPI2C6, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CAN3, enabled: 'false', locked: unlock, eal: disabled,
             domains: [{template: NO_ACCESS}]}, {id: SAI4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: RDC_SEMAPHORE1,
-            enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: MUA, enabled: 'false', locked: unlock, eal: disabled, domains: [
-              {template: NO_ACCESS}]}, {id: MUB, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO7, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO8, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: GPIO9, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO10, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: GPIO11, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO12, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: RDC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: KEY_MANAGER, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ANADIG_MISC, enabled: 'false', locked: unlock,
-            eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PGMC_PPC0, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: SNVS, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: IOMUXC_SNVS, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: IOMUXC_SNVS_GPR, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SRAM,
-            enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO13, enabled: 'false', locked: unlock, eal: disabled, domains: [
-              {template: NO_ACCESS}]}, {id: ROMCP, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: DCDC, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: OCOTP, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: PIT2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SSARC_HP, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: SSARC_LP, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CCM, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CCM_OBS, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: SEMA4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: RDC_SEMAPHORE2, enabled: 'false', locked: unlock, eal: disabled,
-            domains: [{template: NO_ACCESS}]}, {id: XRDC2_D1, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: XRDC2_D0, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPU, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CDOG, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00040000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00050000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00060000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00070000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00080000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00090000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x000A0000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x000B0000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x000C0000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x000D0000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x000E0000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x000F0000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00100000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00110000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00120000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {start: '0x00130000', size: '0x00010000'}, enabled: 'false',
-            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}]
+            enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: MUB, enabled: 'false', locked: unlock, eal: disabled, domains: [
+              {template: NO_ACCESS}]}, {id: GPIO7, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO8, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO9, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: GPIO10, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO11, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: GPIO12, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: RDC, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: KEY_MANAGER, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: ANADIG_MISC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: PGMC_PPC0, enabled: 'false', locked: unlock,
+            eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SNVS, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: IOMUXC_SNVS,
+            enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: IOMUXC_SNVS_GPR, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: SRAM, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPIO13, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: ROMCP, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: DCDC, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: OCOTP, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: PIT2, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SSARC_HP, enabled: 'false',
+            locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: SSARC_LP, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: CCM, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CCM_OBS, enabled: 'false', locked: unlock, eal: disabled,
+            domains: [{template: NO_ACCESS}]}, {id: SEMA4, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: RDC_SEMAPHORE2,
+            enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: XRDC2_D1, enabled: 'false', locked: unlock, eal: disabled, domains: [
+              {template: NO_ACCESS}]}, {id: XRDC2_D0, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00040000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00050000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00060000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00070000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00080000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00090000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x000A0000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x000B0000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x000C0000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x000D0000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x000E0000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x000F0000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00100000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00110000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00120000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: AIPSTZ2, base_region: {
+              start: '0x00130000', size: '0x00010000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: GPU, base_region: {
+              start: '0x00000000', size: '0x00100000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}, {id: CDOG, base_region: {
+              start: '0x00000000', size: '0x00100000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}]
     - mscs:
       - msc:
         - checker_id: 'MSC_XRDC'
-        - slaves: [{id: SIM_DISP, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+        - slaves: [{id: ROMCP, base_region: {start: '0x00000000', size: '0x00040000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
+          {id: SIM_DISP, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
           {id: SIM_M4, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: SIM_M7, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]},
-          {id: ROMCP, base_region: {start: '0x00000000', size: '0x00040000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}]
+          {id: SIM_M7, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'false', locked: unlock, eal: disabled, domains: [{template: NO_ACCESS}]}]
     - mrcs:
       - mrc:
         - checker_id: 'MRC_XRDC'
@@ -368,16 +364,15 @@ functional_group:
           semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: LPADC1, locked: 'true', semaphore_required: 'false', domains: [{template: rw},
             {template: no_access}]}, {id: LPADC2, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: DAC, locked: 'true',
           semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]}, {id: IEE_APC, locked: 'true', semaphore_required: 'false', domains: [
-            {template: no_access}, {template: no_access}]}, {id: DMAMUX0, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]},
-        {id: LPUART1, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]}, {id: LPUART2, locked: 'true', semaphore_required: 'false',
-          domains: [{template: no_access}, {template: no_access}]}, {id: LPUART3, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {
-              template: no_access}]}, {id: LPUART4, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]}, {id: LPUART5,
-          locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]}, {id: LPUART6, locked: 'true', semaphore_required: 'false',
-          domains: [{template: rw}, {template: no_access}]}, {id: LPUART7, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]},
-        {id: LPUART8, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: LPUART9, locked: 'true', semaphore_required: 'false',
-          domains: [{template: no_access}, {template: no_access}]}, {id: LPUART10, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {
-              template: no_access}]}, {id: FLEXIO1, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: FLEXIO2,
-          locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: CAN1, locked: 'true', semaphore_required: 'false',
+            {template: no_access}, {template: no_access}]}, {id: LPUART1, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]},
+        {id: LPUART2, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]}, {id: LPUART3, locked: 'true', semaphore_required: 'false',
+          domains: [{template: no_access}, {template: no_access}]}, {id: LPUART4, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {
+              template: no_access}]}, {id: LPUART5, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]}, {id: LPUART6,
+          locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: LPUART7, locked: 'true', semaphore_required: 'false',
+          domains: [{template: rw}, {template: no_access}]}, {id: LPUART8, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]},
+        {id: LPUART9, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]}, {id: LPUART10, locked: 'true', semaphore_required: 'false',
+          domains: [{template: no_access}, {template: no_access}]}, {id: FLEXIO1, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]},
+        {id: FLEXIO2, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: CAN1, locked: 'true', semaphore_required: 'false',
           domains: [{template: no_access}, {template: no_access}]}, {id: CAN2, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]},
         {id: PIT1, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: KPP, locked: 'true', semaphore_required: 'false',
           domains: [{template: no_access}, {template: no_access}]}, {id: IOMUXC_GPR, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: rw}]},
@@ -391,7 +386,7 @@ functional_group:
           domains: [{template: no_access}, {template: no_access}]}, {id: LPSPI1, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]},
         {id: LPSPI2, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]}, {id: LPSPI3, locked: 'true', semaphore_required: 'false',
           domains: [{template: no_access}, {template: no_access}]}, {id: LPSPI4, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]},
-        {id: GPIO1, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: rw}]}, {id: CCM_OBS, locked: 'true', semaphore_required: 'false',
+        {id: GPIO1, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: CCM_OBS, locked: 'true', semaphore_required: 'false',
           domains: [{template: rw}, {template: rw}]}, {id: EMVSIM1, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]},
         {id: EMVSIM2, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]}, {id: TMR1, locked: 'true', semaphore_required: 'false',
           domains: [{template: rw}, {template: no_access}]}, {id: TMR2, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]},
@@ -431,35 +426,35 @@ functional_group:
           domains: [{template: no_access}, {template: no_access}]}, {id: XRDC2_D1, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {
               template: no_access}]}, {id: GPIO7, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: KEY_MANAGER,
           locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]}, {id: ANADIG_MISC, locked: 'true', semaphore_required: 'false',
-          domains: [{template: rw}, {template: no_access}]}, {id: SNVS, locked: 'true', semaphore_required: 'false', domains: [{template: r}, {template: rw}]}, {
-          id: IOMUXC_SNVS, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: rw}]}, {id: IOMUXC_SNVS_GPR, locked: 'true', semaphore_required: 'false',
+          domains: [{template: r}, {template: rw}]}, {id: SNVS, locked: 'true', semaphore_required: 'false', domains: [{template: r}, {template: rw}]}, {id: IOMUXC_SNVS,
+          locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: rw}]}, {id: IOMUXC_SNVS_GPR, locked: 'true', semaphore_required: 'false',
           domains: [{template: no_access}, {template: rw}]}, {id: SRAM, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: rw}]},
         {id: GPIO13, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: rw}]}, {id: ROMCP, locked: 'true', semaphore_required: 'false',
           domains: [{template: no_access}, {template: no_access}]}, {id: DCDC, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]},
         {id: OCOTP, locked: 'true', semaphore_required: 'false', domains: [{template: r}, {template: r}]}, {id: PIT2, locked: 'true', semaphore_required: 'false',
           domains: [{template: rw}, {template: no_access}]}, {id: SSARC_HP, locked: 'true', semaphore_required: 'false', domains: [{template: no_access}, {template: no_access}]},
-        {id: CCM, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: AIPSTZ2, base_region: {start: '0x00050000',
-            size: '0x00010000'}, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: AIPSTZ2, base_region: {start: '0x00060000',
-            size: '0x00010000'}, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: AIPSTZ2, base_region: {start: '0x00070000',
-            size: '0x00010000'}, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: AIPSTZ2, base_region: {start: '0x00080000',
-            size: '0x00010000'}, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: AIPSTZ2, base_region: {start: '0x000A0000',
-            size: '0x00010000'}, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: AIPSTZ2, base_region: {start: '0x000C0000',
-            size: '0x00010000'}, locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}]
+        {id: CCM, locked: 'true', semaphore_required: 'false', domains: [{template: r}, {template: rw}]}, {id: AIPSTZ2, base_region: {start: '0x00050000', size: '0x00010000'},
+          locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: AIPSTZ2, base_region: {start: '0x00060000', size: '0x00010000'},
+          locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: AIPSTZ2, base_region: {start: '0x00070000', size: '0x00010000'},
+          locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: AIPSTZ2, base_region: {start: '0x00080000', size: '0x00010000'},
+          locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: AIPSTZ2, base_region: {start: '0x000A0000', size: '0x00010000'},
+          locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}, {id: AIPSTZ2, base_region: {start: '0x000C0000', size: '0x00010000'},
+          locked: 'true', semaphore_required: 'false', domains: [{template: rw}, {template: no_access}]}]
   - mrcs:
     - mrc:
       - checker_id: 'MRC_RDC'
       - slaves: [{id: SRAM_OC_cm4, base_region: {start: '0x00000000', size: '0x00040000'}, enabled: 'true', locked: 'true', index: '0', domains: [{template: no_access},
-            {template: r}]}, {id: SIM_DISP, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'true', locked: 'true', index: '0', domains: [{template: rw},
+            {template: r}]}, {id: SIM_DISP, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'true', locked: 'true', index: '0', domains: [{template: no_access},
             {template: no_access}]}, {id: SRAM_OC_cm7, base_region: {start: '0x00000000', size: '0x000A0000'}, enabled: 'true', locked: 'true', index: '0', domains: [
             {template: rw}, {template: no_access}]}, {id: SIM_M4, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'true', locked: 'true', index: '0',
-          domains: [{template: rw}, {template: no_access}]}, {id: CAAM, base_region: {start: '0x00000000', size: '0x00002000'}, enabled: 'true', locked: 'true', index: '0',
-          domains: [{template: rw}, {template: no_access}]}, {id: SIM_M7, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'true', locked: 'true',
-          index: '0', domains: [{template: rw}, {template: no_access}]}, {id: SRAM_OC1, base_region: {start: '0x00000000', size: '0x00080000'}, enabled: 'true', locked: 'true',
-          index: '0', domains: [{template: rw}, {template: no_access}]}, {id: SRAM_OC2, base_region: {start: '0x00000000', size: '0x00080000'}, enabled: 'true', locked: 'true',
-          index: '0', domains: [{template: rw}, {template: no_access}]}, {id: SEMC, base_region: {start: '0x00000000', size: '0x60000000'}, enabled: 'true', locked: 'true',
-          index: '0', domains: [{template: no_access}, {template: no_access}]}, {id: FLEXSPI1_REGION, base_region: {start: '0x00000000', size: '0x10000000'}, enabled: 'true',
-          locked: 'true', index: '0', domains: [{template: rw}, {template: no_access}]}, {id: FLEXSPI2_REGION, base_region: {start: '0x00000000', size: '0x20000000'},
-          enabled: 'true', locked: 'true', index: '0', domains: [{template: r}, {template: no_access}]}]
+          domains: [{template: no_access}, {template: no_access}]}, {id: CAAM, base_region: {start: '0x00000000', size: '0x00002000'}, enabled: 'true', locked: 'true',
+          index: '0', domains: [{template: rw}, {template: no_access}]}, {id: SIM_M7, base_region: {start: '0x00000000', size: '0x00100000'}, enabled: 'true', locked: 'true',
+          index: '0', domains: [{template: no_access}, {template: no_access}]}, {id: SRAM_OC1, base_region: {start: '0x00000000', size: '0x00080000'}, enabled: 'true',
+          locked: 'true', index: '0', domains: [{template: rw}, {template: no_access}]}, {id: SRAM_OC2, base_region: {start: '0x00000000', size: '0x00080000'}, enabled: 'true',
+          locked: 'true', index: '0', domains: [{template: rw}, {template: no_access}]}, {id: SEMC, base_region: {start: '0x00000000', size: '0x60000000'}, enabled: 'true',
+          locked: 'true', index: '0', domains: [{template: no_access}, {template: no_access}]}, {id: FLEXSPI1_REGION, base_region: {start: '0x00000000', size: '0x10000000'},
+          enabled: 'true', locked: 'true', index: '0', domains: [{template: rw}, {template: no_access}]}, {id: FLEXSPI2_REGION, base_region: {start: '0x00000000',
+            size: '0x20000000'}, enabled: 'true', locked: 'true', index: '0', domains: [{template: r}, {template: no_access}]}]
 - global_options:
   - 0:
     - id: [XRDC2_D0_MCR_GCL, XRDC2_D1_MCR_GCL]
@@ -552,6 +547,12 @@ functional_group:
         index: '13', enabled: 'false', security: priv, start: '0x00000000', size: '0x00000020'}, {executable: 'false', read_only: 'false', shareability: non_shareable,
         srd: '0', attributes_index: '14', index: '14', enabled: 'false', security: priv, start: '0x00000000', size: '0x00000020'}, {executable: 'false', read_only: 'false',
         shareability: non_shareable, srd: '0', attributes_index: '15', index: '15', enabled: 'false', security: priv, start: '0x00000000', size: '0x00000020'}]
+- access_templates: {template: {id: Template_1, locked: 'false', accesses: {ns_user: '000', ns_priv: '000', s_user: '000', s_priv: '000'}}, template: {id: Template_2,
+    locked: 'false', accesses: {ns_user: '000', ns_priv: '000', s_user: '000', s_priv: '000'}}, template: {id: Template_3, locked: 'false', accesses: {ns_user: '000',
+      ns_priv: '000', s_user: '000', s_priv: '000'}}, template: {id: Template_4, locked: 'false', accesses: {ns_user: '000', ns_priv: '000', s_user: '000', s_priv: '000'}},
+  template: {id: Template_5, locked: 'false', accesses: {ns_user: '000', ns_priv: '000', s_user: '000', s_priv: '000'}}, template: {id: Template_6, locked: 'false',
+    accesses: {ns_user: '000', ns_priv: '000', s_user: '000', s_priv: '000'}}, template: {id: Template_7, locked: 'false', accesses: {ns_user: '000', ns_priv: '000',
+      s_user: '000', s_priv: '000'}}, template: {id: Template_8, locked: 'false', accesses: {ns_user: '000', ns_priv: '000', s_user: '000', s_priv: '000'}}}
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS **********/
 /* clang-format on */
 
@@ -588,19 +589,19 @@ void BOARD_InitRDC()
     RDC->MR[44].MRC = 0xC00000F8U;
     RDC->MR[56].MRSA = 0x41000000U;
     RDC->MR[56].MREA = 0x41100000U;
-    RDC->MR[56].MRC = 0xC00000F3U;
+    RDC->MR[56].MRC = 0xC00000F0U;
     RDC->MR[40].MRSA = 0x20360000U;
     RDC->MR[40].MREA = 0x20400000U;
     RDC->MR[40].MRC = 0xC00000F3U;
     RDC->MR[57].MRSA = 0x41100000U;
     RDC->MR[57].MREA = 0x41200000U;
-    RDC->MR[57].MRC = 0xC00000F3U;
+    RDC->MR[57].MRC = 0xC00000F0U;
     RDC->MR[48].MRSA = 0x00280000U;
     RDC->MR[48].MREA = 0x00282000U;
     RDC->MR[48].MRC = 0xC00000F3U;
     RDC->MR[58].MRSA = 0x41400000U;
     RDC->MR[58].MREA = 0x41500000U;
-    RDC->MR[58].MRC = 0xC00000F3U;
+    RDC->MR[58].MRC = 0xC00000F0U;
     RDC->MR[24].MRSA = 0x20240000U;
     RDC->MR[24].MREA = 0x202C0000U;
     RDC->MR[24].MRC = 0xC00000F3U;
@@ -639,7 +640,6 @@ void BOARD_InitRDC()
     RDC->PDAP[15] = 0x80000003U;
     RDC->PDAP[17] = 0x80000000U;
     RDC->PDAP[18] = 0x80000000U;
-    RDC->PDAP[19] = 0x80000000U;
     RDC->PDAP[20] = 0x80000000U;
     RDC->PDAP[21] = 0x80000000U;
     RDC->PDAP[22] = 0x80000000U;
@@ -672,7 +672,7 @@ void BOARD_InitRDC()
     RDC->PDAP[49] = 0x80000000U;
     RDC->PDAP[50] = 0x80000000U;
     RDC->PDAP[51] = 0x80000000U;
-    RDC->PDAP[52] = 0x8000000FU;
+    RDC->PDAP[52] = 0x80000003U;
     RDC->PDAP[53] = 0x8000000FU;
     RDC->PDAP[54] = 0x80000000U;
     RDC->PDAP[55] = 0x80000000U;
@@ -730,7 +730,7 @@ void BOARD_InitRDC()
     RDC->PDAP[111] = 0x80000000U;
     RDC->PDAP[112] = 0x80000003U;
     RDC->PDAP[113] = 0x80000000U;
-    RDC->PDAP[114] = 0x80000003U;
+    RDC->PDAP[114] = 0x8000000EU;
     RDC->PDAP[115] = 0x8000000EU;
     RDC->PDAP[116] = 0x8000000FU;
     RDC->PDAP[117] = 0x8000000CU;
@@ -741,7 +741,7 @@ void BOARD_InitRDC()
     RDC->PDAP[122] = 0x8000000AU;
     RDC->PDAP[123] = 0x80000003U;
     RDC->PDAP[124] = 0x80000000U;
-    RDC->PDAP[125] = 0x80000003U;
+    RDC->PDAP[125] = 0x8000000EU;
 }
 
 /***********************************************************************************************************************
@@ -791,10 +791,6 @@ void BOARD_InitXRDC2()
     XRDC2_D0->MDACI_MDAJ[17][0].MDAC_MDA_W0 = 0;
     
     
-    XRDC2_D0->PACI_PDACJ[4][0].PAC_PDAC_W1 = 0;
-    XRDC2_D0->PACI_PDACJ[4][0].PAC_PDAC_W0 = 0;
-    XRDC2_D0->PACI_PDACJ[5][0].PAC_PDAC_W1 = 0;
-    XRDC2_D0->PACI_PDACJ[5][0].PAC_PDAC_W0 = 0;
     XRDC2_D0->PACI_PDACJ[1][16].PAC_PDAC_W1 = 0;
     XRDC2_D0->PACI_PDACJ[1][16].PAC_PDAC_W0 = 0;
     XRDC2_D0->PACI_PDACJ[1][20].PAC_PDAC_W1 = 0;
@@ -827,6 +823,10 @@ void BOARD_InitXRDC2()
     XRDC2_D0->PACI_PDACJ[1][72].PAC_PDAC_W0 = 0;
     XRDC2_D0->PACI_PDACJ[1][76].PAC_PDAC_W1 = 0;
     XRDC2_D0->PACI_PDACJ[1][76].PAC_PDAC_W0 = 0;
+    XRDC2_D0->PACI_PDACJ[4][0].PAC_PDAC_W1 = 0;
+    XRDC2_D0->PACI_PDACJ[4][0].PAC_PDAC_W0 = 0;
+    XRDC2_D0->PACI_PDACJ[5][0].PAC_PDAC_W1 = 0;
+    XRDC2_D0->PACI_PDACJ[5][0].PAC_PDAC_W0 = 0;
     XRDC2_D0->PACI_PDACJ[0][5].PAC_PDAC_W1 = 0;
     XRDC2_D0->PACI_PDACJ[0][5].PAC_PDAC_W0 = 0;
     XRDC2_D0->PACI_PDACJ[0][6].PAC_PDAC_W1 = 0;
@@ -865,10 +865,6 @@ void BOARD_InitXRDC2()
     XRDC2_D0->PACI_PDACJ[0][26].PAC_PDAC_W0 = 0;
     XRDC2_D0->PACI_PDACJ[0][27].PAC_PDAC_W1 = 0;
     XRDC2_D0->PACI_PDACJ[0][27].PAC_PDAC_W0 = 0;
-    XRDC2_D0->PACI_PDACJ[0][28].PAC_PDAC_W1 = 0;
-    XRDC2_D0->PACI_PDACJ[0][28].PAC_PDAC_W0 = 0;
-    XRDC2_D0->PACI_PDACJ[0][29].PAC_PDAC_W1 = 0;
-    XRDC2_D0->PACI_PDACJ[0][29].PAC_PDAC_W0 = 0;
     XRDC2_D0->PACI_PDACJ[0][31].PAC_PDAC_W1 = 0;
     XRDC2_D0->PACI_PDACJ[0][31].PAC_PDAC_W0 = 0;
     XRDC2_D0->PACI_PDACJ[0][32].PAC_PDAC_W1 = 0;
@@ -1069,8 +1065,6 @@ void BOARD_InitXRDC2()
     XRDC2_D0->PACI_PDACJ[3][16].PAC_PDAC_W0 = 0;
     XRDC2_D0->PACI_PDACJ[3][17].PAC_PDAC_W1 = 0;
     XRDC2_D0->PACI_PDACJ[3][17].PAC_PDAC_W0 = 0;
-    XRDC2_D0->PACI_PDACJ[3][18].PAC_PDAC_W1 = 0;
-    XRDC2_D0->PACI_PDACJ[3][18].PAC_PDAC_W0 = 0;
     XRDC2_D0->PACI_PDACJ[3][19].PAC_PDAC_W1 = 0;
     XRDC2_D0->PACI_PDACJ[3][19].PAC_PDAC_W0 = 0;
     XRDC2_D0->PACI_PDACJ[3][23].PAC_PDAC_W1 = 0;
@@ -1134,24 +1128,24 @@ void BOARD_InitXRDC2()
     XRDC2_D0->MRCI_MRGDJ[3][0].MRC_MRGD_W2 = 0x20203FFFU;
     XRDC2_D0->MRCI_MRGDJ[3][0].MRC_MRGD_W3 = 0;
     XRDC2_D0->MRCI_MRGDJ[3][0].MRC_MRGD_W5 = 0;
-    XRDC2_D0->MRCI_MRGDJ[5][0].MRC_MRGD_W6 = 0;
-    XRDC2_D0->MRCI_MRGDJ[5][0].MRC_MRGD_W0 = 0x20340000U;
-    XRDC2_D0->MRCI_MRGDJ[5][0].MRC_MRGD_W1 = 0;
-    XRDC2_D0->MRCI_MRGDJ[5][0].MRC_MRGD_W2 = 0x20340FFFU;
-    XRDC2_D0->MRCI_MRGDJ[5][0].MRC_MRGD_W3 = 0;
-    XRDC2_D0->MRCI_MRGDJ[5][0].MRC_MRGD_W5 = 0;
+    XRDC2_D0->MRCI_MRGDJ[5][16].MRC_MRGD_W6 = 0;
+    XRDC2_D0->MRCI_MRGDJ[5][16].MRC_MRGD_W0 = 0x20340000U;
+    XRDC2_D0->MRCI_MRGDJ[5][16].MRC_MRGD_W1 = 0;
+    XRDC2_D0->MRCI_MRGDJ[5][16].MRC_MRGD_W2 = 0x20340FFFU;
+    XRDC2_D0->MRCI_MRGDJ[5][16].MRC_MRGD_W3 = 0;
+    XRDC2_D0->MRCI_MRGDJ[5][16].MRC_MRGD_W5 = 0;
     XRDC2_D0->MRCI_MRGDJ[4][0].MRC_MRGD_W6 = 0;
     XRDC2_D0->MRCI_MRGDJ[4][0].MRC_MRGD_W0 = 0x20360000U;
     XRDC2_D0->MRCI_MRGDJ[4][0].MRC_MRGD_W1 = 0;
     XRDC2_D0->MRCI_MRGDJ[4][0].MRC_MRGD_W2 = 0x20361FFFU;
     XRDC2_D0->MRCI_MRGDJ[4][0].MRC_MRGD_W3 = 0;
     XRDC2_D0->MRCI_MRGDJ[4][0].MRC_MRGD_W5 = 0;
-    XRDC2_D0->MRCI_MRGDJ[6][0].MRC_MRGD_W6 = 0;
-    XRDC2_D0->MRCI_MRGDJ[6][0].MRC_MRGD_W0 = 0x20350000U;
-    XRDC2_D0->MRCI_MRGDJ[6][0].MRC_MRGD_W1 = 0;
-    XRDC2_D0->MRCI_MRGDJ[6][0].MRC_MRGD_W2 = 0x20350FFFU;
-    XRDC2_D0->MRCI_MRGDJ[6][0].MRC_MRGD_W3 = 0;
-    XRDC2_D0->MRCI_MRGDJ[6][0].MRC_MRGD_W5 = 0;
+    XRDC2_D0->MRCI_MRGDJ[6][16].MRC_MRGD_W6 = 0;
+    XRDC2_D0->MRCI_MRGDJ[6][16].MRC_MRGD_W0 = 0x20350000U;
+    XRDC2_D0->MRCI_MRGDJ[6][16].MRC_MRGD_W1 = 0;
+    XRDC2_D0->MRCI_MRGDJ[6][16].MRC_MRGD_W2 = 0x20350FFFU;
+    XRDC2_D0->MRCI_MRGDJ[6][16].MRC_MRGD_W3 = 0;
+    XRDC2_D0->MRCI_MRGDJ[6][16].MRC_MRGD_W5 = 0;
     XRDC2_D0->MRCI_MRGDJ[0][0].MRC_MRGD_W6 = 0;
     XRDC2_D0->MRCI_MRGDJ[0][0].MRC_MRGD_W0 = 0x00280000U;
     XRDC2_D0->MRCI_MRGDJ[0][0].MRC_MRGD_W1 = 0;
@@ -1177,14 +1171,14 @@ void BOARD_InitXRDC2()
     XRDC2_D0->MRCI_MRGDJ[2][0].MRC_MRGD_W3 = 0;
     XRDC2_D0->MRCI_MRGDJ[2][0].MRC_MRGD_W5 = 0;
     
+    XRDC2_D0->MSCI_MSAC_WK[3].MSC_MSAC_W1 = 0;
+    XRDC2_D0->MSCI_MSAC_WK[3].MSC_MSAC_W0 = 0;
     XRDC2_D0->MSCI_MSAC_WK[0].MSC_MSAC_W1 = 0;
     XRDC2_D0->MSCI_MSAC_WK[0].MSC_MSAC_W0 = 0;
     XRDC2_D0->MSCI_MSAC_WK[1].MSC_MSAC_W1 = 0;
     XRDC2_D0->MSCI_MSAC_WK[1].MSC_MSAC_W0 = 0;
     XRDC2_D0->MSCI_MSAC_WK[2].MSC_MSAC_W1 = 0;
     XRDC2_D0->MSCI_MSAC_WK[2].MSC_MSAC_W0 = 0;
-    XRDC2_D0->MSCI_MSAC_WK[3].MSC_MSAC_W1 = 0;
-    XRDC2_D0->MSCI_MSAC_WK[3].MSC_MSAC_W0 = 0;
     
     XRDC2_D1->MDACI_MDAJ[0][0].MDAC_MDA_W1 = 0;
     XRDC2_D1->MDACI_MDAJ[0][0].MDAC_MDA_W0 = 0;
@@ -1221,10 +1215,6 @@ void BOARD_InitXRDC2()
     XRDC2_D1->MDACI_MDAJ[17][0].MDAC_MDA_W0 = 0;
     
     
-    XRDC2_D1->PACI_PDACJ[4][0].PAC_PDAC_W1 = 0;
-    XRDC2_D1->PACI_PDACJ[4][0].PAC_PDAC_W0 = 0;
-    XRDC2_D1->PACI_PDACJ[5][0].PAC_PDAC_W1 = 0;
-    XRDC2_D1->PACI_PDACJ[5][0].PAC_PDAC_W0 = 0;
     XRDC2_D1->PACI_PDACJ[1][16].PAC_PDAC_W1 = 0;
     XRDC2_D1->PACI_PDACJ[1][16].PAC_PDAC_W0 = 0;
     XRDC2_D1->PACI_PDACJ[1][20].PAC_PDAC_W1 = 0;
@@ -1257,6 +1247,10 @@ void BOARD_InitXRDC2()
     XRDC2_D1->PACI_PDACJ[1][72].PAC_PDAC_W0 = 0;
     XRDC2_D1->PACI_PDACJ[1][76].PAC_PDAC_W1 = 0;
     XRDC2_D1->PACI_PDACJ[1][76].PAC_PDAC_W0 = 0;
+    XRDC2_D1->PACI_PDACJ[4][0].PAC_PDAC_W1 = 0;
+    XRDC2_D1->PACI_PDACJ[4][0].PAC_PDAC_W0 = 0;
+    XRDC2_D1->PACI_PDACJ[5][0].PAC_PDAC_W1 = 0;
+    XRDC2_D1->PACI_PDACJ[5][0].PAC_PDAC_W0 = 0;
     XRDC2_D1->PACI_PDACJ[0][5].PAC_PDAC_W1 = 0;
     XRDC2_D1->PACI_PDACJ[0][5].PAC_PDAC_W0 = 0;
     XRDC2_D1->PACI_PDACJ[0][6].PAC_PDAC_W1 = 0;
@@ -1295,10 +1289,6 @@ void BOARD_InitXRDC2()
     XRDC2_D1->PACI_PDACJ[0][26].PAC_PDAC_W0 = 0;
     XRDC2_D1->PACI_PDACJ[0][27].PAC_PDAC_W1 = 0;
     XRDC2_D1->PACI_PDACJ[0][27].PAC_PDAC_W0 = 0;
-    XRDC2_D1->PACI_PDACJ[0][28].PAC_PDAC_W1 = 0;
-    XRDC2_D1->PACI_PDACJ[0][28].PAC_PDAC_W0 = 0;
-    XRDC2_D1->PACI_PDACJ[0][29].PAC_PDAC_W1 = 0;
-    XRDC2_D1->PACI_PDACJ[0][29].PAC_PDAC_W0 = 0;
     XRDC2_D1->PACI_PDACJ[0][31].PAC_PDAC_W1 = 0;
     XRDC2_D1->PACI_PDACJ[0][31].PAC_PDAC_W0 = 0;
     XRDC2_D1->PACI_PDACJ[0][32].PAC_PDAC_W1 = 0;
@@ -1499,8 +1489,6 @@ void BOARD_InitXRDC2()
     XRDC2_D1->PACI_PDACJ[3][16].PAC_PDAC_W0 = 0;
     XRDC2_D1->PACI_PDACJ[3][17].PAC_PDAC_W1 = 0;
     XRDC2_D1->PACI_PDACJ[3][17].PAC_PDAC_W0 = 0;
-    XRDC2_D1->PACI_PDACJ[3][18].PAC_PDAC_W1 = 0;
-    XRDC2_D1->PACI_PDACJ[3][18].PAC_PDAC_W0 = 0;
     XRDC2_D1->PACI_PDACJ[3][19].PAC_PDAC_W1 = 0;
     XRDC2_D1->PACI_PDACJ[3][19].PAC_PDAC_W0 = 0;
     XRDC2_D1->PACI_PDACJ[3][23].PAC_PDAC_W1 = 0;
@@ -1558,14 +1546,14 @@ void BOARD_InitXRDC2()
     XRDC2_D1->PACI_PDACJ[3][56].PAC_PDAC_W1 = 0;
     XRDC2_D1->PACI_PDACJ[3][56].PAC_PDAC_W0 = 0;
     
+    XRDC2_D1->MSCI_MSAC_WK[3].MSC_MSAC_W1 = 0;
+    XRDC2_D1->MSCI_MSAC_WK[3].MSC_MSAC_W0 = 0;
     XRDC2_D1->MSCI_MSAC_WK[0].MSC_MSAC_W1 = 0;
     XRDC2_D1->MSCI_MSAC_WK[0].MSC_MSAC_W0 = 0;
     XRDC2_D1->MSCI_MSAC_WK[1].MSC_MSAC_W1 = 0;
     XRDC2_D1->MSCI_MSAC_WK[1].MSC_MSAC_W0 = 0;
     XRDC2_D1->MSCI_MSAC_WK[2].MSC_MSAC_W1 = 0;
     XRDC2_D1->MSCI_MSAC_WK[2].MSC_MSAC_W0 = 0;
-    XRDC2_D1->MSCI_MSAC_WK[3].MSC_MSAC_W1 = 0;
-    XRDC2_D1->MSCI_MSAC_WK[3].MSC_MSAC_W0 = 0;
     
     XRDC2_D1->MRCI_MRGDJ[3][0].MRC_MRGD_W6 = 0;
     XRDC2_D1->MRCI_MRGDJ[3][0].MRC_MRGD_W0 = 0x20200000U;
@@ -1573,24 +1561,24 @@ void BOARD_InitXRDC2()
     XRDC2_D1->MRCI_MRGDJ[3][0].MRC_MRGD_W2 = 0x20203FFFU;
     XRDC2_D1->MRCI_MRGDJ[3][0].MRC_MRGD_W3 = 0;
     XRDC2_D1->MRCI_MRGDJ[3][0].MRC_MRGD_W5 = 0;
-    XRDC2_D1->MRCI_MRGDJ[5][0].MRC_MRGD_W6 = 0;
-    XRDC2_D1->MRCI_MRGDJ[5][0].MRC_MRGD_W0 = 0x20340000U;
-    XRDC2_D1->MRCI_MRGDJ[5][0].MRC_MRGD_W1 = 0;
-    XRDC2_D1->MRCI_MRGDJ[5][0].MRC_MRGD_W2 = 0x20340FFFU;
-    XRDC2_D1->MRCI_MRGDJ[5][0].MRC_MRGD_W3 = 0;
-    XRDC2_D1->MRCI_MRGDJ[5][0].MRC_MRGD_W5 = 0;
+    XRDC2_D1->MRCI_MRGDJ[5][16].MRC_MRGD_W6 = 0;
+    XRDC2_D1->MRCI_MRGDJ[5][16].MRC_MRGD_W0 = 0x20340000U;
+    XRDC2_D1->MRCI_MRGDJ[5][16].MRC_MRGD_W1 = 0;
+    XRDC2_D1->MRCI_MRGDJ[5][16].MRC_MRGD_W2 = 0x20340FFFU;
+    XRDC2_D1->MRCI_MRGDJ[5][16].MRC_MRGD_W3 = 0;
+    XRDC2_D1->MRCI_MRGDJ[5][16].MRC_MRGD_W5 = 0;
     XRDC2_D1->MRCI_MRGDJ[4][0].MRC_MRGD_W6 = 0;
     XRDC2_D1->MRCI_MRGDJ[4][0].MRC_MRGD_W0 = 0x20360000U;
     XRDC2_D1->MRCI_MRGDJ[4][0].MRC_MRGD_W1 = 0;
     XRDC2_D1->MRCI_MRGDJ[4][0].MRC_MRGD_W2 = 0x20361FFFU;
     XRDC2_D1->MRCI_MRGDJ[4][0].MRC_MRGD_W3 = 0;
     XRDC2_D1->MRCI_MRGDJ[4][0].MRC_MRGD_W5 = 0;
-    XRDC2_D1->MRCI_MRGDJ[6][0].MRC_MRGD_W6 = 0;
-    XRDC2_D1->MRCI_MRGDJ[6][0].MRC_MRGD_W0 = 0x20350000U;
-    XRDC2_D1->MRCI_MRGDJ[6][0].MRC_MRGD_W1 = 0;
-    XRDC2_D1->MRCI_MRGDJ[6][0].MRC_MRGD_W2 = 0x20350FFFU;
-    XRDC2_D1->MRCI_MRGDJ[6][0].MRC_MRGD_W3 = 0;
-    XRDC2_D1->MRCI_MRGDJ[6][0].MRC_MRGD_W5 = 0;
+    XRDC2_D1->MRCI_MRGDJ[6][16].MRC_MRGD_W6 = 0;
+    XRDC2_D1->MRCI_MRGDJ[6][16].MRC_MRGD_W0 = 0x20350000U;
+    XRDC2_D1->MRCI_MRGDJ[6][16].MRC_MRGD_W1 = 0;
+    XRDC2_D1->MRCI_MRGDJ[6][16].MRC_MRGD_W2 = 0x20350FFFU;
+    XRDC2_D1->MRCI_MRGDJ[6][16].MRC_MRGD_W3 = 0;
+    XRDC2_D1->MRCI_MRGDJ[6][16].MRC_MRGD_W5 = 0;
     XRDC2_D1->MRCI_MRGDJ[0][0].MRC_MRGD_W6 = 0;
     XRDC2_D1->MRCI_MRGDJ[0][0].MRC_MRGD_W0 = 0x00280000U;
     XRDC2_D1->MRCI_MRGDJ[0][0].MRC_MRGD_W1 = 0;
@@ -1658,7 +1646,7 @@ void BOARD_InitXRDC2()
 void BOARD_InitTEE()
 {
     BOARD_InitRDC();
-   // BOARD_InitXRDC2();
+  //  BOARD_InitXRDC2();
 }
 
 

@@ -29,10 +29,10 @@
 		<toolchainSettings>
 			<toolchainSetting id_refs="com.nxp.mcuxpresso">
 				<buildConfigurations>
-					<buildConfiguration instance_of="com.nxp.mcuxpresso.ide.build_config.debug" id="com.nxp.mcuxpresso.ide.build_config.debug" name="Debug">
-						<description>Debug build</description>
+					<buildConfiguration instance_of="com.nxp.mcuxpresso.ide.build_config.debug" id="com.nxp.mcuxpresso.ide.build_config.debug" name="Debug_Secure">
+						<description>Debug Build</description>
 					</buildConfiguration>
-					<buildConfiguration instance_of="com.nxp.mcuxpresso.ide.build_config.release" id="com.nxp.mcuxpresso.ide.build_config.release" name="Release">
+					<buildConfiguration instance_of="com.nxp.mcuxpresso.ide.build_config.release" id="com.nxp.mcuxpresso.ide.build_config.release" name="Release_Secure">
 						<description>Release of the SBL, SCP03 key rotation and mandation done</description>
 					</buildConfiguration>
 					<buildConfiguration instance_of="com.nxp.mcuxpresso.ide.build_config.debug" id="com.nxp.mcuxpresso.ide.build_config.debug_non_secure" name="Debug_Non_Secure">
@@ -87,6 +87,7 @@
 					<value>SDK_OS_BAREMETAL</value>
 					<value>PRINTF_FLOAT_ENABLE=0</value>
 					<value>USE_DELAY_REQUIERD_FOR_HW_INIT</value>
+					<value>ROM_ENCRYPTED_XIP_ENABLED=0</value>
 				</option>
 				<option id="com.crt.advproject.gcc.exe.debug.option.optimization.level" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.debug_non_secure">
 					<value>gnu.c.optimization.level.none</value>
@@ -138,7 +139,7 @@
 				</option>
 				<option id="com.crt.advproject.link.memory.sections.cpp" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_non_secure"/>
 				<option id="gnu.c.link.option.ldflags" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_non_secure">
-					<value>--specs=nano.specs -u _printf_float --specs=nosys.specs -fno-common -ffreestanding -fno-builtin -mapcs</value>
+					<value></value>
 				</option>
 				<option id="gnu.c.link.option.other" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_non_secure">
 					<value>-Map="${BuildArtifactFileBaseName}.map"</value>
@@ -184,7 +185,7 @@
 					<value>MCUXPRESSO_SDK</value>
 					<value>CPU_MIMXRT1176DVMAA_cm7</value>
 					<value>XIP_EXTERNAL_FLASH=1</value>
-					<value>XIP_BOOT_HEADER_ENABLE=1</value>
+					<value>XIP_BOOT_HEADER_ENABLE=0</value>
 					<value>SDK_DEBUGCONSOLE_UART</value>
 					<value>IMX_RT</value>
 					<value>MBEDTLS_CONFIG_FILE='"ksdk_mbedtls_config.h"'</value>
@@ -200,7 +201,7 @@
 					<value>CPU_MIMXRT1176DVMAA</value>
 					<value>__MCUXPRESSO</value>
 					<value>__USE_CMSIS</value>
-					<value>DEBUG</value>
+					<value>NDEBUG</value>
 					<value>__NEWLIB__</value>
 					<value>APP_CLOCK_CONFIG_MODE=0</value>
 					<value>XIP_BOOT_HEADER_DCD_ENABLE=0</value>
@@ -208,6 +209,7 @@
 					<value>SDK_OS_BAREMETAL</value>
 					<value>PRINTF_FLOAT_ENABLE=0</value>
 					<value>USE_DELAY_REQUIERD_FOR_HW_INIT</value>
+					<value>ROM_ENCRYPTED_XIP_ENABLED=1</value>
 				</option>
 				<option id="gnu.c.compiler.option.preprocessor.def.symbols" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_non_secure">
 					<value>SDK_DEBUGCONSOLE=1</value>
@@ -244,6 +246,7 @@
 					<value>SDK_OS_BAREMETAL</value>
 					<value>PRINTF_FLOAT_ENABLE=0</value>
 					<value>USE_DELAY_REQUIERD_FOR_HW_INIT</value>
+					<value>ROM_ENCRYPTED_XIP_ENABLED=0</value>
 				</option>
 			</toolchainSetting>
 		</toolchainSettings>
@@ -272,6 +275,7 @@
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_bootloader/linkscripts" project_relative_path="linkscripts" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_bootloader/source" project_relative_path="source" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_bootloader/source/includes" project_relative_path="source/includes" type="c_include"/>
+			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_bootloader/source/dataflash_dispatcher" project_relative_path="source/dataflash_dispatcher" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_bootloader/xip" project_relative_path="xip" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_bootloader/fatfs/source" project_relative_path="fatfs/source" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_bootloader/fatfs/source/fsl_ram_disk" project_relative_path="fatfs/source/fsl_ram_disk" type="c_include"/>
@@ -569,6 +573,8 @@
 			<files mask="qmc2_sd_fatfs.h"/>
 			<files mask="qmc2_se.h"/>
 			<files mask="qmc2_types.h"/>
+			<files mask="datalogger_tasks.h"/>
+			<files mask="api_logging.h"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_bootloader/source" project_relative_path="source" type="src">
 			<files mask="qmc2_boot.c"/>
@@ -583,6 +589,18 @@
 			<files mask="qmc2_se.c"/>
 			<files mask="interrupts.c"/>
 			<files mask="main_cm7.c"/>
+			<files mask="datalogger.c"/>
+		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_bootloader/source/dataflash_dispatcher" project_relative_path="source/dataflash_dispatcher" type="src">
+			<files mask="lcrypto.c"/>
+			<files mask="flash_recorder.c"/>
+			<files mask="dispatcher.c"/>
+		</source>
+			<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_bootloader/source/dataflash_dispatcher" project_relative_path="source/dataflash_dispatcher" type="c_include">
+			<files mask="lcrypto.h"/>
+			<files mask="flash_recorder.h"/>
+			<files mask="dispatcher.h"/>
+			<files mask="app.h"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_bootloader/utilities" project_relative_path="utilities" type="src">
 			<files mask="fsl_debug_console.c"/>
@@ -595,9 +613,13 @@
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_bootloader/trustzone" project_relative_path="trustzone" type="src">
 			<files mask="resource_config.c"/>
+			<files mask="verify_config.c"/>
+			<files mask="resource_config_sbl.c"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_bootloader/trustzone" project_relative_path="trustzone" type="c_include">
 			<files mask="resource_config.h"/>
+			<files mask="verify_config.h"/>
+			<files mask="resource_config_sbl.h"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_bootloader/sdmmc/host" project_relative_path="sdmmc/host" type="src">
 			<files mask="fsl_sdmmc_host.c"/>
@@ -1043,7 +1065,6 @@
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_bootloader/xip" project_relative_path="xip" type="src">
 			<files mask="isi_qmc_dgc_flexspi_nor_config.c"/>
 			<files mask="fsl_flexspi_nor_boot.c"/>
-			<files mask="isi_qmc_dgc_flexspi_nor_config_4B.c"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_bootloader/xip" project_relative_path="xip" type="c_include">
 			<files mask="isi_qmc_dgc_flexspi_nor_config.h"/>

@@ -50,7 +50,7 @@ qmc_status_t BOARD_SetDbTemperatureAlarm(float threshold, float hysteresis);
  * @param[out] temperature Pointer to write the temperature to
  * @param[in]  psb Sensor to read the temperature from
  */
-qmc_status_t BOARD_GetPsbTemperature(float* temperature, qmc_psb_temperature_id_t psb);
+qmc_status_t BOARD_GetPsbTemperature(double* temperature, qmc_psb_temperature_id_t psb);
 
  /*!
  * @brief Sets the output state of the given user output pin.

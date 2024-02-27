@@ -10,7 +10,7 @@
 
 /*!
  * @file lwdg_int.h
- * @brief Contains the LWG module API for creating and managing one logical watchdog.
+ * @brief Contains the LWDG module API for creating and managing one logical watchdog.
  *
  * This module is designed for internal use only, for public use see the LWDGU module!
  * Pointer arguments are not checked for validity!
@@ -97,7 +97,7 @@ typedef enum
  * value specifies after how many tick intervals without a kick the watchdog
  * should expire.
  * The initial state of the watchdog is set to not running and not expired. It
- * can be started by performing an initial kick (LWDG_Kick).
+ * can be started by performing an initial kick (LWDG_Kick()).
  *
  * Fails if timeoutTicks is >= UINT32_MAX as this would lead to an overflow!
  *
@@ -106,14 +106,18 @@ typedef enum
  *
  * 1) Expires:
  *
+ * ```text
  *      |   K   |       |
  *              T       T
  *                   expires !
+ * ```
  *
  * 2) Keeps running:
  *
+ * ```text
  *      |   K   | K     |     K |   K   | ... (keeps running)
  *              T       T       T       T
+ * ```
  *
  * @startuml
  *   start
@@ -121,10 +125,10 @@ typedef enum
  *   if () then (timeoutTicks >= UINT32_MAX)
  *     :ret = kStatus_LWDG_InvArg;
  *   else(else)
- *     :pDog->isRunning      = false;
- *     :pDog->isExpired      = false;
- *     :pDog->ticksToTimeout = timeoutTicks + 1;
- *     :pDog->timeoutTicks   = timeoutTicks;
+ *      :pDog->isRunning     = false
+ *      pDog->isExpired      = false
+ *      pDog->ticksToTimeout = timeoutTicks + 1
+ *      pDog->timeoutTicks   = timeoutTicks;
  *
  *     :ret = kStatus_LWDG_Ok;
  *   endif
@@ -136,9 +140,9 @@ typedef enum
  * @param[in] timeoutTicks
  * Specifies after how many tick intervals without a kick the watchdog should expire.
  * @return A lwdg_status_t status code.
- * @retval kStatus_LWDGU_InvArg
+ * @retval kStatus_LWDG_InvArg
  * The initialization failed (invalid argument). The watchdog instance was not modified.
- * @retval kStatus_LWDGU_Ok
+ * @retval kStatus_LWDG_Ok
  * The initialization was successful, all other public functions can be used now.
  */
 lwdg_status_t LWDG_Init(volatile logical_watchdog_t *const pDog, const uint32_t timeoutTicks);
@@ -237,7 +241,7 @@ bool LWDG_IsRunning(const volatile logical_watchdog_t *const pDog);
  *
  * Changes the timeout ticks value. The timeout ticks value specifies
  * after how many tick intervals without a kick the watchdog should expire.
- * Note that the result is only effective after the next LWDG_Kick call.
+ * Note that the result is only effective after the next LWDG_Kick() call.
  *
  * @startuml
  *   start
@@ -255,9 +259,9 @@ bool LWDG_IsRunning(const volatile logical_watchdog_t *const pDog);
  * @param[in] pDog Pointer to a logical_watchdog_t instance.
  * @param[in] newTimeoutTicks The new number of ticks until expiration (must be below UINT32_MAX).
  * @return A lwdg_status_t status code.
- * @retval kStatus_LWDGU_InvArg
+ * @retval kStatus_LWDG_InvArg
  * The operation failed (invalid argument). The timeout ticks value was not modified.
- * @retval kStatus_LWDGU_Ok
+ * @retval kStatus_LWDG_Ok
  * The operation was successful, the new timeout value will be active after the
  * next kick operation.
  */

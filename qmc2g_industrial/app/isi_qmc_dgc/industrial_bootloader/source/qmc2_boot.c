@@ -26,10 +26,16 @@
 #include "init_rpc.h"
 #include "ax_reset.h"
 #include "fsl_soc_src.h"
+#include "verify_config.h"
 
+#ifdef SECURE_SBL
 static uint8_t defaultScp03PlatformKeyEnc[] = EX_SSS_AUTH_SE05X_KEY_ENC;
 static uint8_t defaultScp03PlatformKeyMac[] = EX_SSS_AUTH_SE05X_KEY_MAC;
 static uint8_t defaultScp03PlatformKeyDek[] = EX_SSS_AUTH_SE05X_KEY_DEK;
+#endif
+
+uint8_t rdcSha512App[] = RDC_SHA512_APP;
+
 /*! @brief SNVS LP SRTC configuration */
 static const snvs_lp_srtc_config_t kSnvsLpConfig = {.srtcCalEnable = false, .srtcCalValue = 0U};
 /*!
@@ -100,18 +106,6 @@ static sss_status_t SBL_LoadCm4FwImage(fw_header_t *currFwHeader)
 			return kStatus_SSS_Fail;
 		}
 
-#ifdef APP_INVALIDATE_CACHE_FOR_SECONDARY_CORE_IMAGE_MEMORY
-		/* Invalidate cache for memory range the secondary core image has been copied to. */
-		if (LMEM_PSCCR_ENCACHE_MASK == (LMEM_PSCCR_ENCACHE_MASK & LMEM->PSCCR))
-		{
-			L1CACHE_CleanInvalidateSystemCacheByRange((uint32_t)dstAddress, size);
-		}
-		/* APP_INVALIDATE_CACHE_FOR_SECONDARY_CORE_IMAGE_MEMORY*/
-		/* CORE1_IMAGE_COPY_TO_RAM *
-		 *
-		 */
-#endif
-
 		return kStatus_SSS_Success;
 }
 
@@ -129,7 +123,8 @@ sss_status_t QMC2_BOOT_ExecuteCm4Cm7Fws(fw_header_t *currFwHeader)
 
     /* Check boundaries to makes sure that data which going to be executed are inside signature verification range. */
     if(((currFwHeader->hdr.cm7VectorTableAddr) < (currFwHeader->hdr.fwDataAddr)) && ((currFwHeader->hdr.cm7VectorTableAddr) >= (currFwHeader->hdr.fwDataAddr + currFwHeader->hdr.fwDataLength)) &&
-      (((currFwHeader->hdr.cm4FwDataAddr) < (currFwHeader->hdr.fwDataAddr)) && ((currFwHeader->hdr.cm4FwDataAddr + currFwHeader->hdr.cm4FwDataLength) >= (currFwHeader->hdr.fwDataAddr + currFwHeader->hdr.fwDataLength))))
+    ((*((uint32_t *)(currFwHeader->hdr.cm7VectorTableAddr+4))) < (currFwHeader->hdr.fwDataAddr)) && ((*((uint32_t *)(currFwHeader->hdr.cm7VectorTableAddr+4))) >= (currFwHeader->hdr.fwDataAddr + currFwHeader->hdr.fwDataLength)) &&
+    (((currFwHeader->hdr.cm4FwDataAddr) < (currFwHeader->hdr.fwDataAddr)) && ((currFwHeader->hdr.cm4FwDataAddr + currFwHeader->hdr.cm4FwDataLength) >= (currFwHeader->hdr.fwDataAddr + currFwHeader->hdr.fwDataLength))))
     {
     	return kStatus_SSS_Fail;
     }
@@ -157,13 +152,18 @@ sss_status_t QMC2_BOOT_ExecuteCm4Cm7Fws(fw_header_t *currFwHeader)
 		return kStatus_SSS_Fail;
 	}
 
-    /* Configure RDC vie TEE tool. Must be executed before jump to CM7 main FW*/
-    BOARD_InitTEE();
+	/* Configure RDC vie TEE tool. Must be executed before jump to CM7 main FW*/
+	BOARD_InitTEE();
 
     /* Data Synchronization Barrier, Instruction Synchronization Barrier, and Data Memory Barrier. */
     __DSB();
     __ISB();
     __DMB();
+
+    if(Verify_Rdc_Config(rdcSha512App) != kStatus_SSS_Success)
+	{
+		return kStatus_SSS_Fail;
+	}
 
     /* Set Stack pointer */
     __set_MSP((*((uint32_t *)(currFwHeader->hdr.cm7VectorTableAddr))));
@@ -174,17 +174,26 @@ sss_status_t QMC2_BOOT_ExecuteCm4Cm7Fws(fw_header_t *currFwHeader)
     	return kStatus_SSS_Fail;
     }
 
-    /* Data Synchronization Barrier, Instruction Synchronization Barrier, and Data Memory Barrier. */
-    __DSB();
-    __ISB();
-    __DMB();
+    if(Verify_Rdc_Config(rdcSha512App) != kStatus_SSS_Success)
+	{
+		return kStatus_SSS_Fail;
+	}
+    else
+    {
+    	 ARM_MPU_Disable();
 
-    // Jump to the application.
-    farewell_bootloader();
+   	    /* Data Synchronization Barrier, Instruction Synchronization Barrier, and Data Memory Barrier. */
+   	    __DSB();
+   	    __ISB();
+   	    __DMB();
 
-    /* Data Synchronization Barrier, Instruction Synchronization Barrier. */
-    __DSB();
-    __ISB();
+   	    /* Jump to the application. */
+   	    farewell_bootloader();
+
+   	    /* Data Synchronization Barrier, Instruction Synchronization Barrier. */
+   	    __DSB();
+   	    __ISB();
+    }
 
     // the code should never reach here
     return kStatus_SSS_Fail;
@@ -215,7 +224,7 @@ sss_status_t QMC2_BOOT_Cleanup(boot_data_t *boot)
 
 	memset((void *)&boot->fwuManifest, 0, (sizeof(boot_data_t) - sizeof(fw_header_t)));
 
-#if ROM_ENCRYPTED_XIP_ENABLED
+#if (defined(ROM_ENCRYPTED_XIP_ENABLED) && (ROM_ENCRYPTED_XIP_ENABLED==1))
 	status = PUF_Zeroize(PUF);
     if(status != kStatus_Success)
     	return kStatus_Fail;
@@ -233,9 +242,6 @@ sss_status_t QMC2_BOOT_Cleanup(boot_data_t *boot)
 
     axReset_PowerDown();
 
-    // TODO test
-    ARM_MPU_Disable();
-
     // Init OCtal Ram here as there are data to be copied in the main FW statup.
     (void)QMC2_FLASH_OctalRamInit();
 
@@ -247,14 +253,15 @@ sss_status_t QMC2_BOOT_Cleanup(boot_data_t *boot)
     return kStatus_SSS_Success;
 }
 
-sss_status_t QMC2_BOOT_RotateMandateSCP03Keys(PUF_Type *base, boot_data_t *boot, log_entry_t *log)
+#ifdef SECURE_SBL
+sss_status_t QMC2_BOOT_RotateMandateSCP03Keys(PUF_Type *base, boot_data_t *boot, log_event_code_t *log)
 {
 	sss_status_t status = kStatus_SSS_Fail;
 	scp03_keys_t defaultScp03 = {0};
 	puf_key_store_t pufKeyStore = {0};
 	uint8_t aesPolicyKey[PUF_AES_POLICY_KEY_SIZE] = {0};
 
-	*log = kLOG_Scp03KeyRotationFailed;
+	*log = LOG_EVENT_Scp03KeyRotationFailed;
 
 	assert(base != NULL);
 	assert(boot != NULL);
@@ -269,7 +276,7 @@ sss_status_t QMC2_BOOT_RotateMandateSCP03Keys(PUF_Type *base, boot_data_t *boot,
 	if (status != kStatus_SSS_Success)
 	{
 		PRINTF("\r\nERROR: Device is not commissioned. AES key is missing!\r\n");
-		*log = kLOG_DeviceDecommisioned;
+		*log = LOG_EVENT_DeviceDecommissioned;
 		return status;
 	}
 	PRINTF("Device is commisioned! Policy AES key is present.\r\n");
@@ -306,9 +313,9 @@ sss_status_t QMC2_BOOT_RotateMandateSCP03Keys(PUF_Type *base, boot_data_t *boot,
 
 	if(memcmp(aesPolicyKey, boot->bootKeys.scp03.aes_policy_key, PUF_AES_POLICY_KEY_SIZE) != 0)
 	{
-			PRINTF("\r\nERROR: AES memcmp failed!\r\n");
-			memset(&aesPolicyKey, 0, PUF_AES_POLICY_KEY_SIZE);
-			return kStatus_SSS_Fail;
+		PRINTF("\r\nERROR: AES memcmp failed!\r\n");
+		memset(&aesPolicyKey, 0, PUF_AES_POLICY_KEY_SIZE);
+		return kStatus_SSS_Fail;
 	}
 
 	status = QMC2_SE_EraseObj(&defaultScp03, (uint32_t)SE_AES_POLICY_KEY_SBL_ID);
@@ -348,11 +355,13 @@ sss_status_t QMC2_BOOT_RotateMandateSCP03Keys(PUF_Type *base, boot_data_t *boot,
 	}
 	PRINTF("SNVS LP GPR Init successful!\r\n");
 
-	*log = kLOG_NoLogEntry;
+	*log = LOG_EVENT_NoLogEntry;
 	return status;
 }
+#endif
 
-sss_status_t QMC2_BOOT_Decommissioning(boot_data_t *boot, log_entry_t *log)
+#ifdef SECURE_SBL
+sss_status_t QMC2_BOOT_Decommissioning(boot_data_t *boot, log_event_code_t *log)
 {
 	sss_status_t status = kStatus_SSS_Fail;
 	scp03_keys_t defaultScp03 = { 0 };
@@ -369,48 +378,58 @@ sss_status_t QMC2_BOOT_Decommissioning(boot_data_t *boot, log_entry_t *log)
 			{
 				(void) QMC2_SD_FATFS_Close();
 
-				*log = kLOG_DecomissioningFailed;
+				*log = LOG_EVENT_DecommissioningFailed;
+
+				PRINTF("Decommissioning has started!\r\n");
 
 				status = QMC2_FLASH_Erase(SBL_BACKUP_IMAGE_ADDRESS, SBL_BACKUP_IMAGE_SIZE);
 				if (status != kStatus_SSS_Success) {
-					PRINTF("\r\nERROR: of the Backup Image storage failed!\r\n");
+					PRINTF("\r\nERROR: Erase of the Backup Image storage failed!\r\n");
 					return status;
 				}
+				PRINTF("Erase of the Backup Image storage successful!\r\n");
 
 				status = QMC2_FLASH_Erase(SBL_CFGDATA_BACKUP_ADDRESS, SBL_CFGDATA_BACKUP_SIZE);
 				if (status != kStatus_SSS_Success) {
-					PRINTF("\r\nERROR: of the CFGDATA storage failed!\r\n");
+					PRINTF("\r\nERROR:Erase of the Backup CFGDATA storage failed!\r\n");
 					return status;
 				}
+				PRINTF("Erase of the Backup CFGDATA storage successful!\r\n");
 
 				status = QMC2_FLASH_Erase(SBL_MAIN_FW_ADDRESS, SBL_MAIN_FW_SIZE);
 				if (status != kStatus_SSS_Success) {
-					PRINTF("\r\nERROR: of the Main FW storage failed!\r\n");
+					PRINTF("\r\nERROR: Erase of the Main FW storage failed!\r\n");
 					return status;
 				}
+				PRINTF("Erase of the Main FW storage successful!\r\n");
 
 				status = QMC2_FLASH_Erase(SBL_FWU_STORAGE_ADDRESS, SBL_FWU_STORAGE_SIZE);
 				if (status != kStatus_SSS_Success) {
-					PRINTF("\r\nERROR: of the FWU storage failed!\r\n");
+					PRINTF("\r\nERROR: Erase of the FWU storage failed!\r\n");
 					return status;
 				}
+				PRINTF("Erase of the FWU storage successful!\r\n");
 
 				status = QMC2_FLASH_Erase(SBL_LOG_STORAGE_ADDRESS, SBL_LOG_STORAGE_SIZE);
 				if (status != kStatus_SSS_Success) {
-					PRINTF("\r\nERROR: of the LOG storage failed!\r\n");
+					PRINTF("\r\nERROR: Erase of the LOG storage failed!\r\n");
 					return status;
 				}
+				PRINTF("Erase of the LOG storage successful!\r\n");
 
 				status = QMC2_FLASH_Erase(SBL_CFGDATA_ADDRESS, SBL_CFGDATA_SIZE);
 				if (status != kStatus_SSS_Success) {
-					PRINTF("\r\nERROR: of the CFGDATA failed!\r\n");
+					PRINTF("\r\nERROR: Erase of the CFGDATA failed!\r\n");
 					return status;
 				}
+				PRINTF("Erase of the CFGDATA successful!\r\n");
 
-				memcpy(defaultScp03.enc_key, defaultScp03PlatformKeyEnc, 16);
-				memcpy(defaultScp03.mac_key, defaultScp03PlatformKeyMac, 16);
-				memcpy(defaultScp03.dek_key, defaultScp03PlatformKeyDek, 16);
+				memcpy(defaultScp03.enc_key, defaultScp03PlatformKeyEnc, PUF_INTRINSIC_SCP03_KEY_SIZE);
+				memcpy(defaultScp03.mac_key, defaultScp03PlatformKeyMac, PUF_INTRINSIC_SCP03_KEY_SIZE);
+				memcpy(defaultScp03.dek_key, defaultScp03PlatformKeyDek, PUF_INTRINSIC_SCP03_KEY_SIZE);
+				memcpy(defaultScp03.aes_policy_key, boot->bootKeys.scp03.aes_policy_key, PUF_AES_POLICY_KEY_SIZE);
 
+#ifdef RELEASE_SBL
 				/* Rotate new SCP03 KeySet */
 				status = QMC2_SE_RotateSCP03Keys(&boot->bootKeys.scp03, &defaultScp03);
 				if (status != kStatus_SSS_Success) {
@@ -426,6 +445,7 @@ sss_status_t QMC2_BOOT_Decommissioning(boot_data_t *boot, log_entry_t *log)
 					return status;
 				}
 				PRINTF("UnMandate of SCP03 Keys successful!\r\n");
+#endif
 
 				status = QMC2_SE_FactoryReset(&defaultScp03);
 				if (status != kStatus_SSS_Success) {
@@ -437,11 +457,14 @@ sss_status_t QMC2_BOOT_Decommissioning(boot_data_t *boot, log_entry_t *log)
 				/*Erase PUF KeyStore */
 				status = QMC2_FLASH_Erase(PUF_SBL_KEY_STORE_ADDRESS, QSPI_FLASH_ERASE_SECTOR_SIZE);
 				if (status != kStatus_SSS_Success) {
-					PRINTF("\r\nERROR: of the FWU storage failed!\r\n");
+					PRINTF("\r\nERROR: Erase of PUF KeyStore failed!\r\n");
 					return status;
 				}
+				PRINTF("Erase of PUF KeyStore successful!\r\n");
 
-				*log = kLOG_DeviceDecommisioned;
+				PRINTF("Decommissioning successful!\r\n");
+
+				*log = LOG_EVENT_DeviceDecommissioned;
 				// return false to trigger error trap as the device is decommisioned.
 				return kStatus_SSS_Fail;
 			}
@@ -450,87 +473,118 @@ sss_status_t QMC2_BOOT_Decommissioning(boot_data_t *boot, log_entry_t *log)
 
 	return kStatus_SSS_Success;
 }
+#endif
 
-sss_status_t QMC2_BOOT_ProcessMainFwRequest(boot_data_t *boot, log_entry_t *log)
+sss_status_t QMC2_BOOT_ProcessMainFwRequest(boot_data_t *boot, log_event_code_t *log)
 {
 	sss_status_t status = kStatus_SSS_Fail;
+	volatile fw_state_t fwState = boot->svnsLpGpr.fwState;
 
 	assert(boot != NULL);
 	assert(log != NULL);
 
-	switch((uint8_t)boot->svnsLpGpr.fwState)
+	if((fwState == (kFWU_Revert|kFWU_VerifyFw)) || (fwState == (kFWU_Revert|kFWU_VerifyFw|kFWU_AwdtExpired)))
 	{
-		case (kFWU_Revert|kFWU_VerifyFw):
-			PRINTF("\r\nRevert!\r\n");
-			*log = kLOG_NewFWRevertFailed;
-			status = QMC2_FWU_RevertRecoveryImage(&boot->fwHeader);
-			if(status != kStatus_SSS_Success)
+		PRINTF("\r\nRevert!\r\n");
+		*log = LOG_EVENT_NewFWRevertFailed;
+
+		// Erase manifeset from FWU storage.
+		(void)QMC2_FLASH_Erase(SBL_FWU_STORAGE_ADDRESS, OCTAL_FLASH_SECTOR_SIZE);
+
+		status = QMC2_FWU_RevertRecoveryImage(&boot->fwHeader);
+		if(status != kStatus_SSS_Success)
+		{
+			return status;
+		}
+		PRINTF("Recovery Image reverted successfully!\r\n");
+		*log = LOG_EVENT_NewFWReverted;
+	}
+	else if((fwState == (kFWU_Commit|kFWU_VerifyFw)) || (fwState == (kFWU_Commit|kFWU_VerifyFw|kFWU_AwdtExpired)))
+	{
+		PRINTF("\r\nCommit!\r\n");
+		*log = LOG_EVENT_NewFWCommitFailed;
+		status = QMC2_FWU_CreateRecoveryImage(&boot->fwHeader);
+		if(status != kStatus_SSS_Success)
+		{
+			return status;
+		}
+		PRINTF("Recovery image created!\r\n");
+		status = QMC2_SE_CommitFwVersionToSe(&boot->bootKeys.scp03, &boot->fwHeader.hdr, &boot->seData.fwVersion);
+		if(status != kStatus_SSS_Success)
+		{
+			return status;
+		}
+		PRINTF("FW version was successfully committed into SE.!\r\n");
+
+		status = QMC2_FWU_ReadManifest(&boot->fwuManifest, &boot->seData.manVersion, false);
+		if (status == kStatus_SSS_Success)
+		{
+			// Commit new manifest version
+			status = QMC2_SE_CommitManVersionToSe(&boot->bootKeys.scp03, &boot->fwuManifest.man, &boot->seData.manVersion);
+			if (status != kStatus_SSS_Success)
 			{
 				return status;
 			}
-			PRINTF("Recovery Image reverted successfully!\r\n");
-			*log = kLOG_NewFWReverted;
-			break;
-		case (kFWU_Commit|kFWU_VerifyFw):
-			PRINTF("\r\nCommit!\r\n");
-			*log = kLOG_NewFWCommitFailed;
-			status = QMC2_FWU_CreateRecoveryImage(&boot->fwHeader);
-			if(status != kStatus_SSS_Success)
-			{
-				return status;
-			}
-			PRINTF("Recovery image created!\r\n");
-			status = QMC2_SE_CommitFwVersionToSe(&boot->bootKeys.scp03, &boot->fwHeader.hdr, &boot->seData.fwVersion);
-			if(status != kStatus_SSS_Success)
-			{
-				return status;
-			}
-			PRINTF("Fw version was successfully commited into SE.!\r\n");
-			*log = kLOG_NewFWCommited;
-			break;
-		case kFWU_BackupCfgData:
-			PRINTF("\r\nBackUp Cfg Datat!\r\n");
-			*log = kLOG_CfgDataBackupFailed;
-			status = QMC2_FWU_BackUpCfgData(&boot->fwHeader.hdr);
-			if(status != kStatus_SSS_Success)
-			{
-				return status;
-			}
-			PRINTF("Configuration Data were Backuped!\r\n");
-			*log = kLOG_CfgDataBackuped;
-			break;
-		case kFWU_AwdtExpired:
-			PRINTF("Authenticated WDOG expired!\r\n");
-			/* We have to keep fwState to inform the main FW. */
-			*log = kLOG_AwdtExpired;
-			QMC2_LOG_CreateLogEntry(log);
-			return kStatus_SSS_Success;
-			break;
-		case kFWU_VerifyFw:
-			PRINTF("\r\nVerify FW!\r\n");
-			status = QMC2_FWU_ReadManifest(&boot->fwuManifest, &boot->seData.manVersion, false);
-			if (status == kStatus_SSS_Success)
-			{
-				(void)QMC2_SE_CommitManVersionToSe(&boot->bootKeys.scp03, &boot->fwuManifest.man, &boot->seData.manVersion);
-			}
-			(void)QMC2_FLASH_Erase(SBL_FWU_STORAGE_ADDRESS, SBL_FWU_STORAGE_SIZE);
-			PRINTF("FW verification is requested by SBL!\r\n");
-			*log = kLOG_NoLogEntry;
-			return kStatus_SSS_Success;
-			break;
-		default:
-			PRINTF("No Request from Main FW.\r\n");
-			return kStatus_SSS_Success;
-			break;
+			PRINTF("FWU version was successfully committed into SE.!\r\n");
+			// Erase manifest from FWU storage.
+			(void)QMC2_FLASH_Erase(SBL_FWU_STORAGE_ADDRESS, OCTAL_FLASH_SECTOR_SIZE);
+		}
+
+		*log = LOG_EVENT_NewFWCommitted;
+	}
+	else if((fwState == kFWU_BackupCfgData) || (fwState == (kFWU_BackupCfgData|kFWU_AwdtExpired)))
+	{
+		PRINTF("\r\nBackUp Cfg Data!\r\n");
+		*log = LOG_EVENT_CfgDataBackUpFailed;
+		status = QMC2_FWU_BackUpCfgData(&boot->fwHeader.hdr);
+		if(status != kStatus_SSS_Success)
+		{
+			return status;
+		}
+		PRINTF("Configuration Data were Backup-ed!\r\n");
+		*log = LOG_EVENT_CfgDataBackedUp;
+	}
+	else if (fwState == kFWU_AwdtExpired)
+	{
+		PRINTF("Authenticated WDOG expired!\r\n");
+		/* We have to keep fwState to inform the main FW. */
+		*log = LOG_EVENT_AwdtExpired;
+		(void)QMC2_LOG_CreateLogEntry(log);
+		return kStatus_SSS_Success;
+	}
+	else if((fwState == kFWU_VerifyFw) || (fwState == (kFWU_VerifyFw|kFWU_AwdtExpired)))
+	{
+		PRINTF("FW verification is requested by SBL!\r\n");
+		*log = LOG_EVENT_NoLogEntry;
+		return kStatus_SSS_Success;
+	}
+	else if(fwState == kFWU_NoState)
+	{
+		PRINTF("No Request from Main FW.\r\n");
+		return kStatus_SSS_Success;
+	}
+	else
+	{
+		PRINTF("WARNING: Unexpected FW state.\r\n");
+		*log = LOG_EVENT_UnknownFWReturnStatus;
+		status = kStatus_SSS_Fail;
 	}
 
-	QMC2_LOG_CreateLogEntry(log);
+	(void)QMC2_LOG_CreateLogEntry(log);
 
-	boot->svnsLpGpr.fwState = kFWU_NoState;
+	if(boot->svnsLpGpr.fwState & kFWU_AwdtExpired)
+	{
+		boot->svnsLpGpr.fwState = kFWU_AwdtExpired;
+	}
+	else
+	{
+		boot->svnsLpGpr.fwState = kFWU_NoState;
+	}
+
 	status = QMC2_LPGPR_Write(&boot->svnsLpGpr);
 	if (status != kStatus_SSS_Success)
 	{
-		*log = kLOG_SvnsLpGprOpFailed;
+		*log = LOG_EVENT_SvnsLpGprOpFailed;
 		PRINTF("Compared read content isn't consistent.\r\n");
 	}
 
@@ -538,9 +592,9 @@ sss_status_t QMC2_BOOT_ProcessMainFwRequest(boot_data_t *boot, log_entry_t *log)
 }
 
 /* Authenticate the main FW image using SE */
-sss_status_t QMC2_BOOT_AuthenticateMainFw(boot_data_t *boot, log_entry_t *log)
+sss_status_t QMC2_BOOT_AuthenticateMainFw(boot_data_t *boot, log_event_code_t *log)
 {
-	sss_status_t status = kStatus_SSS_Fail;
+	volatile sss_status_t status = kStatus_SSS_Fail;
 
 	assert(boot != NULL);
 	assert(log != NULL);
@@ -551,32 +605,35 @@ sss_status_t QMC2_BOOT_AuthenticateMainFw(boot_data_t *boot, log_entry_t *log)
 		PRINTF("\r\nERROR: Read of the main FW header failed!\r\n");
 		PRINTF("\r\nInstalling recovery image!\r\n");
 		status = QMC2_FWU_RevertRecoveryImage(&boot->fwHeader);
-		ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_NewFWRevertFailed);
+		ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, LOG_EVENT_NewFWRevertFailed);
 
-		*log = kLOG_NewFWReverted;
-		QMC2_LOG_CreateLogEntry(log);
+		*log = LOG_EVENT_NewFWReverted;
+		(void)QMC2_LOG_CreateLogEntry(log);
 	}
 
+	status = kStatus_SSS_Fail;
 	status = QMC2_BOOT_Authenticate(boot);
 	if (status != kStatus_SSS_Success)
 	{
 		PRINTF("Invalid FW detected!\r\n");
 		if(boot->fwHeader.backupImgActive)
 		{
-			*log = kLOG_BackUpImgAuthFailed;
+			*log = LOG_EVENT_BackUpImgAuthFailed;
 			goto exit;
 		}
 		else
 		{
+			status = kStatus_SSS_Fail;
 			PRINTF("\r\nInstalling recovery image!\r\n");
 			status = QMC2_FWU_RevertRecoveryImage(&boot->fwHeader);
-			ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_NewFWRevertFailed);
+			ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, LOG_EVENT_NewFWRevertFailed);
 
-			*log = kLOG_NewFWReverted;
-			QMC2_LOG_CreateLogEntry(log);
+			*log = LOG_EVENT_NewFWReverted;
+			(void)QMC2_LOG_CreateLogEntry(log);
 
+			status = kStatus_SSS_Fail;
 			status = QMC2_BOOT_Authenticate(boot);
-			ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_BackUpImgAuthFailed);
+			ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, LOG_EVENT_BackUpImgAuthFailed);
 		}
 	}
 
@@ -584,7 +641,7 @@ sss_status_t QMC2_BOOT_AuthenticateMainFw(boot_data_t *boot, log_entry_t *log)
 
 exit:
 
-	QMC2_LOG_CreateLogEntry(log);
+	(void)QMC2_LOG_CreateLogEntry(log);
 	PRINTF("\r\nERROR: Backup image installation failed. Insert SD with valid image and reset the board. \r\n");
 	return kStatus_SSS_Fail;
 }
@@ -626,7 +683,7 @@ static sss_status_t SBL_GetSignatureSize(uint32_t signAddr, uint32_t *signSize)
 
 sss_status_t QMC2_BOOT_Authenticate(boot_data_t *boot)
 {
-	sss_status_t status = kStatus_SSS_Fail;
+	volatile sss_status_t status = kStatus_SSS_Fail;
 	se_verify_sign_t verifySign;
 
 	assert(boot != NULL);
@@ -645,14 +702,17 @@ sss_status_t QMC2_BOOT_Authenticate(boot_data_t *boot)
 			goto cleanup;
 		}
 
+		status = kStatus_SSS_Fail;
+
 		verifySign.keyId			= SE_FW_PUB_KEY_ID;
 		verifySign.mode  			= kMode_SSS_Verify;
 		verifySign.algorithm		= kAlgorithm_SSS_SHA512;
 		verifySign.cipherType		= kSSS_CipherType_EC_BRAINPOOL;
 		verifySign.keyPart			= kSSS_KeyPart_Public;
 
+		status = kStatus_SSS_Fail;
 		status = QMC2_SE_VerifySignature(&boot->bootKeys.scp03, &verifySign);
-		if (status != kStatus_SSS_Success)
+		if (status != (kStatus_SSS_Success + 0x0a0a))
 		{
 			PRINTF("\r\nERROR: FW image authentication failed!\r\n.");
 			goto cleanup;
@@ -666,13 +726,13 @@ sss_status_t QMC2_BOOT_Authenticate(boot_data_t *boot)
 cleanup:
 
 	memset(&verifySign, 0, sizeof(se_verify_sign_t));
-	return status;
+	return (status - 0x0a0a);
 }
 
 /* Authenticate the FW Update image using SE */
 sss_status_t QMC2_BOOT_AuthenticateFwu(boot_data_t *boot)
 {
-	sss_status_t status = kStatus_SSS_Fail;
+	volatile sss_status_t status = kStatus_SSS_Fail;
 	se_verify_sign_t verifySign;
 
 	assert(boot != NULL);
@@ -691,14 +751,18 @@ sss_status_t QMC2_BOOT_AuthenticateFwu(boot_data_t *boot)
 			goto cleanup;
 		}
 
+		status = kStatus_SSS_Fail;
+
 		verifySign.keyId			= SE_FWU_PUB_KEY_ID;
 		verifySign.mode  			= kMode_SSS_Verify;
 		verifySign.algorithm		= kAlgorithm_SSS_SHA512;
 		verifySign.cipherType		= kSSS_CipherType_EC_BRAINPOOL;
 		verifySign.keyPart			= kSSS_KeyPart_Public;
 
+		status = kStatus_SSS_Fail;
 		status = QMC2_SE_VerifySignature(&boot->bootKeys.scp03 ,&verifySign);
-		if (status != kStatus_SSS_Success)
+
+		if (status != (kStatus_SSS_Success + 0x0a0a))
 		{
 			PRINTF("\r\nERROR: FW image authentication failed!\r\n.");
 			goto cleanup;
@@ -710,19 +774,21 @@ sss_status_t QMC2_BOOT_AuthenticateFwu(boot_data_t *boot)
 		goto cleanup;
 	}
 
-	return status;
+	return (status - 0x0a0a);
 
 cleanup:
 
 	(void)QMC2_FLASH_Erase(SBL_FWU_STORAGE_ADDRESS, boot->fwuManifest.man.fwuDataLength + SEC_SIGNATURE_BLOCK_SIZE);
+	memset(&boot->fwuManifest, 0, sizeof(fwu_manifest_t));
+	memset(&verifySign, 0, sizeof(se_verify_sign_t));
 
-	return status;
+	return kStatus_SSS_Fail;
 }
 
 /* Authenticate the main FW image using SE */
-sss_status_t QMC2_BOOT_FwUpdate(boot_data_t *boot, log_entry_t *log)
+sss_status_t QMC2_BOOT_FwUpdate(boot_data_t *boot, log_event_code_t *log)
 {
-	sss_status_t status = kStatus_SSS_Fail;
+	volatile sss_status_t status = kStatus_SSS_Fail;
 
 	assert(boot != NULL);
 	assert(log != NULL);
@@ -740,14 +806,16 @@ sss_status_t QMC2_BOOT_FwUpdate(boot_data_t *boot, log_entry_t *log)
 		}
 	}
 
+	status = kStatus_SSS_Fail;
 	status = QMC2_BOOT_AuthenticateFwu(boot);
 	if (status != kStatus_SSS_Success)
 	{
 		PRINTF("\r\nERROR: FWU Authentication failed.!\r\n");
-		*log = kLOG_FwuAuthFailed;
+		*log = LOG_EVENT_FwuAuthFailed;
 		return status;
 	}
 
+	status = kStatus_SSS_Fail;
 	status = QMC2_FWU_Program(boot, log);
 	if (status != kStatus_SSS_Success)
 	{
@@ -763,77 +831,78 @@ sss_status_t QMC2_BOOT_FwUpdate(boot_data_t *boot, log_entry_t *log)
  *
  * @details Print error message and trap forever.
  */
-void QMC2_BOOT_ErrorTrap(log_entry_t *log)
+void QMC2_BOOT_ErrorTrap(log_event_code_t *log)
 {
 
 	assert(log != NULL);
 
-	QMC2_LOG_CreateLogEntry(log);
+	// log the event via data logger
+	(void)QMC2_LOG_CreateLogEntry(log);
 
 	/*
-		kLOG_HwInitDeinitFailed			0,0,0,1
-		kLOG_SdCardFailed 				0,0,1,0
-		kLOG_svnsLpGprOpFailed			0,0,1,1
-		kLOG_Scp03KeyRotationFailed		0,1,0,0
-		kLOG_Scp03KeyReconFailed		0,1,0,1
-		kLOG_Scp03ConnFailed			0,1,1,0
-		kLOG_VerReadFromSeFailed		0,1,1,1
-		kLOG_ExtMemOprFailed			1,0,0,0
-		kLOG_FwExecutionFailed			1,0,0,1
-		kLOG_NewFWRevertFailed			1,0,1,0
-		kLOG_NewFWCommitFailed			1,0,1,1
-		kLOG_CfgDataBackupFailed		1,1,0,0
-		kLOG_BackUpImgAuthFailed		1,1,0,1
-		kLOG_DecomissioningFailed		1,1,1,0
-		kLOG_DeviceDecommisioned 		1,1,1,1
+		LOG_EVENT_HwInitDeinitFailed		0,0,0,1
+		LOG_EVENT_SdCardFailed 				0,0,1,0
+		LOG_EVENT_svnsLpGprOpFailed			0,0,1,1
+		LOG_EVENT_Scp03KeyRotationFailed	0,1,0,0
+		LOG_EVENT_Scp03KeyReconFailed		0,1,0,1
+		LOG_EVENT_Scp03ConnFailed			0,1,1,0
+		LOG_EVENT_VerReadFromSeFailed		0,1,1,1
+		LOG_EVENT_ExtMemOprFailed			1,0,0,0
+		LOG_EVENT_FwExecutionFailed			1,0,0,1
+		LOG_EVENT_NewFWRevertFailed			1,0,1,0
+		LOG_EVENT_NewFWCommitFailed			1,0,1,1
+		LOG_EVENT_CfgDataBackupFailed		1,1,0,0
+		LOG_EVENT_BackUpImgAuthFailed		1,1,0,1
+		LOG_EVENT_DecomissioningFailed		1,1,1,0
+		LOG_EVENT_DeviceDecommisioned 		1,1,1,1
 	*/
 
-	//TODO Extend error messages via buttons
+
 		switch(*log)
 		{
-			case kLOG_HwInitDeinitFailed:
+			case LOG_EVENT_HwInitDeinitFailed:
 				BOARD_ShowErrorOnLeds(0,0,0,1);
 				break;
-			case kLOG_SdCardFailed:
+			case LOG_EVENT_SdCardFailed:
 				BOARD_ShowErrorOnLeds(0,0,1,0);
 				break;
-			case kLOG_SvnsLpGprOpFailed:
+			case LOG_EVENT_SvnsLpGprOpFailed:
 				BOARD_ShowErrorOnLeds(0,0,1,1);
 				break;
-			case kLOG_Scp03KeyRotationFailed:
+			case LOG_EVENT_Scp03KeyRotationFailed:
 				BOARD_ShowErrorOnLeds(0,1,0,0);
 				break;
-			case kLOG_Scp03KeyReconFailed:
+			case LOG_EVENT_Scp03KeyReconFailed:
 				BOARD_ShowErrorOnLeds(0,1,0,1);
 				break;
-			case kLOG_Scp03ConnFailed:
+			case LOG_EVENT_Scp03ConnFailed:
 				BOARD_ShowErrorOnLeds(0,1,1,0);
 				break;
-			case kLOG_VerReadFromSeFailed:
+			case LOG_EVENT_VerReadFromSeFailed:
 				BOARD_ShowErrorOnLeds(0,1,1,1);
 				break;
-			case kLOG_ExtMemOprFailed:
+			case LOG_EVENT_ExtMemOprFailed:
 				BOARD_ShowErrorOnLeds(1,0,0,0);
 				break;
-			case kLOG_FwExecutionFailed:
+			case LOG_EVENT_FwExecutionFailed:
 				BOARD_ShowErrorOnLeds(1,0,0,1);
 				break;
-			case kLOG_NewFWRevertFailed:
+			case LOG_EVENT_NewFWRevertFailed:
 				BOARD_ShowErrorOnLeds(1,0,1,0);
 				break;
-			case kLOG_NewFWCommitFailed:
+			case LOG_EVENT_NewFWCommitFailed:
 				BOARD_ShowErrorOnLeds(1,0,1,1);
 				break;
-			case kLOG_CfgDataBackupFailed:
+			case LOG_EVENT_CfgDataBackUpFailed:
 				BOARD_ShowErrorOnLeds(1,1,0,0);
 				break;
-			case kLOG_BackUpImgAuthFailed:
+			case LOG_EVENT_BackUpImgAuthFailed:
 				BOARD_ShowErrorOnLeds(1,1,0,1);
 				break;
-			case kLOG_DecomissioningFailed:
+			case LOG_EVENT_DecommissioningFailed:
 				BOARD_ShowErrorOnLeds(1,1,1,0);
 				break;
-			case kLOG_DeviceDecommisioned:
+			case LOG_EVENT_DeviceDecommissioned:
 				BOARD_ShowErrorOnLeds(1,1,1,1);
 				break;
 			default:
@@ -846,7 +915,7 @@ void QMC2_BOOT_ErrorTrap(log_entry_t *log)
 
 sss_status_t QMC2_BOOT_InitLogKeys(log_keys_t *logKeys)
 {
-
+	// Rework assert to return error in release target or logs as well
 	assert(logKeys != NULL);
 
 #if NON_SECURE_SBL
@@ -854,10 +923,10 @@ sss_status_t QMC2_BOOT_InitLogKeys(log_keys_t *logKeys)
 	uint8_t aesLogKey[] = AES_LOG_KEY;
 	uint8_t aesLogNonce[] = AES_LOG_NONCE;
 
-	(void)memcpy((void *)(aesLogKey), (void *)(logKeys->aesKey1), sizeof(logKeys->aesKey1));
-	(void)memcpy((void *)(aesLogNonce), (void *)(logKeys->nonce1), sizeof(logKeys->nonce1));
-	(void)memcpy((void *)(aesLogKey), (void *)(logKeys->aesKey2), sizeof(logKeys->aesKey2));
-	(void)memcpy((void *)(aesLogNonce), (void *)(logKeys->nonce2), sizeof(logKeys->nonce2));
+	(void)memcpy((void *)(aesLogKey), (void *)(logKeys->aesKeyConfig), sizeof(logKeys->aesKeyConfig));
+	(void)memcpy((void *)(aesLogNonce), (void *)(logKeys->nonceConfig), sizeof(logKeys->nonceConfig));
+	(void)memcpy((void *)(aesLogKey), (void *)(logKeys->aesKeyLog), sizeof(logKeys->aesKeyLog));
+	(void)memcpy((void *)(aesLogNonce), (void *)(logKeys->nonceLog), sizeof(logKeys->nonceLog));
 
 #endif
 

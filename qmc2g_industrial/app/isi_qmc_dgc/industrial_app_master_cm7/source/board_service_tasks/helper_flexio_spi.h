@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -72,7 +72,7 @@ static inline uint32_t helper_FLEXIO_SPI_ReadData_32bit(FLEXIO_SPI_Type *base, f
  * @param[in, out] base Pointer to the FLEXIO_SPI_Type structure.
  * @param[in] bitcount Amount of bits to transfer
  */
-void helper_FLEXIO_SPI_SetSCKTimerBitcount(FLEXIO_SPI_Type *base, uint32_t bitcount);
+void helper_FLEXIO_SPI_SetSCKTimerBitcount(FLEXIO_SPI_Type *base, uint16_t bitcount);
 
 /*!
  * @brief Sends a buffer of data frames.

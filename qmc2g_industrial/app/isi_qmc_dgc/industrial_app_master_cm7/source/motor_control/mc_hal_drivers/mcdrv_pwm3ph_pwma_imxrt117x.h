@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -8,8 +8,8 @@
  * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
-#ifndef _MCDRV_PWM3PH_PWMA_H_
-#define _MCDRV_PWM3PH_PWMA_H_
+#ifndef MCDRV_PWM3PH_PWMA_H
+#define MCDRV_PWM3PH_PWMA_H
 
 #include "mlib.h"
 #include "mlib_types.h"
@@ -24,7 +24,7 @@
 #define MCDRV_PWM1 (2)
 
 
-typedef struct _mcdrv_pwm3ph_pwma
+typedef struct mcdrv_pwm3ph_pwma
 {
     GMCLIB_3COOR_T_F16 *psDutyABC;    /* pointer to the 3-phase pwm duty cycles */
     PWM_Type *pui32PwmBaseAddress; /* PWMA base address */
@@ -112,5 +112,5 @@ __attribute__((always_inline)) static inline void PWM_SM0123_RUN(mcdrv_pwm3ph_pw
 }
 #endif
 
-#endif /* _MCDRV_PWM3PH_PWMA_H_ */
+#endif /* MCDRV_PWM3PH_PWMA_H */
 

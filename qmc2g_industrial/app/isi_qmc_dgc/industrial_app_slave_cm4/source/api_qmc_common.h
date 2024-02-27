@@ -26,56 +26,55 @@
  ******************************************************************************/
 
 /* Input & Button Status */
-#define QMC_IOEVENT_BTN1_PRESSED  (1 <<  0)
-#define QMC_IOEVENT_BTN1_RELEASED (1 <<  1)
-#define QMC_IOEVENT_BTN2_PRESSED  (1 <<  2)
-#define QMC_IOEVENT_BTN2_RELEASED (1 <<  3)
-#define QMC_IOEVENT_BTN3_PRESSED  (1 <<  4)
-#define QMC_IOEVENT_BTN3_RELEASED (1 <<  5)
-#define QMC_IOEVENT_BTN4_PRESSED  (1 <<  6)
-#define QMC_IOEVENT_BTN4_RELEASED (1 <<  7)
-#define QMC_IOEVENT_INPUT0_HIGH   (1 <<  8)
-#define QMC_IOEVENT_INPUT0_LOW    (1 <<  9)
-#define QMC_IOEVENT_INPUT1_HIGH   (1 << 10)
-#define QMC_IOEVENT_INPUT1_LOW    (1 << 11)
-#define QMC_IOEVENT_INPUT2_HIGH   (1 << 12)
-#define QMC_IOEVENT_INPUT2_LOW    (1 << 13)
-#define QMC_IOEVENT_INPUT3_HIGH   (1 << 14)
-#define QMC_IOEVENT_INPUT3_LOW    (1 << 15)
-#define QMC_IOEVENT_INPUT4_HIGH   (1 << 16)
-#define QMC_IOEVENT_INPUT4_LOW    (1 << 17)
-#define QMC_IOEVENT_INPUT5_HIGH   (1 << 18)
-#define QMC_IOEVENT_INPUT5_LOW    (1 << 19)
-#define QMC_IOEVENT_INPUT6_HIGH   (1 << 20)
-#define QMC_IOEVENT_INPUT6_LOW    (1 << 21)
-#define QMC_IOEVENT_INPUT7_HIGH   (1 << 22)
-#define QMC_IOEVENT_INPUT7_LOW    (1 << 23)
+#define QMC_IOEVENT_BTN1_PRESSED  (UINT32_C(1) <<  0U)
+#define QMC_IOEVENT_BTN1_RELEASED (UINT32_C(1) <<  1U)
+#define QMC_IOEVENT_BTN2_PRESSED  (UINT32_C(1) <<  2U)
+#define QMC_IOEVENT_BTN2_RELEASED (UINT32_C(1) <<  3U)
+#define QMC_IOEVENT_BTN3_PRESSED  (UINT32_C(1) <<  4U)
+#define QMC_IOEVENT_BTN3_RELEASED (UINT32_C(1) <<  5U)
+#define QMC_IOEVENT_BTN4_PRESSED  (UINT32_C(1) <<  6U)
+#define QMC_IOEVENT_BTN4_RELEASED (UINT32_C(1) <<  7U)
+#define QMC_IOEVENT_INPUT0_HIGH   (UINT32_C(1) <<  8U)
+#define QMC_IOEVENT_INPUT0_LOW    (UINT32_C(1) <<  9U)
+#define QMC_IOEVENT_INPUT1_HIGH   (UINT32_C(1) << 10U)
+#define QMC_IOEVENT_INPUT1_LOW    (UINT32_C(1) << 11U)
+#define QMC_IOEVENT_INPUT2_HIGH   (UINT32_C(1) << 12U)
+#define QMC_IOEVENT_INPUT2_LOW    (UINT32_C(1) << 13U)
+#define QMC_IOEVENT_INPUT3_HIGH   (UINT32_C(1) << 14U)
+#define QMC_IOEVENT_INPUT3_LOW    (UINT32_C(1) << 15U)
+#define QMC_IOEVENT_INPUT4_HIGH   (UINT32_C(1) << 16U)
+#define QMC_IOEVENT_INPUT4_LOW    (UINT32_C(1) << 17U)
+#define QMC_IOEVENT_INPUT5_HIGH   (UINT32_C(1) << 18U)
+#define QMC_IOEVENT_INPUT5_LOW    (UINT32_C(1) << 19U)
+#define QMC_IOEVENT_INPUT6_HIGH   (UINT32_C(1) << 20U)
+#define QMC_IOEVENT_INPUT6_LOW    (UINT32_C(1) << 21U)
+#define QMC_IOEVENT_INPUT7_HIGH   (UINT32_C(1) << 22U)
+#define QMC_IOEVENT_INPUT7_LOW    (UINT32_C(1) << 23U)
 
 /* System Status */
-#define QMC_SYSEVENT_LIFECYCLE_Commissioning     (1 <<  0)
-#define QMC_SYSEVENT_LIFECYCLE_Operational       (1 <<  1)
-#define QMC_SYSEVENT_LIFECYCLE_Error             (1 <<  2)
-#define QMC_SYSEVENT_LIFECYCLE_Maintenance       (1 <<  3)
-#define QMC_SYSEVENT_LIFECYCLE_Decommissioning   (1 <<  4)
-#define QMC_SYSEVENT_FAULT_Motor1                (1 <<  5)
-#define QMC_SYSEVENT_FAULT_Motor2                (1 <<  6)
-#define QMC_SYSEVENT_FAULT_Motor3                (1 <<  7)
-#define QMC_SYSEVENT_FAULT_Motor4                (1 <<  8)
-#define QMC_SYSEVENT_FAULT_System                (1 <<  9)
-#define QMC_SYSEVENT_FWUPDATE_RestartRequired    (1 << 10)
-#define QMC_SYSEVENT_FWUPDATE_VerifyMode         (1 << 11)
-#define QMC_SYSEVENT_CONFIGURATION_ConfigChanged (1 << 12)
-#define QMC_SYSEVENT_ANOMALYDETECTION_Audio      (1 << 13)
-#define QMC_SYSEVENT_ANOMALYDETECTION_Current    (1 << 14)
-#define QMC_SYSEVENT_SHUTDOWN_PowerLoss          (1 << 15)
-#define QMC_SYSEVENT_SHUTDOWN_WatchdogReset      (1 << 16)
-#define QMC_SYSEVENT_MEMORY_SdCardAvailable      (1 << 17)
-#define QMC_SYSEVENT_NETWORK_TsnSyncLost         (1 << 18)
-#define QMC_SYSEVENT_NETWORK_NoLink              (1 << 19)
-#define QMC_SYSEVENT_LOG_FlashError              (1 << 20)
-#define QMC_SYSEVENT_LOG_LowMemory               (1 << 21)
-
-
+#define QMC_SYSEVENT_LIFECYCLE_Commissioning     (UINT32_C(1) <<  0U)
+#define QMC_SYSEVENT_LIFECYCLE_Operational       (UINT32_C(1) <<  1U)
+#define QMC_SYSEVENT_LIFECYCLE_Error             (UINT32_C(1) <<  2U)
+#define QMC_SYSEVENT_LIFECYCLE_Maintenance       (UINT32_C(1) <<  3U)
+#define QMC_SYSEVENT_LIFECYCLE_Decommissioning   (UINT32_C(1) <<  4U)
+#define QMC_SYSEVENT_FAULT_Motor1                (UINT32_C(1) <<  5U)
+#define QMC_SYSEVENT_FAULT_Motor2                (UINT32_C(1) <<  6U)
+#define QMC_SYSEVENT_FAULT_Motor3                (UINT32_C(1) <<  7U)
+#define QMC_SYSEVENT_FAULT_Motor4                (UINT32_C(1) <<  8U)
+#define QMC_SYSEVENT_FAULT_System                (UINT32_C(1) <<  9U)
+#define QMC_SYSEVENT_FWUPDATE_RestartRequired    (UINT32_C(1) << 10U)
+#define QMC_SYSEVENT_FWUPDATE_VerifyMode         (UINT32_C(1) << 11U)
+#define QMC_SYSEVENT_CONFIGURATION_ConfigChanged (UINT32_C(1) << 12U)
+#define QMC_SYSEVENT_ANOMALYDETECTION_Audio      (UINT32_C(1) << 13U)
+#define QMC_SYSEVENT_ANOMALYDETECTION_Current    (UINT32_C(1) << 14U)
+#define QMC_SYSEVENT_SHUTDOWN_PowerLoss          (UINT32_C(1) << 15U)
+#define QMC_SYSEVENT_SHUTDOWN_WatchdogReset      (UINT32_C(1) << 16U)
+#define QMC_SYSEVENT_MEMORY_SdCardAvailable      (UINT32_C(1) << 17U)
+#define QMC_SYSEVENT_NETWORK_TsnSyncLost         (UINT32_C(1) << 18U)
+#define QMC_SYSEVENT_NETWORK_NoLink              (UINT32_C(1) << 19U)
+#define QMC_SYSEVENT_LOG_FlashError              (UINT32_C(1) << 20U)
+#define QMC_SYSEVENT_LOG_LowMemory               (UINT32_C(1) << 21U)
+#define QMC_SYSEVENT_LOG_MessageLost             (UINT32_C(1) << 22U)
 
 /*******************************************************************************
  * Definitions => Enumerations
@@ -229,7 +228,21 @@ typedef enum _qmc_psb_temperature_id
 	kQMC_Psb4Sensor2 = 0x23U, /*!< Second temperature sensor on PSB 4 */
 } qmc_psb_temperature_id_t;
 
+/*!
+ * @brief  Enumeration of Datalogger wake up notification types.
+ */
+typedef enum
+{
+	kDLG_LOG_Queued		  		= 0x01U, 			/*!< Notification of a new log request being triggered */
+	kDLG_SHUTDOWN_PowerLoss   	= 0x02U, 			/*!< Notification of a power loss event */
+	kDLG_SHUTDOWN_SecureWatchdogReset = 0x04U, 		/*!< Notification of a secure watchdog reset event */
+	kDLG_SHUTDOWN_FunctionalWatchdogReset = 0x08U, 	/*!< Notification of a functional watchdog reset event */
+} qmc_dlg_notification_t;
 
+/*******************************************************************************
+ * Definitions => Related to Structures
+ ******************************************************************************/
+#define QMC_MEM_WRITE_MAX_DATA_WORDS (16U)
 
 /*******************************************************************************
  * Definitions => Structures
@@ -285,12 +298,19 @@ typedef struct _qmc_msg_queue_handle
 } qmc_msg_queue_handle_t;
 #endif
 
+/*!
+ * @brief Represents a memory write request.
+ */
+typedef struct _qmc_mem_write
+{
+    uintptr_t baseAddress;
+    uint32_t data[QMC_MEM_WRITE_MAX_DATA_WORDS];
+    uint8_t dataWords;
+    uint8_t accessSize;
+} qmc_mem_write_t;
 
 /*******************************************************************************
  * Definitions => Other
  ******************************************************************************/
-
-/* TODO: put fractional types here */
-
 
 #endif /* _API_QMC_COMMON_H_ */

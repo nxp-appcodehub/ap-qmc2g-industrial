@@ -388,7 +388,7 @@
 #define BOARD_SLOW_DIG_IN7_NAME        		"DIG_IN7"
 
 /*! @brief The board flash size */
-#define BOARD_FLASH_SIZE (0x1000000U) /*TODO: change is different flash memory used*/
+#define BOARD_FLASH_SIZE (0x1000000U)
 
 /*! @brief The ENET0 PHY address. */
 #define BOARD_ENET0_PHY_ADDRESS (0x02U) /* Phy address of enet port 0. */
@@ -402,7 +402,6 @@
 #define BOARD_USB_PHY_TXCAL45DM (0x06U)
 
 /*! @Brief SE050 I2C and reset */
-/* TODO: point of change with GENERAL I2C*/
 #define BOARD_SE050_I2C_BASEADDR             	LPI2C3
 #define BOARD_SE050_I2C_INSTANCE             	3U
 #define BOARD_SE050_I2C_INDEX 					(3)

@@ -15,6 +15,8 @@
 #ifndef _QMC_CM4_FEATURES_CONFIG_H_
 #define _QMC_CM4_FEATURES_CONFIG_H_
 
+#include <stdint.h>
+
 #include "qmc_features_config.h"
 #include "hal/hal.h"
 
@@ -27,22 +29,33 @@
  * NOTE: Customize CM4 behavior here
  */
 #define QMC_CM4_SNVS_USER_OUTPUTS_INIT_STATE \
-    ((1U << kHAL_SnvsSpiCs0) | (1U << kHAL_SnvsSpiCs1)) /*!< initial output values */
+    ((UINT32_C(1) << kHAL_SnvsSpiCs0) | (UINT32_C(1) << kHAL_SnvsSpiCs1)) /*!< initial output values */
 
 /* Functional watchdogs
  * NOTE: If you add more watchdogs you also have to adapt the HandleFunctionalWatchdogCommand
  * function in the RPC module! */
-#define QMC_CM4_FWDGS_COUNT           (1U)    /*!< number of functional watchdogs */
-#define QMC_CM4_FWDGS_GRACE_PERIOD_MS (5000U) /*!< TODO grace period of the functional watchdogs in ms */
-#define QMC_CM4_FWDGS_TIMEOUT_MS \
-    {                            \
-        24 * 3600 * 1000U        \
-    } /*!< TODO timeout of the individual functional watchdogs in ms */
+#define QMC_CM4_FWDGS_COUNT           (8U)    /*!< number of functional watchdogs */
+/* increase if the M7 needs more time before reset (e.g., for writing pending logs) */
+#define QMC_CM4_FWDGS_GRACE_PERIOD_MS (5000U) /*!< grace period of the functional watchdogs in ms */
+/*! timeouts for functional watchdogs in ms - keep in sync with typedef enum _rpc_watchdog_id from api_rpc.h*/
+#define QMC_CM4_FWDGS_TIMEOUT_MS	\
+    {								\
+        60 * 1000U,	/* kRPC_FunctionalWatchdogBoardService */	\
+		60 * 1000U,	/* kRPC_FunctionalWatchdogCloudService */	\
+		60 * 1000U,	/* kRPC_FunctionalWatchdogDataHub */		\
+		60 * 1000U,	/* kRPC_FunctionalWatchdogFaultHandling */	\
+		300 * 1000U,	/* kRPC_FunctionalWatchdogLocalService */	\
+		300 * 1000U,	/* kRPC_FunctionalWatchdogLoggingService */	\
+		60 * 1000U,	/* kRPC_FunctionalWatchdogTSN */			\
+		60 * 1000U,	/* kRPC_FunctionalWatchdogWebService */		\
+    }
 
 /* Authenticated / Secure watchdog */
-#define QMC_CM4_AWDG_GRACE_PERIOD_MS (5000U) /*!< TODO grace period of the authenticated watchdog in ms */
+/* increase if the M7 needs more time before reset (e.g., for writing pending logs) */
+#define QMC_CM4_AWDG_GRACE_PERIOD_MS (5000U) /*!< grace period of the authenticated watchdog in ms */
+/* usually in the range of hours, must be large enough to be able to install updates */
 #define QMC_CM4_AWDG_INITIAL_TIMEOUT_MS \
-    (24 * 3600 * 1000U) /*!< TODO initial timeout of the authenticated watchdog in ms */
+    (24 * 3600 * 1000U) /*!< initial timeout of the authenticated watchdog in ms (large enough to install updates) */
 
 /* Static RNG seed and PK
  * !!!ONLY for non-SBL TESTING, not for PRODUCTION!!!
@@ -54,7 +67,7 @@
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   \
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00                            \
     }                                         /*!< AWDG RNG seed for non-SBL testing */
-#define QMC_CM4_TEST_AWDG_RNG_SEED_SIZE (48U) /*!< AWDG RNG seed for non SBL testing length */
+#define QMC_CM4_TEST_AWDG_RNG_SEED_SIZE (48U) /*!< AWDG RNG seed for non-SBL testing length */
 
 #define QMC_CM4_TEST_AWDG_PK                                                                                        \
     {                                                                                                               \
@@ -69,6 +82,6 @@
             0x88, 0x0b, 0x57, 0xb6, 0x3b, 0xb7, 0x18, 0xb5, 0xee, 0xc9, 0xcc, 0x7a, 0x10, 0x1f, 0xdc, 0xe9, 0x5f,   \
             0x0f, 0xea, 0xac, 0x89                                                                                  \
 } /*!< AWDG key for non-SBL testing */
-#define QMC_CM4_TEST_AWDG_PK_SIZE (158U) /*!< AWDG PK for non SBL testing length */
+#define QMC_CM4_TEST_AWDG_PK_SIZE (158U) /*!< AWDG PK for non-SBL testing length */
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -17,8 +17,12 @@
  * Definitions
  ******************************************************************************/
 
-#define BUFFER_SIZE		20  /* Circular fault buffer size */
+#define BUFFER_SIZE		20  /* Circular fault buffer size - one slot is kept empty for full/empty buffer recognition */
 #define QUEUE_SIZE		20	/* Fault queue size */
+
+#if (BUFFER_SIZE > 0xFF)
+#error "BUFFER_SIZE MUST FIT WITHIN THE UINT8_T TYPE"
+#endif
 
 /*******************************************************************************
  * Variables
@@ -80,7 +84,7 @@ void FAULT_RaiseFaultEvent(fault_source_t src)
         }
         else if (CONTAINS_QUEUE_OVERFLOW_FLAG(g_systemFaultStatus))
         {
-            g_FaultHandlingErrorFlags &= ~(kFAULT_FaultQueueOverflow);
+            g_FaultHandlingErrorFlags &= (fault_system_fault_t) ~((uint32_t) kFAULT_FaultQueueOverflow);
         }
         else
         {
@@ -92,17 +96,40 @@ void FAULT_RaiseFaultEvent(fault_source_t src)
 /*!
  * @brief Reads from the circular fault buffer.
  *
- * @retval Returns the stored fault.
+ * @retval Returns the stored fault. If called on an empty buffer, returns kFAULT_InvalidFaultSource.
  */
 fault_source_t FAULT_ReadBuffer(void)
 {
-	uint8_t localBufferHead = gs_readBufferHead;
-	fault_source_t retVal = gs_faultBuffer[localBufferHead++];
-	if (localBufferHead == BUFFER_SIZE)
+	if (FAULT_BufferEmpty())
 	{
-		localBufferHead = 0;
+		return kFAULT_InvalidFaultSource;
 	}
-	gs_readBufferHead = localBufferHead;
+
+	uint8_t localReadBufferHead = gs_readBufferHead;
+	fault_source_t retVal = gs_faultBuffer[localReadBufferHead];
+	uint8_t nextReadBufferHead = 0;
+
+	/* Checking to be compliant with CERTC-C INT31-C */
+	if ((localReadBufferHead + 1) > BUFFER_SIZE)
+	{
+		nextReadBufferHead = BUFFER_SIZE;
+	}
+	else
+	{
+		nextReadBufferHead = localReadBufferHead + 1;
+
+		/* Checking to be compliant with CERTC-C INT30-C */
+		if (nextReadBufferHead < localReadBufferHead)
+		{
+			nextReadBufferHead = 0;
+		}
+	}
+
+	if (nextReadBufferHead == BUFFER_SIZE)
+	{
+		nextReadBufferHead = 0;
+	}
+	gs_readBufferHead = nextReadBufferHead;
 	return retVal;
 }
 
@@ -118,7 +145,23 @@ qmc_status_t FAULT_WriteBuffer(fault_source_t fault)
 {
 	/* Local copy of gs_writeBufferHead to make writing into the buffer more interrupt-friendly (still not interrupt-safe!) */
 	uint8_t localWriteBufferHead = gs_writeBufferHead;
-	uint8_t nextWriteBufferHead = localWriteBufferHead + 1;
+	uint8_t nextWriteBufferHead = 0;
+
+	/* Checking to be compliant with CERTC-C INT31-C */
+	if ((localWriteBufferHead + 1) > BUFFER_SIZE)
+	{
+		nextWriteBufferHead = BUFFER_SIZE;
+	}
+	else
+	{
+		nextWriteBufferHead = localWriteBufferHead + 1;
+
+		/* Checking to be compliant with CERTC-C INT30-C */
+		if (nextWriteBufferHead < localWriteBufferHead)
+		{
+			nextWriteBufferHead = 0;
+		}
+	}
 
 	if (nextWriteBufferHead == BUFFER_SIZE)
 	{

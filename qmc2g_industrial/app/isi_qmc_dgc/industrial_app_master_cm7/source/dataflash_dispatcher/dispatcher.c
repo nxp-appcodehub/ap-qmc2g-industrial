@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -75,7 +75,6 @@ qmc_status_t dispatcher_read_memory( void *pdst, void *psrc, size_t size, TickTy
 	//First of all we need to obtain flash_lock to be sure nobody is using flash now
 	if( dispatcher_get_flash_lock( ticks) == kStatus_QMC_Ok)
 	{
-		//Need to validate the address range of flash!
 		memcpy( pdst, psrc, size);
 		return dispatcher_release_flash_lock();
 	}
@@ -85,18 +84,48 @@ qmc_status_t dispatcher_read_memory( void *pdst, void *psrc, size_t size, TickTy
 qmc_status_t dispatcher_write_memory( void *pdst, void *psrc, size_t size, TickType_t ticks)
 {
 	//Size of data must be even. Octalflash does not support odd sized data.
-	if( ( size & 1))
+	if( ( size & 1U))
 	{
-		dbgDispPRINTF("DispatcherWriteMemory. Err, try to write odd size data to dataflash. %d\n\r", size);
+		dbgDispPRINTF("DispatcherWriteMemory1. Err, try to write odd size data to dataflash. %d\n\r", size);
+		return kStatus_QMC_ErrArgInvalid;
+	}
+
+	if( (uint32_t)psrc & 1U)
+	{
+		dbgDispPRINTF("DispatcherWriteMemory2. Err, try to write from the psrc not aligned to uint32_t to dataflash. %X\n\r", (uint32_t)psrc);
 		return kStatus_QMC_ErrArgInvalid;
 	}
 
 	//First of all we need to obtain flash_lock to be sure nobody is using flash now
 	if( dispatcher_get_flash_lock( ticks) == kStatus_QMC_Ok)
 	{
-		//Need to validate the address range of flash!
+		status_t retv = kStatus_Fail;
 		uint32_t flashAddr = (uint32_t)pdst - FlexSPI1_AMBA_BASE;
+		if( flashAddr >= OCTAL_FLASH_SIZE)
+		{
+			dbgDispPRINTF("DispatcherWriteMemory5. Err invalid address. FA:0x%x pdst:0x%x", flashAddr, (uint32_t)pdst);
+			retv = dispatcher_release_flash_lock();
+			if( retv != kStatus_Success)
+			{
+				dbgDispPRINTF("DispatcherWriteMemory5. Err release lock:%d", retv);
+				retv = MAKE_STATUS( 196, retv);
+			}
+			return retv;
+		}
 		uint8_t *flashSrc = (uint8_t *)psrc;
+
+		//To be sure we can safely retype flasSrc from uint8_t* to uint32_t* we do this test:
+		if( MAKE_NUMBER_ALIGN( (uint32_t)flashSrc, 2) != (uint32_t)flashSrc)
+		{
+			dbgDispPRINTF("DispatcherWriteMemory6. Err invalid address. flashSrc:0x%x", (uint32_t)flashSrc);
+			retv = dispatcher_release_flash_lock();
+			if( retv != kStatus_Success)
+			{
+				dbgDispPRINTF("DispatcherWriteMemory6. Err release lock:%d", retv);
+				retv = MAKE_STATUS( 197, retv);
+			}
+			return retv;
+		}
 
 		while( size)
 		{
@@ -105,37 +134,75 @@ qmc_status_t dispatcher_write_memory( void *pdst, void *psrc, size_t size, TickT
 			{
 				s = size;
 			}
-			if( flexspi_nor_octalflash_write_data( FLEXSPI1, flashAddr, (void *)flashSrc, s) != kStatus_Success)
+			//We can safely retype flashSrc pointer to uint32_t* because it was already tested to be uint32_t* aligned
+			retv = flexspi_nor_octalflash_write_data( FLEXSPI1, flashAddr, (uint32_t *)flashSrc, s);
+			if( retv != kStatus_Success)
 			{
-				dispatcher_release_flash_lock();
-				return kStatus_QMC_Err;
+				dbgDispPRINTF("DispatcherWriteMemory3. Err write data:%d FA:0x%x SR:0x%x S:0x%x", retv, flashAddr, flashSrc, s);
+				retv = dispatcher_release_flash_lock();
+				if( retv != kStatus_Success)
+				{
+					dbgDispPRINTF("DispatcherWriteMemory4. Err release lock:%d", retv);
+					retv = MAKE_STATUS( 190, retv);
+				}
+				return retv;
 			}
 			flashAddr+=s;
 			flashSrc+=s;
 			size-=s;
 		}
-		return dispatcher_release_flash_lock();
+		retv = dispatcher_release_flash_lock();
+		if( retv != kStatus_Success)
+		{
+			dbgDispPRINTF("DispatcherWriteMemory4. Err release lock:%d", retv);
+			retv = MAKE_STATUS( 191, retv);
+		}
+		return retv;
 	}
 	return kStatus_QMC_ErrBusy;
 }
 
 qmc_status_t dispatcher_erase_sectors( void *pdst, uint16_t sect_cn, TickType_t ticks)
 {
+	status_t retv = kStatus_Fail;
 	//First of all we need to obtain flash_lock to be sure nobody is using flash now
 	if( dispatcher_get_flash_lock( ticks) == kStatus_QMC_Ok)
 	{
-		//Need to validate the address range of flash!
 		uint32_t flashAddr = (uint32_t)pdst - FlexSPI1_AMBA_BASE;
+		if( flashAddr >= OCTAL_FLASH_SIZE)
+		{
+			dbgDispPRINTF("DispatcherEraseSector4. Err erase sector. FA:0x%x pdst:0x%x", flashAddr, (uint32_t)pdst);
+			retv = dispatcher_release_flash_lock();
+			if( retv != kStatus_Success)
+			{
+				dbgDispPRINTF("DispatcherEraseSector4. Err release lock:%d", retv);
+				retv = MAKE_STATUS( 194, retv);
+			}
+			return retv;
+		}
 		for(; sect_cn; sect_cn--)
 		{
-			if( flexspi_nor_octalflash_erase_sector( FLEXSPI1, flashAddr) != kStatus_Success)
+			retv = flexspi_nor_octalflash_erase_sector( FLEXSPI1, flashAddr);
+			if( retv != kStatus_Success)
 			{
-				dispatcher_release_flash_lock();
-				return kStatus_QMC_Err;
+				dbgDispPRINTF("DispatcherEraseSector1. Err erase sector:%d FA:0x%x", retv, flashAddr);
+				retv = dispatcher_release_flash_lock();
+				if( retv != kStatus_Success)
+				{
+					dbgDispPRINTF("DispatcherEraseSector2. Err release lock:%d", retv);
+					retv = MAKE_STATUS( 192, retv);
+				}
+				return retv;
 			}
 			flashAddr+=OCTAL_FLASH_SECTOR_SIZE;
 		}
-		return dispatcher_release_flash_lock();
+		retv = dispatcher_release_flash_lock();
+		if( retv != kStatus_Success)
+		{
+			dbgDispPRINTF("DispatcherEraseSector3. Err release lock:%d", retv);
+			retv = MAKE_STATUS( 193, retv);
+		}
+		return retv;
 	}
 	return kStatus_QMC_ErrBusy;
 }

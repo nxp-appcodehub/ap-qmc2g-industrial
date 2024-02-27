@@ -39,7 +39,7 @@ struct cyclic_task {
     struct tsn_task *task;
     struct tsn_task_params params;
     int type;
-    int id;
+    uint16_t id;
     int num_peers;
     struct socket rx_socket[MAX_PEERS];
     struct socket tx_socket;
@@ -54,7 +54,7 @@ int cyclic_task_init(struct cyclic_task *c_task,
                      void (*loop_func)(void *ctx, int timer_status), void *ctx);
 int cyclic_task_start(struct cyclic_task *);
 void cyclic_task_stop(struct cyclic_task *);
-int cyclic_net_transmit(struct cyclic_task *c_task, int msg_id, void *buf, int len);
+int cyclic_net_transmit(struct cyclic_task *c_task, uint16_t msg_id, void *buf, uint16_t len);
 void cyclic_task_set_period(struct cyclic_task *c_task, unsigned int period_ns);
 
 #endif /* _CYCLIC_TASK_H_ */

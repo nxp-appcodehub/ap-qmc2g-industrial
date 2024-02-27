@@ -45,10 +45,10 @@ enum qmc_se_key_ids {
     idCloud2DevCert           = 0x00000019, /*!< file, <1 kBytes */
     idCloud2DevKeyPair        = 0x0000001A, /*!< NISTP-256 key pair */
     idCertRevocationList      = 0x0000001B, /*!< file */
-    idSblAuthObject           = 0x0000001C, /*!< AES256 key */
-    idSblAuthObjectFirstRun   = 0x0000001D, /*!< file, 32 bytes */
-    idAppAuthObject           = 0x0000001E, /*!< AES256 key */
-    idAppAuthObjectFirstRun   = 0x0000001F, /*!< file, 32 bytes */
+    idSblAuthObject           = 0x0000001C, /*!< AES128 key */
+    idSblAuthObjectFirstRun   = 0x0000001D, /*!< file, 16 bytes */
+    idAppAuthObject           = 0x0000001E, /*!< AES128 key */
+    idAppAuthObjectFirstRun   = 0x0000001F, /*!< file, 16 bytes */
     idConfigEnc               = 0x00000020, /*!< AES256 key */
     idMetaDataEnc             = 0x00000021, /*!< AES256 key */
     idAwdtServerIdCert        = 0x00000022, /*!< file, <1 kBytes */
@@ -57,6 +57,7 @@ enum qmc_se_key_ids {
     idWebServerIdKeyPair      = 0x00000025, /*!< NISTP-521 key pair */
     idDeviceIdFull            = 0x00000026, /*!< file, 32 bytes */
     idDeviceIdShort           = 0x00000027, /*!< file, <32 bytes */
+	idDefaultUser             = 0x00000028, /*!< file */
 };
 
 /*!

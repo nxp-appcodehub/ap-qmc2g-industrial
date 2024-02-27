@@ -18,6 +18,7 @@
 // Linker macros placing include file
 //-----------------------------------------------------------------------
 #include <qmc2_types.h>
+#include "api_logging.h"
 //------------------------------------------------------------------------------
 // Defines
 //------------------------------------------------------------------------------
@@ -36,18 +37,22 @@
 // Callback definitions
 /* Main QMC2 Bootloader flow */
 int QMC2_BOOT_Main(void);
-void  QMC2_BOOT_ErrorTrap(log_entry_t *log);
+void  QMC2_BOOT_ErrorTrap(log_event_code_t *log);
+#ifdef SECURE_SBL
 /* Rotate and mandate new SCP03 platform keys */
-sss_status_t QMC2_BOOT_RotateMandateSCP03Keys(PUF_Type *base, boot_data_t *boot, log_entry_t *log);
-sss_status_t QMC2_BOOT_AuthenticateMainFw(boot_data_t *boot, log_entry_t *log);
+sss_status_t QMC2_BOOT_RotateMandateSCP03Keys(PUF_Type *base, boot_data_t *boot, log_event_code_t *log);
+#endif
+sss_status_t QMC2_BOOT_AuthenticateMainFw(boot_data_t *boot, log_event_code_t *log);
 sss_status_t QMC2_BOOT_AuthenticateFwu(boot_data_t *boot);
 sss_status_t QMC2_BOOT_ExecuteCm4Cm7Fws(fw_header_t *currFwHeader);
-sss_status_t QMC2_BOOT_Decommissioning(boot_data_t *boot, log_entry_t *log);
+#ifdef SECURE_SBL
+sss_status_t QMC2_BOOT_Decommissioning(boot_data_t *boot, log_event_code_t *log);
+#endif
 sss_status_t QMC2_BOOT_Cleanup(boot_data_t *boot);
 /* Authentiacte main FW */
 sss_status_t QMC2_BOOT_Authenticate(boot_data_t *boot);
-sss_status_t QMC2_BOOT_ProcessMainFwRequest(boot_data_t *boot, log_entry_t *log);
-sss_status_t QMC2_BOOT_FwUpdate(boot_data_t *boot, log_entry_t *log);
+sss_status_t QMC2_BOOT_ProcessMainFwRequest(boot_data_t *boot, log_event_code_t *log);
+sss_status_t QMC2_BOOT_FwUpdate(boot_data_t *boot, log_event_code_t *log);
 
 sss_status_t QMC2_BOOT_InitLogKeys(log_keys_t *logKeys);
 sss_status_t QMC2_BOOT_RPC_InitSecureWatchdog(scp03_keys_t *scp03);

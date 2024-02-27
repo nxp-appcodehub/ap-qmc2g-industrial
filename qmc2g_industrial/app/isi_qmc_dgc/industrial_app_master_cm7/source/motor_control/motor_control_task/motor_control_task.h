@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -8,8 +8,8 @@
  * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
-#ifndef MOTOR_CONTROL_TASK_MOTOR_CONTROL_TASK_H_
-#define MOTOR_CONTROL_TASK_MOTOR_CONTROL_TASK_H_
+#ifndef MOTOR_CONTROL_TASK_MOTOR_CONTROL_TASK_H
+#define MOTOR_CONTROL_TASK_MOTOR_CONTROL_TASK_H
 
 #include "qmc_features_config.h"
 

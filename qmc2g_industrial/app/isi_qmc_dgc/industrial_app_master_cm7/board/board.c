@@ -274,45 +274,37 @@ void BOARD_ConfigMPU(void)
     MPU->RBAR = ARM_MPU_RBAR(2, 0x20000000U);
     MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 1, 0, 0, ARM_MPU_REGION_SIZE_256KB);
 
-    /* Region 3 setting: Memory with Normal type, not shareable, non-cacheable - consider OCRAM LMEM -> CM4 TCMs */
-	MPU->RBAR = ARM_MPU_RBAR(3, 0x20220000U);
-	MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 1, 0, 0, 0, 0, ARM_MPU_REGION_SIZE_256KB);
+    /* Region 3 setting: Memory with Normal type, not shareable, non-cacheable - consider OCRAM1 + OCRAM2 1st 256kB */
+	MPU->RBAR = ARM_MPU_RBAR(3, 0x20200000U);
+	MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 1, 0, 0, ARM_MPU_REGION_SIZE_1MB);
 
-    /* Region 4 setting: Memory with Normal type, not shareable, outer/inner write back - consider OCRAM1 - 1st 256kB */
-    MPU->RBAR = ARM_MPU_RBAR(4, 0x20240000U);
-    MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 1, 0, 0, ARM_MPU_REGION_SIZE_256KB);
+	/* Region 4 setting: Disable access to OCRAM M4 */
+	MPU->RBAR = ARM_MPU_RBAR(4, 0x20200000U);
+	MPU->RASR = ARM_MPU_RASR(1, ARM_MPU_AP_NONE, 1, 0, 0, 0, 0, ARM_MPU_REGION_SIZE_256KB);
 
-    /* Region 5 setting: Memory with Normal type, not shareable, outer/inner write back - consider OCRAM1 - 2nd 256kB */
-	MPU->RBAR = ARM_MPU_RBAR(5, 0x20280000U);
+    /* Region 5 setting: Memory with Normal type, not shareable, outer/inner write through - consider OCRAM2 2nd 256kB */
+	MPU->RBAR = ARM_MPU_RBAR(5, 0x20300000U);
 	MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 1, 0, 0, ARM_MPU_REGION_SIZE_256KB);
 
-    /* Region 6 setting: Memory with Normal type, not shareable, outer/inner write back - consider OCRAM2 - 1st 256kB */
-    MPU->RBAR = ARM_MPU_RBAR(6, 0x202C0000U);
-    MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 1, 0, 0, ARM_MPU_REGION_SIZE_256KB);
-
-    /* Region 7 setting: Memory with Normal type, not shareable, outer/inner write back - consider OCRAM2 - 2nd 256kB */
-	MPU->RBAR = ARM_MPU_RBAR(7, 0x20300000U);
-	MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 1, 0, 0, ARM_MPU_REGION_SIZE_256KB);
-
-    /* Region 8 setting: Memory with Normal type, not shareable, non-cacheable - consider OCRAM ECC1 - RPC msg (required by MAD team) */
-    MPU->RBAR = ARM_MPU_RBAR(8, 0x20340000U);
+    /* Region 6 setting: Memory with Normal type, not shareable, non-cacheable - consider OCRAM ECC1 - RPC msg (required by MAD team) */
+    MPU->RBAR = ARM_MPU_RBAR(6, 0x20340000U);
     MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 1, 0, 0, 0, 0, ARM_MPU_REGION_SIZE_64KB);
 
-    /* Region 9 setting: Memory with Normal type, not shareable, outer/inner write back - FlexRAM OCRAM ECC */
-    MPU->RBAR = ARM_MPU_RBAR(9, 0x20360000U);
+    /* Region 7 setting: Memory with Normal type, not shareable, outer/inner write back - FlexRAM OCRAM ECC */
+    MPU->RBAR = ARM_MPU_RBAR(7, 0x20360000U);
     MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_128KB);
 
-    /* Region 10 setting: Memory with Normal type, not shareable, outer/inner write back - FlexSPI1 OctalFLASH */
-    MPU->RBAR = ARM_MPU_RBAR(10, 0x30000000U);
+    /* Region 8 setting: Memory with Normal type, not shareable, outer/inner write back - FlexSPI1 OctalFLASH */
+    MPU->RBAR = ARM_MPU_RBAR(8, 0x30000000U);
     MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_RO, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_64MB);
 
-    /* Region 11 setting: Memory with Normal type, not shareable, non-cacheable - FlexSPI1 OctalRAM */
-    MPU->RBAR = ARM_MPU_RBAR(11, 0x34000000U);
+    /* Region 9 setting: Memory with Normal type, not shareable, non-cacheable - FlexSPI1 OctalRAM */
+    MPU->RBAR = ARM_MPU_RBAR(9, 0x34000000U);
     MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 1, 0, 0, 0, 0, ARM_MPU_REGION_SIZE_16MB);
 
 #if defined(XIP_EXTERNAL_FLASH) && (XIP_EXTERNAL_FLASH == 1)
-    /* Region 12 setting: Memory with Normal type, not shareable, outer/inner write back. */
-    MPU->RBAR = ARM_MPU_RBAR(12, 0x60000000U);
+    /* Region 10 setting: Memory with Normal type, not shareable, outer/inner write back. */
+    MPU->RBAR = ARM_MPU_RBAR(10, 0x60000000U);
     MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_RO, 0, 0, 1, 1, 0, ARM_MPU_REGION_SIZE_16MB);
 #endif
 
@@ -328,18 +320,28 @@ void BOARD_ConfigMPU(void)
         assert(size == (uint32_t)(1 << i));
         assert(i >= 5);
 
-        /* Region 13 setting: Memory with Normal type, not shareable, non-cacheable */
-        MPU->RBAR = ARM_MPU_RBAR(13, nonCacheStart);
+        /* Region 11 setting: Memory with Normal type, not shareable, non-cacheable */
+        MPU->RBAR = ARM_MPU_RBAR(11, nonCacheStart);
         MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 1, 0, 0, 0, 0, i - 1);
     }
 
-    /* Region 14 setting: Memory with Device type, not shareable, non-cacheable AIPS1-AIPS4, SIM_x, CDOG, AIPS M7 */
-    MPU->RBAR = ARM_MPU_RBAR(14, 0x40000000);
+    /* Region 12 setting: Memory with Device type, not shareable, non-cacheable AIPS1-AIPS4, SIM_x, CDOG, AIPS M7 */
+    MPU->RBAR = ARM_MPU_RBAR(12, 0x40000000);
     MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 2, 0, 0, 0, 0, ARM_MPU_REGION_SIZE_64MB);
 
-    /* Region 15 setting: Memory with Normal type, not shareable, non-cacheable FlexSPI1 RX/TX FIFO */
-    MPU->RBAR = ARM_MPU_RBAR(15, 0x2F800000);
+    /* Region 13 setting: Memory with Normal type, not shareable, non-cacheable FlexSPI1 RX/TX FIFO */
+    MPU->RBAR = ARM_MPU_RBAR(13, 0x2F800000);
     MPU->RASR = ARM_MPU_RASR(0, ARM_MPU_AP_FULL, 1, 0, 0, 0, 0, ARM_MPU_REGION_SIZE_8MB);
+
+#if !defined(NO_SBL) || defined(DEBUG_M4_WRITE_FORWARDING)
+	/* Region 14 setting: RO Memory (CCM) with Device type, not shareable, non-cacheable */
+    MPU->RBAR = ARM_MPU_RBAR(14, 0x40CC0000);
+    MPU->RASR = ARM_MPU_RASR(1, ARM_MPU_AP_RO, 2, 0, 0, 0, 0, ARM_MPU_REGION_SIZE_32KB);
+
+    /* Region 15 setting: RO Memory (ANADIG) with Device type, not shareable, non-cacheable */
+    MPU->RBAR = ARM_MPU_RBAR(15, 0x40C84000);
+    MPU->RASR = ARM_MPU_RASR(1, ARM_MPU_AP_RO, 2, 0, 0, 0, 0, ARM_MPU_REGION_SIZE_16KB);
+#endif 
 
     /* Enable MPU */
     ARM_MPU_Enable(MPU_CTRL_PRIVDEFENA_Msk);

@@ -12,14 +12,12 @@
 #define _INIT_RPC_H_
 
 #include "qmc2_types.h"
+#include <stdatomic.h>
 
 
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
-
-#define RPC_SHM_SECTION_NAME "rpmsg_sh_mem"                /*!> must match linker configuration */
-#define RPC_SECWD_INIT_DATA_SECTION_NAME "secwd_init_data" /*!> must match linker configuration */
 
 /*!
  * @brief Static initialization macro for rpc_event_t.
@@ -51,7 +49,8 @@
     {                                                                                                                 \
         .events = RPC_EVENT_STATIC_INIT, RPC_SHM_CALL_DATA_STATIC_INIT(funcWd), RPC_SHM_CALL_DATA_STATIC_INIT(secWd), \
         RPC_SHM_CALL_DATA_STATIC_INIT(gpioOut), RPC_SHM_CALL_DATA_STATIC_INIT(rtc),                                   \
-        RPC_SHM_CALL_DATA_STATIC_INIT(fwUpdate), RPC_SHM_CALL_DATA_STATIC_INIT(reset)                                 \
+        RPC_SHM_CALL_DATA_STATIC_INIT(fwUpdate), RPC_SHM_CALL_DATA_STATIC_INIT(reset),                                \
+        RPC_SHM_CALL_DATA_STATIC_INIT(mcuTemp), RPC_SHM_CALL_DATA_STATIC_INIT(memWrite)                               \
     }
 
 /*!
@@ -64,18 +63,24 @@ typedef struct
     size_t rngSeedLen;                            /*!< The RNG seed length. */
     uint8_t pk[RPC_SECWD_MAX_PK_SIZE];            /*!< The PK for secure watchdog initialization. */
     size_t pkLen;                                 /*!< The PK length. */
-    uint8_t ready;                       		  /*!< The CM4 is ready. */
+    _Atomic uint8_t ready;                        /*!< The CM4 is ready. */
 } rpc_secwd_init_data_t;
 
 /*!
- * @brief Lists available watchdos in the system.
+ * @brief Lists available watchdogs in the system.
  */
 typedef enum _rpc_watchdog_id
 {
-    kRPC_SecureWatchdog      = 0U,
-    kRPC_FunctionalWatchdog1 = 1U,
-	kRPC_FunctionalWatchdogLast = kRPC_FunctionalWatchdog1
-    /* TODO: add other wacthdogs here */
+	kRPC_FunctionalWatchdogBoardService 	= 0U,
+	kRPC_FunctionalWatchdogCloudService 	= 1U,
+	kRPC_FunctionalWatchdogDataHub 			= 2U,
+	kRPC_FunctionalWatchdogFaultHandling 	= 3U,
+	kRPC_FunctionalWatchdogLocalService 	= 4U,
+	kRPC_FunctionalWatchdogLoggingService 	= 5U,
+	kRPC_FunctionalWatchdogTSN 				= 6U,
+	kRPC_FunctionalWatchdogWebService 		= 7U,
+	kRPC_FunctionalWatchdogFirst 			= 0U,
+    kRPC_FunctionalWatchdogLast 			= kRPC_FunctionalWatchdogWebService
 } rpc_watchdog_id_t;
 
 /*!
@@ -83,10 +88,10 @@ typedef enum _rpc_watchdog_id
  */
 typedef struct _rpc_event
 {
-	 bool                 isResetProcessed;
-	 bool                 isGpioProcessed;
-	 qmc_reset_cause_id_t resetCause;
-	 uint8_t              gpioState;  /*!< Bit 0 - 3 represents DIG.INPUT4 - 7 (1=high, 0=low). */
+	_Atomic bool                 isResetProcessed;
+	_Atomic bool                 isGpioProcessed;
+	_Atomic qmc_reset_cause_id_t resetCause;
+	_Atomic uint8_t              gpioState;  /*!< Bit 0 - 3 represents DIG.INPUT4 - 7 (1=high, 0=low). */
 } rpc_event_t;
 
 /*!
@@ -94,9 +99,9 @@ typedef struct _rpc_event
  */
 typedef struct _rpc_status
 {
-	 bool         isNew;
-	 bool         isProcessed;
-	 bool         waitForAsyncCompletionCM4;
+	_Atomic bool         isNew;
+	_Atomic bool         isProcessed;
+	_Atomic bool         waitForAsyncCompletionCM4;
     qmc_status_t retval;
 } rpc_status_t;
 
@@ -145,7 +150,7 @@ typedef struct _rpc_rtc
 typedef struct _rpc_fwupdate
 {
     rpc_status_t          status;
-    fw_state_t			  fwStatus;
+    fw_state_t            fwStatus;
     qmc_reset_cause_id_t  resetCause;
     bool                  isReadNotWrite;
     bool                  isCommitNotRevert;
@@ -162,17 +167,38 @@ typedef struct _rpc_reset
 } rpc_reset_t;
 
 /*!
+ * @brief Holds parameters of the RPC_GetMcuTemperature(temp : float*) : qmc_status_t function.
+ */
+typedef struct _rpc_mcu_temp_t
+{
+    rpc_status_t status;
+    float        temp;
+} rpc_mcu_temp_t;
+
+/*!
+ * @brief Holds parameters of the RPC_MemoryWriteIntsDisabled(write : qmc_mem_write_t*) : qmc_status_t function.
+ */
+typedef struct _rpc_mem_write_t
+{
+    rpc_status_t status;
+    qmc_mem_write_t write;
+} rpc_mem_write_t;
+
+/*!
  * @brief This structure is meant to be instantiated once as a global variable. It acts as a the shared memory interface between Cortex M4 and Cortex M7 cores.
  */
 typedef struct _rpc_shm
 {
-    rpc_event_t    events;   /*!< Holds data about SNVS GPIO input events and reset events triggered by the watchdogs. */
-    rpc_func_wd_t  funcWd;   /*!< Holds parameters of the RPC_KickFunctionalWatchdog function. */
-    rpc_sec_wd_t   secWd;    /*!< Holds parameters of the RPC_KickSecureWatchdog(data : uint8_t*, dataLen : int) : qmc_status_t and RPC_RequestNonceFromSecureWatchdogSync(nonce : uint8_t*, length : int*) : qmc_status_t functions. */
-    rpc_gpio_t     gpioOut;  /*!< Holds parameters of the RPC_SetSnvsOutput(gpioState : uint16_t) : qmc_status_t function. */
-    rpc_rtc_t      rtc;      /*!< Holds parameters of the RPC_GetTimeFromRTCSync(timestamp : qmc_timestamp_t*) : qmc_status_t and RPC_SetTimeToRTC(timestamp : qmc_timestamp_t*) : qmc_status_t  functions. */
-    rpc_fwupdate_t fwUpdate; /*!< Holds parameters of the RPC_CommitFwUpdate() : qmc_status_t, RPC_RevertFwUpdate() : qmc_status_t and RPC_GetFwUpdateState(state : qmc_fw_update_state_t*) : qmc_status_t functions. */
-    rpc_reset_t    reset;    /*!< Holds parameters of the RPC_Reset(cause : qmc_reset_cause_id_t) : qmc_status_t function. */
+    /* must be aligned as members accessed concurrently */
+    rpc_event_t    events    __attribute__ ((aligned)); /*!< Holds data about SNVS GPIO input events and reset events triggered by the watchdogs. */
+    rpc_func_wd_t  funcWd    __attribute__ ((aligned)); /*!< Holds parameters of the RPC_KickFunctionalWatchdog function. */
+    rpc_sec_wd_t   secWd     __attribute__ ((aligned)); /*!< Holds parameters of the RPC_KickSecureWatchdog(data : uint8_t*, dataLen : int) : qmc_status_t and RPC_RequestNonceFromSecureWatchdogSync(nonce : uint8_t*, length : int*) : qmc_status_t functions. */
+    rpc_gpio_t     gpioOut   __attribute__ ((aligned)); /*!< Holds parameters of the RPC_SetSnvsOutput(gpioState : uint16_t) : qmc_status_t function. */
+    rpc_rtc_t      rtc       __attribute__ ((aligned)); /*!< Holds parameters of the RPC_GetTimeFromRTCSync(timestamp : qmc_timestamp_t*) : qmc_status_t and RPC_SetTimeToRTC(timestamp : qmc_timestamp_t*) : qmc_status_t  functions. */
+    rpc_fwupdate_t fwUpdate  __attribute__ ((aligned)); /*!< Holds parameters of the RPC_CommitFwUpdate() : qmc_status_t, RPC_RevertFwUpdate() : qmc_status_t and RPC_GetFwUpdateState(state : qmc_fw_update_state_t*) : qmc_status_t functions. */
+    rpc_reset_t    reset     __attribute__ ((aligned)); /*!< Holds parameters of the RPC_Reset(cause : qmc_reset_cause_id_t) : qmc_status_t function. */
+    rpc_mcu_temp_t mcuTemp   __attribute__ ((aligned)); /*!< Holds parameters of the RPC_GetMcuTemperature(temp : float*) : qmc_status_t function. */
+    rpc_mem_write_t memWrite __attribute__ ((aligned)); /*!< Holds parameters of the RPC_MemoryWriteIntsDisabled(write : qmc_mem_write_t*) : qmc_status_t function. */
 } rpc_shm_t;
 
 /*!

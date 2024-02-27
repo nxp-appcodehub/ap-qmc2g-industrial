@@ -30,7 +30,7 @@
  * remote command request from the CM7 and returns the processing results.
  * Further, the module allows to trigger asynchronous event notifications received by the CM7.
  *
- * The module enables to communication using a shared memory region which contains
+ * The module enables communication using a shared memory region which contains
  * command data and synchronization flags. By atomically modifying the synchronization
  * flags and using an inter-core software interrupt to notify the other side about pending
  * commands / events the communication is established.
@@ -41,18 +41,20 @@
  *
  * After initializing, all public RPC functions can be run. For reentrancy and concurrency
  * assumptions see the detailed API descriptions.
- * 
+ *
  * Known side-effects / limitations (CM4 and CM7 implementation):
- *  - If a command was requested by the CM7, the CM4 will retrigger the inter-core interrupt until
- *    processing by the CM7 finished. As we do not want to miss incoming messages on the
- *    CM4, this also implies that the CM4 itself loops in the SW interrupt (similar to polling) until
- *    the communication has completed. As the processing by the CM7 should finish quickly
- *    this behaviour is accepted.
- *  - If events from the CM4 side are incoming at a fast pace and the scheduling of the
+ *  - If the CM4 finished processing a command and notifies the CM7 about it, it will
+ *    retrigger the inter-core interrupt until processing by the CM7 finished.
+ *    As we do not want to miss incoming messages on the CM4, this also implies that the 
+ *    CM4 itself loops in the SW interrupt (similar to polling) until the communication has 
+ *    completed. As the processing by the CM7 should finish quickly this behaviour is accepted.
+ *    This behavior does not interfere with other parts of the CM4 system as the GPR_IRQ SW
+ *    interrupt has the lowest priority.
+ *  - If events from the CM4 are incoming at a fast pace and the scheduling of the
  *    code aligns in a special way, it may happen that an older event is missed and a newer event
  *    is reported twice!
  *  - Command timeout handling depends on the cooperation of the CM4, as the CM7
- *    side can not know in which state the CM4 is exactly when a timeout occurred. If the CM4
+ *    can not know in which state the CM4 is exactly when a timeout occurred. If the CM4
  *    does not cooperate, for example because it hung up, the CM7 has to decide
  *    how to solve this issue (kStatus_QMC_ErrSync is returned).
  *  - If the FreeRTOS timer service queue is full, no event group notification can be send
@@ -63,10 +65,10 @@
  *    Without locking undesired effects (for example: RPC IRQ triggers continuously on CM7) could occur.
  *    While using a mutex allows for higher-important tasks to interrupt this section and perform more
  *    important work, it also has side effects on the availability of the communication:
- *    As the inter-core-IRQ-triggering sequence also disables the inter-core IRQ on the CM7, communication
+ *    As the inter-core IRQ triggering sequence also disables the inter-core IRQ on the CM7, communication
  *    is globally paused until the preempted locked section is exited again. So if a high-important task
  *    itself uses communication, it must wait for the mutex to become available. The mutex only becomes available
- *    after all tasks with a higher priority than the task with the preempted inter-core-IRQ-triggering sequence
+ *    after all tasks with a higher priority than the task with the preempted inter-core IRQ triggering sequence
  *    are not ready-to-run anymore. The execution of the inter-core IRQ triggering sequence takes on average 475
  *    cycles (interrupts disabled, without mutex, n = 1000000). Note that also events can not be received during
  *    this period.
@@ -93,8 +95,8 @@
  * @brief Sets the reset event in the shared memory and triggers an inter-core IRQ.
  *
  * This function is not reentrant and must not be used in parallel with
- * other RPC functions which use the underlying inter-core communication:
- * RPC_Finish*, RPC_NotifyCM7AboutGpioChange, RPC_HandleISR!
+ * other RPC functions which use the underlying inter-core communication (disable interrupts):
+ * RPC_Finish*, RPC_NotifyCM7AboutGpioChange(), RPC_HandleISR()!
  *
  * @startuml
  * start
@@ -125,8 +127,8 @@ qmc_status_t RPC_NotifyCM7AboutReset(qmc_reset_cause_id_t resetCause);
  * @brief Sets the GPIO input change event in the shared memory and triggers an inter-core IRQ.
  *
  * This function is not reentrant and must not be used in parallel with the
- * other RPC functions which use the underlying inter-core communication:
- * RPC_Finish*, RPC_NotifyCM7AboutReset, RPC_HandleRpcISR!
+ * other RPC functions which use the underlying inter-core communication (disable interrupts):
+ * RPC_Finish*, RPC_NotifyCM7AboutReset(), RPC_HandleISR()!
  *
  * @startuml
  * start
@@ -149,20 +151,20 @@ void RPC_NotifyCM7AboutGpioChange(uint8_t gpioInputStatus);
  *
  * This function is not reentrant and must not be used in parallel with the
  * other RPC functions which use the underlying inter-core communication:
- * RPC_Finish*, RPC_NotifyCM7AboutReset, RPC_NotifyCM7AboutGpioChange!
+ * RPC_Finish*, RPC_NotifyCM7AboutReset(), RPC_NotifyCM7AboutGpioChange()!
  *
  * Worst case execution time on IMX RT1176 CM4 (n = 100000): 
- *      w.c. 23951 cycles 60us (without reset)
- *      w.c. 419525 cycles 1049us (with reset)
+ *      w.c. 64557 cycles 165us (without reset)
+ *      w.c. 475554 cycles 1211us (with reset)
  * 
  * @startuml
  * start
  *   :sendTrigger = false;
  *   while(unprocessed kRpcInfoPointer in gs_kRpcInfoPointers)
- *       :sendTrigger |= RPC_Process(kRpcInfoPointer);
+ *       :sendTrigger = ProcessRpc(kRpcInfoPointer) || sendTrigger;
  *   endwhile (else)
- *   :sendTrigger |= !g_rpcSHM.events.isResetProcessed
- *   sendTrigger |= !g_rpcSHM.events.isGpioProcessed;
+ *   :sendTrigger = !g_rpcSHM.events.isResetProcessed || sendTrigger
+ *   sendTrigger = !g_rpcSHM.events.isGpioProcessed || sendTrigger;
  *   if () then (sendTrigger == true)
  *      :HAL_TriggerInterCoreIRQWhileIRQDisabled();
  *   endif
@@ -186,10 +188,10 @@ void RPC_HandleISR(void);
  * @startuml
  * start
  *   :processed = false;
- *   if(RPC_ShouldBeProcessedAsynchronous(&gs_kSecWdCallInfo)) then (true)
- *       :rtcRet = HandleSecureWatchdogCommandMain(gs_kSecWdCallInfo.pData);
+ *   if(ShouldBeProcessedAsynchronous(&gs_kSecWdCallInfo)) then (true)
+ *       :swdgRet = HandleSecureWatchdogCommandMain(gs_kSecWdCallInfo.pData);
  *       if() then (NULL != pRet)
- *           :~*pRet = rtcRet;
+ *           :~*pRet = swdgRet;
  *       endif 
  *       :processed = true;
  *   endif
@@ -212,11 +214,11 @@ bool RPC_ProcessPendingSecureWatchdogCall(qmc_status_t *pRet);
  *
  * This function is not reentrant and must not be used in parallel with the
  * other RPC functions which use the underlying inter-core communication:
- * RPC_HandleISR, RPC_NotifyCM7AboutReset, RPC_NotifyCM7AboutGpioChange, RPC_Finish*!
+ * RPC_HandleISR(), RPC_NotifyCM7AboutReset(), RPC_NotifyCM7AboutGpioChange(), RPC_Finish*!
  *
  * @startuml
  * start
- * :RPC_ReturnAsynchronous(&gs_kSecWdCallInfo, ret);
+ * :ReturnAsynchronous(&gs_kSecWdCallInfo, ret);
  * stop
  * @enduml
  *

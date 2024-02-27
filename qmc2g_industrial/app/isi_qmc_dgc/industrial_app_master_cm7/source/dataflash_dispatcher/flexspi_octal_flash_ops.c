@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -42,7 +42,7 @@ void flexspi1_octal_bus_init()
 {
     status_t status;
 
-    static uint32_t reg = 0;
+    uint32_t reg = 0;
     flexspi1_octal_bus_init_with_rxSC( kFLEXSPI_ReadSampleClkLoopbackInternally);
     dbgDispPRINTF("Rootclock:%dMHz\n\r", CLOCK_GetRootClockFreq(kCLOCK_Root_Flexspi1)/1000000U);
 
@@ -62,6 +62,7 @@ void flexspi1_octal_bus_init()
 	flexspi1_octal_bus_init_with_rxSC( kFLEXSPI_ReadSampleClkExternalInputFromDqsPad);
     dbgDispPRINTF("Rootclock:%dMHz\n\r", CLOCK_GetRootClockFreq(kCLOCK_Root_Flexspi1)/1000000U);
 }
+
 
 void flexspi1_octal_bus_init_with_rxSC( flexspi_read_sample_clock_t rxSampleClock)
 {
@@ -228,7 +229,7 @@ status_t flexspi_nor_octalflash_write_data(FLEXSPI_Type *base, uint32_t addr, ui
 	{
 		status = flexspi_nor_octalflash_write_enable( base);
 		if( status != kStatus_Success)
-			return status;
+			return MAKE_STATUS( 180, status);
 
 		//Max pgm size is 256 (OCTAL_FLASH_PAGE_SIZE)
 		size_t siz_pgm = size>OCTAL_FLASH_PAGE_SIZE?OCTAL_FLASH_PAGE_SIZE:size;
@@ -243,16 +244,23 @@ status_t flexspi_nor_octalflash_write_data(FLEXSPI_Type *base, uint32_t addr, ui
 
 		status  = FLEXSPI_TransferBlocking(base, &flashXfer);
 
-		SCB_InvalidateDCache_by_Addr ( (void*)(FlexSPI1_AMBA_BASE + addr), size);
+		SCB_InvalidateDCache_by_Addr ( (void*)(FlexSPI1_AMBA_BASE + MAKE_EVEN(addr)), size);
 
 		/* Do software reset or clear AHB buffer directly. */
 		base->AHBCR |= FLEXSPI_AHBCR_CLRAHBRXBUF_MASK;
 		base->AHBCR &= ~FLEXSPI_AHBCR_CLRAHBRXBUF_MASK;
 
+		if( status != kStatus_Success)
+		{
+			return MAKE_STATUS( 181, status);
+		}
+
 		status1 = flexspi_nor_wait_bus_busy( base, millisecToTicks(1));
 
 		if( status1 != kStatus_Success)
-			return status1;
+		{
+			return MAKE_STATUS( 182, status1);
+		}
 
 		size -= siz_pgm;
 	}
@@ -267,7 +275,7 @@ status_t flexspi_nor_octalflash_erase_sector(FLEXSPI_Type *base, uint32_t addr)
 
     status = flexspi_nor_octalflash_write_enable( base);
     if( status != kStatus_Success)
-    	return status;
+    	return MAKE_STATUS( 183, status);
 
     flashXfer.deviceAddress = addr;
     flashXfer.port          = kFLEXSPI_PortA1;
@@ -277,16 +285,23 @@ status_t flexspi_nor_octalflash_erase_sector(FLEXSPI_Type *base, uint32_t addr)
 
     status  = FLEXSPI_TransferBlocking(base, &flashXfer);
 
-	SCB_InvalidateDCache_by_Addr ( (void*)(FlexSPI1_AMBA_BASE + addr), 4096);
+	SCB_InvalidateDCache_by_Addr ( (void*)(FlexSPI1_AMBA_BASE + MAKE_EVEN(addr)), 4096);
 
 	/* Do software reset or clear AHB buffer directly. */
     base->AHBCR |= FLEXSPI_AHBCR_CLRAHBRXBUF_MASK;
     base->AHBCR &= ~FLEXSPI_AHBCR_CLRAHBRXBUF_MASK;
 
+    if( status != kStatus_Success)
+    {
+    	return MAKE_STATUS( 184, status);
+    }
+
 	status1 = flexspi_nor_wait_bus_busy( base, millisecToTicks(30));
 
     if( status1 != kStatus_Success)
-    	return status1;
+    {
+    	return MAKE_STATUS( 185, status1);
+    }
 
     return status;
 }
@@ -295,20 +310,21 @@ status_t flexspi_nor_octalflash_read_ID(FLEXSPI_Type *base, uint32_t *buffer)
 {
     flexspi_transfer_t flashXfer;
     status_t status;
-    uint8_t lbuf[8];
+    uint32_t lbuf[2];
 
     flashXfer.deviceAddress = 0x00;
     flashXfer.port          = kFLEXSPI_PortA1;
     flashXfer.cmdType       = kFLEXSPI_Read;
     flashXfer.SeqNumber     = 1;
     flashXfer.seqIndex      = OCTALFLASH_CMD_LUT_SEQ_IDX_READID;
-    flashXfer.data          = (uint32_t*)lbuf;
+    flashXfer.data          = lbuf;
     flashXfer.dataSize      = 6;
     status                  = FLEXSPI_TransferBlocking(base, &flashXfer);
 
-    *buffer = (*buffer<<8) | lbuf[1];
-    *buffer = (*buffer<<8) | lbuf[3];
-    *buffer = (*buffer<<8) | lbuf[5];
+    uint8_t *bbuf = (uint8_t*)lbuf;
+    *buffer = (*buffer<<8) | bbuf[1];
+    *buffer = (*buffer<<8) | bbuf[3];
+    *buffer = (*buffer<<8) | bbuf[5];
 
     return status;
 }

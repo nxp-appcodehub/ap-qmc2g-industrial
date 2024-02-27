@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -16,13 +16,14 @@
 #include "api_motorcontrol.h"
 #include "api_board.h"
 #include "api_usermanagement.h"
+#include "api_rpc.h"
 #include "queue.h"
 #include "timers.h"
 
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
-#define ERROR_LOG_PERIOD_IN_SECONDS 		300u
+#define AFE_ERROR_LOG_PERIOD_IN_SECONDS 		300u
 #define MOTOR_QUEUE_TIMEOUT_ATTEMPTS        20u
 /*******************************************************************************
  * Prototypes
@@ -45,7 +46,7 @@ static void StopAllMotors(void);
  * @param[in] maskedSrc The faults that should be reported
  * @param[in] motor_id Id of the motor that was affected by the logged faults, if applicable
  */
-static void SubmitLogs(fault_source_t maskedSrc, mc_motor_id_t motor_id);
+static void SubmitLogs(fault_source_t maskedSrc, uint8_t id);
 
 /*!
  * @brief Periodically resets gs_AlreadyReportedAFECommunicationErrorForMotor to allow
@@ -54,6 +55,14 @@ static void SubmitLogs(fault_source_t maskedSrc, mc_motor_id_t motor_id);
  * @param[in] xTimer Timer handle
  */
 static void errorLogTimerCallback(TimerHandle_t xTimer);
+
+/*!
+ * @brief Periodically kicks the Fault Handling functional watchdog
+ *
+ * @param[in] xTimer Timer handle
+ */
+static void watchdogKickTimerCallback(TimerHandle_t xTimer);
+
 /*******************************************************************************
  * Globals
  ******************************************************************************/
@@ -73,9 +82,12 @@ extern EventGroupHandle_t g_systemStatusEventGroupHandle;
  */
 void FaultHandlingTask(void *pvParameters)
 {
+	TimerHandle_t watchdogKickTimerHandle;
 	TimerHandle_t errorLogTimerHandle;
+	StaticTimer_t watchdogKickTimer;
 	StaticTimer_t errorLogTimer;
 	fault_source_t src = 0;
+	bool firstWdKick = true;
 	gs_AlreadyReportedFaultAPIErrorFlags = 0;
 
 	bool MCNoFault[4] = { true, true, true, true };
@@ -83,26 +95,70 @@ void FaultHandlingTask(void *pvParameters)
 	bool systemNoFault = true;
 
 	errorLogTimerHandle = xTimerCreateStatic("errorLogTimer",
-											  pdMS_TO_TICKS(ERROR_LOG_PERIOD_IN_SECONDS * 1000),
+											  pdMS_TO_TICKS(AFE_ERROR_LOG_PERIOD_IN_SECONDS * 1000),
 											  pdFALSE, NULL,
 											  errorLogTimerCallback,
 											  &errorLogTimer);
+
+	watchdogKickTimerHandle = xTimerCreateStatic("watchdogKickTimer",
+											  pdMS_TO_TICKS(FAULT_HANDLING_FUNCTIONAL_WATCHDOG_KICK_PERIOD_IN_MS),
+											  pdTRUE, NULL,
+											  watchdogKickTimerCallback,
+											  &watchdogKickTimer);
+	xTimerStart(watchdogKickTimerHandle, 0);
 
 	xTaskNotifyWait(0, 0, &src, portMAX_DELAY);
 
 	for( ;; )
 	{
-		mc_motor_id_t motor_id = FAULT_GetMotorIdFromSource(src);
+		uint8_t id = FAULT_GetIdFromSource(src);
+
+		/* The task was notified to kick its functional watchdog. */
+		if (SRC_WITHOUT_ID(src) == kFAULT_KickWatchdogNotification)
+		{
+			if (firstWdKick)
+			{
+				if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogFaultHandling) != kStatus_QMC_Ok)
+				{
+					/* Let the task handle it later as a system fault. */
+					src = kFAULT_FunctionalWatchdogInitFail;
+				}
+
+				firstWdKick = false;
+			}
+			else
+			{
+				if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogFaultHandling) != kStatus_QMC_Ok)
+				{
+					log_record_t logEntryWithoutId = {
+							.rhead = {
+									.chksum				= 0,
+									.uuid				= 0,
+									.ts = {
+										.seconds		= 0,
+										.milliseconds	= 0
+									}
+							},
+							.type = kLOG_SystemData,
+							.data.faultDataWithoutID.source = LOG_SRC_FaultHandling,
+							.data.faultDataWithoutID.category = LOG_CAT_General
+					};
+
+					logEntryWithoutId.data.faultDataWithoutID.eventCode = LOG_EVENT_FunctionalWatchdogKickFailed;
+					LOG_QueueLogEntry(&logEntryWithoutId, false);
+				}
+			}
+		}
 
 		/* PSB faults reported by the motor control task. */
-		if ((SRC_WITHOUT_MOTOR_ID(src) == kMC_NoFaultMC) || (src & MC_PSB_FAULTS_MASK))
+		if ((SRC_WITHOUT_ID(src) == kMC_NoFaultMC) || (src & MC_PSB_FAULTS_MASK))
 		{
-			if (SRC_WITHOUT_MOTOR_ID(src) == kMC_NoFaultMC)
+			if (SRC_WITHOUT_ID(src) == kMC_NoFaultMC)
 			{
 				/* Only clear the event bit if neither a board service task fault nor a motor control task fault is active */
-				if (BSNoFault[motor_id])
+				if (BSNoFault[id])
 				{
-					switch(motor_id)
+					switch((mc_motor_id_t) id)
 					{
 						case kMC_Motor1:
 							xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_FAULT_Motor1);
@@ -119,20 +175,15 @@ void FaultHandlingTask(void *pvParameters)
 						case kMC_Motor4:
 							xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_FAULT_Motor4);
 							break;
-
-						default:
-							/* Impossible to reach unless the mc_motor_id_t enum gets extended. */
-							assert(false);
-							break;
 					}
 				}
 
-				MCNoFault[motor_id] = true;
+				MCNoFault[id] = true;
 			}
 			else
 			{
-				StopMotorsPerConfiguration(motor_id);
-				switch(motor_id)
+				StopMotorsPerConfiguration((mc_motor_id_t) id);
+				switch((mc_motor_id_t) id)
 				{
 					case kMC_Motor1:
 						xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_FAULT_Motor1);
@@ -149,29 +200,24 @@ void FaultHandlingTask(void *pvParameters)
 					case kMC_Motor4:
 						xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_FAULT_Motor4);
 						break;
-
-					default:
-						/* Impossible to reach unless the mc_motor_id_t enum gets extended. */
-						assert(false);
-						break;
 				}
 
-				MCNoFault[motor_id] = false;
+				MCNoFault[id] = false;
 				BOARD_SetLifecycle(kQMC_LcError);
 			}
 
-			SubmitLogs(src & ALL_MC_PSB_FAULTS_BITS_MASK, motor_id);
+			SubmitLogs(src & ALL_MC_PSB_FAULTS_BITS_MASK, id);
 		}
 
 		/* PSB faults reported by the board service or a fault handler, stopping motors per configuration. */
-		if ((SRC_WITHOUT_MOTOR_ID(src) & kMC_NoFaultBS) || (src & BS_PSB_FAULTS_MASK))
+		if ((SRC_WITHOUT_ID(src) & kMC_NoFaultBS) || (src & BS_PSB_FAULTS_MASK))
 		{
-			if (SRC_WITHOUT_MOTOR_ID(src) & kMC_NoFaultBS)
+			if (SRC_WITHOUT_ID(src) & kMC_NoFaultBS)
 			{
 				/* Only clear the event bit if neither a board service task nor a motor control task fault is active */
-				if (MCNoFault[motor_id])
+				if (MCNoFault[id])
 				{
-					switch(motor_id)
+					switch((mc_motor_id_t) id)
 					{
 						case kMC_Motor1:
 							xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_FAULT_Motor1);
@@ -188,20 +234,15 @@ void FaultHandlingTask(void *pvParameters)
 						case kMC_Motor4:
 							xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_FAULT_Motor4);
 							break;
-
-						default:
-							/* Impossible to reach unless the mc_motor_id_t enum gets extended. */
-							assert(false);
-							break;
 					}
 				}
 
-				BSNoFault[motor_id] = true;
+				BSNoFault[id] = true;
 			}
 			else
 			{
-				StopMotorsPerConfiguration(motor_id);
-				switch(motor_id)
+				StopMotorsPerConfiguration((mc_motor_id_t) id);
+				switch((mc_motor_id_t) id)
 				{
 					case kMC_Motor1:
 						xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_FAULT_Motor1);
@@ -218,25 +259,20 @@ void FaultHandlingTask(void *pvParameters)
 					case kMC_Motor4:
 						xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_FAULT_Motor4);
 						break;
-
-					default:
-						/* Impossible to reach unless the mc_motor_id_t enum gets extended. */
-						assert(false);
-						break;
 				}
 
-				BSNoFault[motor_id] = false;
+				BSNoFault[id] = false;
 				BOARD_SetLifecycle(kQMC_LcError);
 			}
 
-			SubmitLogs(src & ALL_BS_PSB_FAULTS_BITS_MASK, motor_id);
+			SubmitLogs(src & ALL_BS_PSB_FAULTS_BITS_MASK, id);
 		}
 
 		/* System faults reported by the board service or a fault handler, stopping all motors. */
-		if ((SRC_WITHOUT_MOTOR_ID(src) & kFAULT_NoFault) || (src & SYSTEM_FAULTS_MASK))
+		if ((SRC_WITHOUT_ID(src) & kFAULT_NoFault) || (src & SYSTEM_FAULTS_MASK))
 		{
 			/* Only clear the System fault bit and log the NoFault if the buffer and queue aren't overflowed. */
-			if (SRC_WITHOUT_MOTOR_ID(src) & kFAULT_NoFault)
+			if (SRC_WITHOUT_ID(src) & kFAULT_NoFault)
 			{
 				if (!(g_systemFaultStatus & FAULT_OVERFLOW_ERRORS_MASK))
 				{
@@ -250,12 +286,13 @@ void FaultHandlingTask(void *pvParameters)
 				StopAllMotors();
 				xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_FAULT_System);
 				g_systemFaultStatus |= src & SYSTEM_FAULTS_MASK;
-				g_systemFaultStatus &= ~(kFAULT_NoFault);
+				g_systemFaultStatus &= (fault_system_fault_t) ~((uint32_t) kFAULT_NoFault);
 				systemNoFault = false;
 				BOARD_SetLifecycle(kQMC_LcError);
 			}
 
-			SubmitLogs(src & ALL_SYSTEM_FAULT_BITS_MASK, 0);
+			/* Include the id for PMIC Undervoltage faults, it will be ignored for other faults */
+			SubmitLogs(src & ALL_SYSTEM_FAULT_BITS_MASK, id);
 		}
 
 		/* Fault handling errors related to communication with peripherals reported by the board service.
@@ -265,19 +302,19 @@ void FaultHandlingTask(void *pvParameters)
 		{
 			xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_FAULT_System);
 			g_systemFaultStatus |= src & FAULT_HANDLING_ERRORS_MASK;
-			g_systemFaultStatus &= ~(kFAULT_NoFault);
+			g_systemFaultStatus &= (fault_system_fault_t) ~((uint32_t) kFAULT_NoFault);
 			systemNoFault = false;
 
 
-			if (((!gs_AlreadyReportedAFECommunicationErrorForMotor[motor_id]) && (SRC_WITHOUT_MOTOR_ID(src) == kFAULT_AfePsbCommunicationError)) ||\
+			if (((!gs_AlreadyReportedAFECommunicationErrorForMotor[id]) && (SRC_WITHOUT_ID(src) == kFAULT_AfePsbCommunicationError)) ||\
 					!(gs_AlreadyReportedFaultAPIErrorFlags & FAULT_HANDLING_ERRORS_MASK))
 			{
 				xTimerStart(errorLogTimerHandle, 0);
-				if (SRC_WITHOUT_MOTOR_ID(src) == kFAULT_AfePsbCommunicationError)
+				if (SRC_WITHOUT_ID(src) == kFAULT_AfePsbCommunicationError)
 				{
-					SubmitLogs(src & FAULT_HANDLING_ERRORS_MASK, motor_id);
+					SubmitLogs(src & FAULT_HANDLING_ERRORS_MASK, id);
 
-					gs_AlreadyReportedAFECommunicationErrorForMotor[motor_id] = true;
+					gs_AlreadyReportedAFECommunicationErrorForMotor[id] = true;
 				}
 				else
 				{
@@ -293,7 +330,7 @@ void FaultHandlingTask(void *pvParameters)
 		{
 			xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_FAULT_System);
 			g_systemFaultStatus |= g_FaultHandlingErrorFlags & FAULT_OVERFLOW_ERRORS_MASK;
-			g_systemFaultStatus &= ~(kFAULT_NoFault);
+			g_systemFaultStatus &= (fault_system_fault_t) ~((uint32_t) kFAULT_NoFault);
 
 			/* These will only be reported once per a specified amount of time to prevent log flooding.
 			 * g_AlreadyReportedFaultAPIErrorFlags is automatically cleared after the gs_errorLogTimer expires. */
@@ -327,7 +364,7 @@ void FaultHandlingTask(void *pvParameters)
 		else
 		{
 			/* Buffer is empty. Clear the overflow flag and check the queue. */
-			g_FaultHandlingErrorFlags &= ~(kFAULT_FaultBufferOverflow);
+			g_FaultHandlingErrorFlags &= (fault_system_fault_t) ~((uint32_t) kFAULT_FaultBufferOverflow);
 
 			while (g_FaultQueue == NULL)
 			{
@@ -338,7 +375,7 @@ void FaultHandlingTask(void *pvParameters)
 			if (xQueueReceive(g_FaultQueue, &src, 0) == errQUEUE_EMPTY)
 			{
 				/* Queue is empty. Clear the overflow flag and wait for a new notification */
-				g_FaultHandlingErrorFlags &= ~(kFAULT_FaultQueueOverflow);
+				g_FaultHandlingErrorFlags &= (fault_system_fault_t) ~((uint32_t) kFAULT_FaultQueueOverflow);
 
 				/* If there are no system faults and an overflow error was reported previously, log a Nofault */
 				if (systemNoFault && (g_systemFaultStatus & FAULT_OVERFLOW_ERRORS_MASK))
@@ -367,11 +404,11 @@ void FaultHandlingTask(void *pvParameters)
  *			using a critical section, mutexes etc. However, it is recommended
  * 			to always use polling instead of interrupts because causing any
  * 			delays to the fast motor control interrupt handling will result
- * 			in undefined behavior.
+ * 			in undefined behavior. Make sure to only call ISR safe functions
+ * 			from this ISR!
  */
 void faulthandler_x_callback(fault_source_t src)
 {
-	StopMotorsPerConfiguration(FAULT_GetMotorIdFromSource(src));
 	FAULT_RaiseFaultEvent_fromISR(src);
 }
 
@@ -464,7 +501,7 @@ static void StopAllMotors(void)
  * @param[in] maskedSrc The faults that should be reported. Should be a masked src to make sure only the relevant faults are included.
  * @param[in] motor_id Id of the motor that was affected by the logged faults, if applicable
  */
-static void SubmitLogs(fault_source_t maskedSrc, mc_motor_id_t motor_id)
+static void SubmitLogs(fault_source_t maskedSrc, uint8_t id)
 {
 	log_record_t logEntryWithId = {
 			.rhead = {
@@ -478,7 +515,7 @@ static void SubmitLogs(fault_source_t maskedSrc, mc_motor_id_t motor_id)
 			.type = kLOG_FaultDataWithID,
 			.data.faultDataWithID.source = LOG_SRC_FaultHandling,
 			.data.faultDataWithID.category = LOG_CAT_Fault,
-			.data.faultDataWithID.motorId = motor_id
+			.data.faultDataWithID.id = id
 	};
 
 	log_record_t logEntryWithoutId = {
@@ -598,6 +635,12 @@ static void SubmitLogs(fault_source_t maskedSrc, mc_motor_id_t motor_id)
 		LOG_QueueLogEntry(&logEntryWithId, true);
 	}
 
+	if (maskedSrc & kFAULT_PmicUnderVoltage)
+	{
+		logEntryWithId.data.faultDataWithID.eventCode = LOG_EVENT_PmicUnderVoltage;
+		LOG_QueueLogEntry(&logEntryWithId, true);
+	}
+
 	if (maskedSrc & kFAULT_NoFault)
 	{
 		logEntryWithoutId.data.faultDataWithoutID.eventCode = LOG_EVENT_NoFault;
@@ -616,33 +659,15 @@ static void SubmitLogs(fault_source_t maskedSrc, mc_motor_id_t motor_id)
 		LOG_QueueLogEntry(&logEntryWithoutId, true);
 	}
 
-	if (maskedSrc & kFAULT_PmicUnderVoltage1)
-	{
-		logEntryWithoutId.data.faultDataWithoutID.eventCode = LOG_EVENT_PmicUnderVoltage1;
-		LOG_QueueLogEntry(&logEntryWithoutId, true);
-	}
-
-	if (maskedSrc & kFAULT_PmicUnderVoltage2)
-	{
-		logEntryWithoutId.data.faultDataWithoutID.eventCode = LOG_EVENT_PmicUnderVoltage2;
-		LOG_QueueLogEntry(&logEntryWithoutId, true);
-	}
-
-	if (maskedSrc & kFAULT_PmicUnderVoltage3)
-	{
-		logEntryWithoutId.data.faultDataWithoutID.eventCode = LOG_EVENT_PmicUnderVoltage3;
-		LOG_QueueLogEntry(&logEntryWithoutId, true);
-	}
-
-	if (maskedSrc & kFAULT_PmicUnderVoltage4)
-	{
-		logEntryWithoutId.data.faultDataWithoutID.eventCode = LOG_EVENT_PmicUnderVoltage4;
-		LOG_QueueLogEntry(&logEntryWithoutId, true);
-	}
-
 	if (maskedSrc & kFAULT_PmicOverTemperature)
 	{
 		logEntryWithoutId.data.faultDataWithoutID.eventCode = LOG_EVENT_PmicOverTemperature;
+		LOG_QueueLogEntry(&logEntryWithoutId, true);
+	}
+
+	if (maskedSrc & kFAULT_RpcCallFailed)
+	{
+		logEntryWithoutId.data.faultDataWithoutID.eventCode = LOG_EVENT_RPCCallFailed;
 		LOG_QueueLogEntry(&logEntryWithoutId, true);
 	}
 
@@ -676,6 +701,12 @@ static void SubmitLogs(fault_source_t maskedSrc, mc_motor_id_t motor_id)
 		LOG_QueueLogEntry(&logEntryWithoutId, true);
 	}
 
+	if (maskedSrc & kFAULT_FunctionalWatchdogInitFail)
+	{
+		logEntryWithoutId.data.faultDataWithoutID.eventCode = LOG_EVENT_FunctionalWatchdogInitFailed;
+		LOG_QueueLogEntry(&logEntryWithoutId, true);
+	}
+
 	if (maskedSrc & kFAULT_InvalidFaultSource)
 	{
 		logEntryWithoutId.data.faultDataWithoutID.eventCode = LOG_EVENT_InvalidFaultSource;
@@ -697,4 +728,14 @@ static void errorLogTimerCallback(TimerHandle_t xTimer)
 	{
 		gs_AlreadyReportedAFECommunicationErrorForMotor[i] = false;
 	}
+}
+
+/*!
+ * @brief Periodically kicks the Fault Handling functional watchdog
+ *
+ * @param[in] xTimer Timer handle
+ */
+static void watchdogKickTimerCallback(TimerHandle_t xTimer)
+{
+	FAULT_RaiseFaultEvent(kFAULT_KickWatchdogNotification);
 }

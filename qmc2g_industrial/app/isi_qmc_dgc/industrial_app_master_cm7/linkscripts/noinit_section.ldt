@@ -14,17 +14,11 @@
 
     /* NOINIT section for ${memory.name} */
 <#if memory.name=="SRAM_OC_ECC1">
-    .noinit_${memory.alias} 0x20340000 (NOLOAD) : ALIGN(${bss_align})
+    .noinit_${memory.alias} 0x2034fc00 (NOLOAD) : ALIGN(${bss_align})
     {
        PROVIDE(__start_noinit_${memory.alias} = .) ;
        PROVIDE(__start_noinit_${memory.name} = .) ;
 
-       /* RAM5 fixed places for RPC_API */
-       .ptr_ram5 = . ;
-       KEEP(*(.noinit_RAM5_RPC_API)) /* 0x20340000 */
-       . += ( .ptr_ram5 + 0xFC00 - . );
-
-       .ptr_ram5 = . ;
        /* RAM5 fixed places */
        .ptr_ram5 = . ;
        KEEP(*(.noinit_RAM5_FIX0)) /* 0x2034FC00 */

@@ -28,8 +28,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _MID_SM_CTRL_H_
-#define _MID_SM_CTRL_H_
+#ifndef MID_SM_CTRL_H
+#define MID_SM_CTRL_H
 
 #include "mlib_types.h"
 #include "mid_def.h"
@@ -170,4 +170,4 @@ __attribute__((section("RamFunction"))) static inline void MID_SM_StateMachine(m
 }
 #endif
 
-#endif /* _MID_SM_CTRL_H_ */
+#endif /* MID_SM_CTRL_H */

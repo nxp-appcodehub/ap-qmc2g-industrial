@@ -1,0 +1,29 @@
+
+# The source block assign file name to identifiers
+sources {
+}
+
+constants {
+}
+
+#                !!!!!!!!!!!! WARNING !!!!!!!!!!!!
+# The section block specifies the sequence of boot commands to be written to the SB file
+# Note: this is just a template, please update it to actual values in users' project
+section (0) {
+
+    # Program SRK table
+    load fuse 0x > 0x30;
+    load fuse 0x > 0x31;
+    load fuse 0x > 0x32;
+    load fuse 0x > 0x33;
+    load fuse 0x > 0x34;
+    load fuse 0x > 0x35;
+    load fuse 0x > 0x36;
+    load fuse 0x > 0x37;
+    
+    # Program SEC_CONFIG to enable HAB closed mode
+    #load fuse 0x00000002 > 0x16;
+    # Program SEC_CONFIG to enable HAB closed mode and disable debug port 960[11] - JTAG_DISABLED
+    load fuse 0x00000802 > 0x16;
+    
+}

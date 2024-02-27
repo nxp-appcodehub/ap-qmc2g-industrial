@@ -9,18 +9,27 @@
  */
 
 <#if memory.name=="SRAM_OC1">
-		/* default project */
-		
-		
-		*freertos_kernel*(*.bss*)
-		*lwip*(*.bss*)
-		*application_util.o(*.bss*)
-		*fsl_debug_console.o(.bss.s_debugConsoleState)
-		
-		*lvgl*(*.bss*)
-		*vglite*(*.bss*)
+    /* default project */
+
+
+    *freertos_kernel*(*.bss*)
+    *lwip*(*.bss*)
+    *application_util.o(*.bss*)
+    *fsl_debug_console.o(.bss.s_debugConsoleState)
+
+    *lvgl*(*.bss*)
+    *vglite*(*.bss*)
+    *fsl_ram_disk*(*.bss*)
+
+    /*Move CAAM write targets out of TCM*/
+    *altcp_tls_mbedtls*(*.bss*)
+    *se_session.o*(*.bss*)
+    *se_mbedtls.o*(*.bss*)
+    *se_hostlib*(*.bss*)
+    *api_usermanagement*(*.bss)
+    *datalogger_tasks*(*.bss)
 </#if>
-       *(.bss.$${memory.alias})
-       *(.bss.$${memory.name})
-       *(.bss.$${memory.alias}.*)
-       *(.bss.$${memory.name}.*)
+    *(.bss.$${memory.alias})
+    *(.bss.$${memory.name})
+    *(.bss.$${memory.alias}.*)
+    *(.bss.$${memory.name}.*)

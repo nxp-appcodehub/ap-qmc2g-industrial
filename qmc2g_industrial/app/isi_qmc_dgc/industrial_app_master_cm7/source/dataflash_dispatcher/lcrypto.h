@@ -42,7 +42,7 @@ typedef struct _log_keys
        uint8_t nonceLog[LCRYPTO_AES_IV_SIZE];      // 16
 }  log_keys_t;
 
-extern volatile log_keys_t g_sbl_prov_keys;
+extern log_keys_t g_sbl_prov_keys;
 
 /*!
  * @brief Init function for LCRYPTO layer used by datalogger and configuration service
@@ -94,4 +94,8 @@ qmc_status_t LCRYPTO_SE_get_sha384( uint8_t *pdst, size_t *dst_len, const uint8_
  */
 qmc_status_t LCRYPTO_SE_sign_ECC( uint8_t *pdst, size_t *pdst_len, const uint8_t *psrc, const size_t src_len);
 
+/*!
+ * @brief Zeroize buffer using mbedtls library.
+ */
+void LCRYPTO_zeroize( uint8_t *buf, size_t len);
 #endif

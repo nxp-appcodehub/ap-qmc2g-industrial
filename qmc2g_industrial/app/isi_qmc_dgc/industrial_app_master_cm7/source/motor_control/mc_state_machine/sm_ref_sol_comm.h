@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -8,8 +8,8 @@
  * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
  
-#ifndef _SM_REF_SOL_COMM_H_
-#define _SM_REF_SOL_COMM_H_
+#ifndef SM_REF_SOL_COMM_H
+#define SM_REF_SOL_COMM_H
 
 #include "pmsm_control.h"
 #include "api_motorcontrol_internal.h"
@@ -22,7 +22,7 @@
 typedef uint16_t mcdef_fault_t;
 
 /*! @brief States of machine enumeration */
-typedef enum _run_substate_t
+typedef enum run_substate
 {
     kRunState_Calib = 0,
     kRunState_Ready = 1,
@@ -34,7 +34,7 @@ typedef enum _run_substate_t
 } run_substate_t; /* Run sub-states */
 
 /*! @brief Control modes of the motor */
-typedef enum _mcs_ctrl_mode_t
+typedef enum mcs_ctrl_mode
 {
     kControlMode_Scalar = 0,
     kControlMode_VoltageFOC = 1,
@@ -46,7 +46,7 @@ typedef enum _mcs_ctrl_mode_t
 } mcs_ctrl_mode_t;
 
 /*! @brief Device fault thresholds */
-typedef struct _mcdef_fault_thresholds_t
+typedef struct mcdef_fault_thresholds
 {
     float_t fltUDcBusOver;     /* DC bus over voltage level */
     float_t fltUDcBusUnder;    /* DC bus under voltage level */
@@ -59,7 +59,7 @@ typedef struct _mcdef_fault_thresholds_t
 } mcdef_fault_thresholds_t;
 
 /*! @brief PMSM FOC with BEMF observer in DQ */
-typedef struct _mcdef_pmsm_t
+typedef struct mcdef_pmsm
 {
     mcs_pmsm_foc_t sFocPMSM;                    /* Field Oriented Control structure */
     mcs_speed_t sSpeed;                         /* Speed control loop structure */
@@ -137,5 +137,5 @@ extern "C" {
 }
 #endif
 
-#endif /* _SM_REF_SOL_COMM_H_ */
+#endif /* SM_REF_SOL_COMM_H */
 

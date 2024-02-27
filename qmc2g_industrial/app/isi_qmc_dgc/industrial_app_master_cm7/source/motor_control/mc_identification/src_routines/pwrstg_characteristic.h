@@ -28,8 +28,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PWRSTG_CHARASTERISTIC_H_
-#define PWRSTG_CHARASTERISTIC_H_
+#ifndef PWRSTG_CHARASTERISTIC_H
+#define PWRSTG_CHARASTERISTIC_H
 
 #include "mid_def.h"
 
@@ -46,4 +46,4 @@ extern void MID_GetTransferCharacteristic(mid_get_char_t* sTransferCharFcn);
 }
 #endif
 
-#endif /* PWRSTG_CHARASTERISTIC_H_ */
+#endif /* PWRSTG_CHARASTERISTIC_H */

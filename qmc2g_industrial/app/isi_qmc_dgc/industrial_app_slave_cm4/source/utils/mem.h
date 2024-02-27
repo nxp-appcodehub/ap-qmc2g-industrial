@@ -74,31 +74,31 @@ static inline volatile void *vmemcpy(volatile void *const pDest, volatile const 
 }
 
 /*!
- * @brief Unpacks an unsigned 32bit integer using little-endian byte order.
+ * @brief Unpacks an unsigned 32-bit integer using little-endian byte order.
  *
  * @param pSrc Source pointer from which the integer is unpacked.
- * @return uint32_t The unpacked unsigned 32bit integer.
+ * @return uint32_t The unpacked unsigned 32-bit integer.
  *
  */
 static inline uint32_t unpackU32LittleEndian(const uint8_t *const pSrc)
 {
     assert(NULL != pSrc);
 
-    return pSrc[0U] | (pSrc[1U] << 8U) | (pSrc[2U] << 16U) | (pSrc[3U] << 24U);
+    return (uint32_t)pSrc[0U] | ((uint32_t)pSrc[1U] << 8U) | ((uint32_t)pSrc[2U] << 16U) | ((uint32_t)pSrc[3U] << 24U);
 }
 
 /*!
- * @brief Unpacks an unsigned 32bit integer using big-endian byte order.
+ * @brief Unpacks an unsigned 32-bit integer using big-endian byte order.
  *
  * @param pSrc Source pointer from which the integer is unpacked.
- * @return uint32_t The unpacked unsigned 32bit integer.
+ * @return uint32_t The unpacked unsigned 32-bit integer.
  *
  */
 static inline uint32_t unpackU32BigEndian(const uint8_t *const pSrc)
 {
      assert(NULL != pSrc);
 
-    return (pSrc[0U] << 24U) | (pSrc[1U] << 16U) | (pSrc[2U] << 8U) |  pSrc[3U];
+    return ((uint32_t)pSrc[0U] << 24U) | ((uint32_t)pSrc[1U] << 16U) | ((uint32_t)pSrc[2U] << 8U) |  (uint32_t)pSrc[3U];
 }
 
 #endif /* _MEM_H_ */

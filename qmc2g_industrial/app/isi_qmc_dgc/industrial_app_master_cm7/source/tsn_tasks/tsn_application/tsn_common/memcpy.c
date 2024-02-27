@@ -33,7 +33,9 @@
  */
 static void memcpy_aligned32(void *dst, const void *src, unsigned int len)
 {
-    unsigned int len32;
+	assert(len);
+
+	unsigned int len32;
 
     if (((unsigned long)src & 0x4) && ((unsigned long)dst & 0x4)) {
         __asm("ldr r5, [%1], #4\n\t"
@@ -86,6 +88,8 @@ static void memcpy_aligned32(void *dst, const void *src, unsigned int len)
  */
 static void memcpy_aligned(void *dst, const void *src, unsigned int len)
 {
+	assert(len);
+
     if ((unsigned long)src & 0x1) {
         __asm("ldrb r5, [%1], #1\n\t"
               "strb r5, [%0], #1\n\t"
@@ -122,6 +126,8 @@ static void memcpy_aligned(void *dst, const void *src, unsigned int len)
 static void memcpy_unaligned(void *dst, const void *src, unsigned int len)
 {
     uint32_t val, val2, tmp, shift, shift2;
+
+    assert(len);
 
     /* 32bit align destination */
     switch ((unsigned long)dst) {

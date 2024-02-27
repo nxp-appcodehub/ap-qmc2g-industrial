@@ -28,8 +28,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PP_MEASURE_H_
-#define PP_MEASURE_H_
+#ifndef PP_MEASURE_H
+#define PP_MEASURE_H
 
 #include "mid_def.h"
 
@@ -46,4 +46,4 @@ extern void MID_getPp(mid_get_pp_t* sKeMeasFcn);
 }
 #endif
 
-#endif /* PP_MEASURE_H_ */
+#endif /* PP_MEASURE_H */

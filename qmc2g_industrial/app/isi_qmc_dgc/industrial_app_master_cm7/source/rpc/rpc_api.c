@@ -47,16 +47,18 @@
  * for user input change events and the global g_systemStatusEventGroupHandle for reset events.
  *
  * Known side-effects / limitations (CM4 and CM7 implementation):
- *  - If a command was requested by the CM7, the CM4 will retrigger the inter-core interrupt until
- *    processing by the CM7 finished. As we do not want to miss incoming messages on the
- *    CM4, this also implies that the CM4 itself loops in the SW interrupt (similar to polling) until
- *    the communication has completed. As the processing by the CM7 should finish quickly
- *    this behavior is accepted.
- *  - If events from the CM4 side are incoming at a fast pace and the scheduling of the
+ *  - If the CM4 finished processing a command and notifies the CM7 about it, it will
+ *    retrigger the inter-core interrupt until processing by the CM7 finished.
+ *    As we do not want to miss incoming messages on the CM4, this also implies that the
+ *    CM4 itself loops in the SW interrupt (similar to polling) until the communication has
+ *    completed. As the processing by the CM7 should finish quickly this behaviour is accepted.
+ *    This behavior does not interfere with other parts of the CM4 system as the GPR_IRQ SW
+ *    interrupt has the lowest priority.
+ *  - If events from the CM4 are incoming at a fast pace and the scheduling of the
  *    code aligns in a special way, it may happen that an older event is missed and a newer event
  *    is reported twice!
  *  - Command timeout handling depends on the cooperation of the CM4, as the CM7
- *    side can not know in which state the CM4 is exactly when a timeout occurred. If the CM4
+ *    can not know in which state the CM4 is exactly when a timeout occurred. If the CM4
  *    does not cooperate, for example because it hung up, the CM7 has to decide
  *    how to solve this issue (kStatus_QMC_ErrSync is returned).
  *  - If the FreeRTOS timer service queue is full, no event group notification can be send
@@ -70,14 +72,14 @@
  *    As the inter-core IRQ triggering sequence also disables the inter-core IRQ on the CM7, communication
  *    is globally paused until the preempted locked section is exited again. So if a high-important task
  *    itself uses communication, it must wait for the mutex to become available. The mutex only becomes available
- *    after all tasks with a higher priority than the task with the preempted inter-core-IRQ-triggering sequence
+ *    after all tasks with a higher priority than the task with the preempted inter-core IRQ triggering sequence
  *    are not ready-to-run anymore. The execution of the inter-core IRQ triggering sequence takes on average 475
  *    cycles (interrupts disabled, without mutex, n = 1000000). Note that also events can not be received during
  *    this period.
- *    If this behavior is not wanted, alternatively a FreeRTOS critical section
+ *    However, if this behaviour is not wanted, alternatively a FreeRTOS critical section
  *    (or less invasive suspending the scheduler) might be considered as alternatives.
  *    These alternatives have then a different side-effect: Higher priority tasks can not preempt the task
- *    currently using the inter-core IRQ triggering sequence (max. 25us).
+ *    currently using the inter-core IRQ triggering sequence (max. 19us; n = 100000).
  *  - Accessing the synchronization flags and the event data must be atomic!
  */
 #include "rpc/rpc_int.h"
@@ -112,44 +114,25 @@ extern bool g_needsRefresh_getTime;
 extern void (*g_TimeChangedCallback)(void);
 extern TaskHandle_t g_datalogger_task_handle;
 
-/*!
- * @brief Cross-core shared memory, referenced by section name.
- *
- * The shared memory is statically initialized here as the CM7 starts first.
- * Note that the shared memory must be initialized by one core before the
- * communication is activated on both cores. Therefore, this can also be done
- * by the CM4 if more appropriate.
- *
- */
-
 /* if no SBL is available we initialize the shared memory here */
 #if defined(NO_SBL)
-#if defined(__ICCARM__) /* IAR Workbench */
-#pragma location                                 = RPC_SHM_SECTION_NAME
-STATIC_TEST_VISIBLE volatile rpc_shm_t gs_rpcSHM = RPC_SHM_STATIC_INIT;
-#elif defined(__CC_ARM) || defined(__ARMCC_VERSION) /* Keil MDK */
-STATIC_TEST_VISIBLE volatile rpc_shm_t gs_rpcSHM __attribute__((section(RPC_SHM_SECTION_NAME))) = RPC_SHM_STATIC_INIT;
-#elif defined(__GNUC__)
+#if defined(__GNUC__)
 STATIC_TEST_VISIBLE volatile rpc_shm_t gs_rpcSHM __attribute__((section(".data.$" RPC_SHM_SECTION_NAME))) =
-    RPC_SHM_STATIC_INIT;
+    RPC_SHM_STATIC_INIT; /*!< shared memory section for RPC */
 #else
 #error "gs_rpcSHM: Please provide your definition of gs_rpcSHM!"
 #endif
 #else
-#if defined(__ICCARM__) /* IAR Workbench */
-#pragma location = RPC_SHM_SECTION_NAME
-STATIC_TEST_VISIBLE volatile rpc_shm_t gs_rpcSHM;
-#elif defined(__CC_ARM) || defined(__ARMCC_VERSION) /* Keil MDK */
-STATIC_TEST_VISIBLE volatile rpc_shm_t gs_rpcSHM __attribute__((section(RPC_SHM_SECTION_NAME)));
-#elif defined(__GNUC__)
-/* This structure must be aligned with CM4 implementation - both size and address. Details can be found in noinit_section.ltd file.*/
-STATIC_TEST_VISIBLE volatile rpc_shm_t gs_rpcSHM __attribute__((section(".noinit_RAM5_RPC_API")));
+#if defined(__GNUC__)
+/* This structure must be aligned with CM4 implementation - both size and address. */
+STATIC_TEST_VISIBLE volatile rpc_shm_t gs_rpcSHM
+    __attribute__((section(".noinit.$" RPC_SHM_SECTION_NAME))); /*!< shared memory section for RPC */
 #else
 #error "gs_rpcSHM: Please provide your definition of gs_rpcSHM!"
 #endif
 #endif
 
-static StaticSemaphore_t gs_rpcTriggerIrqMutexStaticBuffer; /*!< Buffer for creating an event group statically. */
+static StaticSemaphore_t gs_rpcTriggerIrqMutexStaticBuffer; /*!< Buffer for creating mutex statically. */
 static SemaphoreHandle_t gs_rpcTriggerIrqMutex; /*!< Mutex protecting the inter-core IRQ triggering sequence.*/
 
 static StaticEventGroup_t gs_rpcDoneEventGroupStaticBuffer; /*!< Buffer for creating an event group statically. */
@@ -171,6 +154,8 @@ STATIC_TEST_VISIBLE rpc_call_data_t gs_fwUpdateCallData = {&gs_rpcSHM.fwUpdate.s
                                                            RPC_FWUPDATE_TIMEOUT_TICKS}; /*!< FWU RPC data. */
 STATIC_TEST_VISIBLE rpc_call_data_t gs_resetCallData    = {&gs_rpcSHM.reset.status, kRPC_EventResetDone,
                                                            RPC_RESET_TIMEOUT_TICKS}; /*!< Reset RPC data. */
+STATIC_TEST_VISIBLE rpc_call_data_t gs_mcuTempCallData  = {&gs_rpcSHM.mcuTemp.status, kRPC_EventMcuTempDone,
+                                                           RPC_MCU_TEMP_TIMEOUT_TICKS}; /*!< MCU temp RPC data. */                                                           
 /*!
  * @brief Pointers to information about all available RPCs.
  *
@@ -180,7 +165,8 @@ static rpc_call_data_t *const gs_kRpcDataPointers[] = {
 #if FEATURE_SECURE_WATCHDOG
     &gs_secWdCallData,
 #endif
-    &gs_funcWdCallData, &gs_gpioOutCallData, &gs_rtcCallData, &gs_fwUpdateCallData, &gs_resetCallData};
+    &gs_funcWdCallData, &gs_gpioOutCallData, &gs_rtcCallData, &gs_fwUpdateCallData, &gs_resetCallData,
+    &gs_mcuTempCallData};    
 
 /*******************************************************************************
  * Code
@@ -190,20 +176,20 @@ static rpc_call_data_t *const gs_kRpcDataPointers[] = {
 __RAMFUNC(SRAM_ITC_cm7) void RPC_HandleISR(void)
 {
     /* xHigherPriorityTaskWoken must be initialized to pdFALSE.
-     * See Section 6.2  "Mastering the FreeRTOS TM Real Time Kernel"
+     * See Section 6.2 in "Mastering the FreeRTOS TM Real Time Kernel"
      */
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    BaseType_t xResult                  = pdFALSE;
-    rpc_done_event_t rpcDoneEvents      = 0U;
-    EventBits_t gpioEventsSet           = 0U;
-    EventBits_t gpioEventsClear         = 0U;
-    uint8_t gpioStateLatched            = 0U;
-    uint8_t resetCauseLatched           = 0U;
+    BaseType_t xHigherPriorityTaskWoken    = pdFALSE;
+    BaseType_t xResult                     = pdFALSE;
+    EventBits_t rpcDoneEvents              = 0U;
+    EventBits_t gpioEventsSet              = 0U;
+    EventBits_t gpioEventsClear            = 0U;
+    uint8_t gpioStateLatched               = 0U;
+    qmc_reset_cause_id_t resetCauseLatched = 0U;
     (void)xResult;
     (void)resetCauseLatched;
 
     /* process available RPC responses */
-    for (size_t i = 0U; i < sizeof(gs_kRpcDataPointers) / sizeof(rpc_call_data_t *); i++)
+    for (size_t i = 0U; i < (sizeof(gs_kRpcDataPointers) / sizeof(rpc_call_data_t *)); i++)
     {
         assert((NULL != gs_kRpcDataPointers[i]) && (NULL != gs_kRpcDataPointers[i]->pStatus));
         if (!gs_kRpcDataPointers[i]->pStatus->isProcessed)
@@ -321,13 +307,24 @@ __RAMFUNC(SRAM_ITC_cm7) void RPC_HandleISR(void)
         gs_rpcSHM.events.isResetProcessed = true;
         /* must latch event data atomically */
         resetCauseLatched = gs_rpcSHM.events.resetCause;
-        /* NOTE: reset cause value is currently not used (should only be watchdog reset)!
-         *       we also do not clear this event flag as anyhow a reset will happen soon */
+        /* NOTE:  we do not clear this event flag as anyhow a reset will happen soon */
         assert((kQMC_ResetSecureWd == resetCauseLatched) || (kQMC_ResetFunctionalWd == resetCauseLatched));
-        (void) resetCauseLatched;
 
-        /* watchdog reset direct-to-task notification to logging service */
-        xResult = xTaskNotifyFromISR(g_datalogger_task_handle, kDLG_SHUTDOWN_WatchdogReset, eSetBits, &xHigherPriorityTaskWoken);
+        if (kQMC_ResetSecureWd == resetCauseLatched)
+        {
+			/* secure watchdog reset direct-to-task notification to logging service */
+			xResult = xTaskNotifyFromISR(g_datalogger_task_handle, kDLG_SHUTDOWN_SecureWatchdogReset, eSetBits, &xHigherPriorityTaskWoken);
+        }
+        else if (kQMC_ResetFunctionalWd == resetCauseLatched)
+        {
+            /* functional watchdog reset direct-to-task notification to logging service */
+            xResult = xTaskNotifyFromISR(g_datalogger_task_handle, kDLG_SHUTDOWN_FunctionalWatchdogReset, eSetBits, &xHigherPriorityTaskWoken);
+        }
+        else
+        {
+        	;
+        }
+
         /* according to documentation can not fail with action eSetBits
          * and even if it would reset would be anyhow performed, however logs may be lost */
         assert(pdPASS == xResult);
@@ -358,27 +355,6 @@ __RAMFUNC(SRAM_ITC_cm7) void RPC_HandleISR(void)
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
-qmc_status_t RPC_InitSecureWatchdog(const uint8_t *seed, size_t seedLen, const uint8_t *key, size_t keyLen)
-{
-    qmc_status_t ret = kStatus_QMC_Err;
-
-    if ((NULL == seed) || (seedLen > RPC_SECWD_MAX_RNG_SEED_SIZE) || (NULL == key) || (keyLen > RPC_SECWD_MAX_PK_SIZE))
-    {
-        ret = kStatus_QMC_ErrArgInvalid;
-    }
-    else
-    {
-        rpc_secwd_init_data_t *pInitData = (rpc_secwd_init_data_t *)RPC_SECWD_INIT_DATA_ADDRESS;
-        (void)memcpy(pInitData->rngSeed, seed, seedLen);
-        pInitData->rngSeedLen = seedLen;
-        (void)memcpy(pInitData->pk, key, keyLen);
-        pInitData->pkLen = keyLen;
-        ret              = kStatus_QMC_Ok;
-    }
-
-    return ret;
-}
-
 void RPC_Init(void)
 {
     /* initialize RPC trigger IRQ mutex */
@@ -390,7 +366,7 @@ void RPC_Init(void)
     assert(NULL != gs_rpcDoneEventGroup);
 
     /* initialize RPC call mutexes */
-    for (size_t i = 0U; i < sizeof(gs_kRpcDataPointers) / sizeof(rpc_call_data_t *); i++)
+    for (size_t i = 0U; i < (sizeof(gs_kRpcDataPointers) / sizeof(rpc_call_data_t *)); i++)
     {
         assert(NULL != gs_kRpcDataPointers[i]);
         gs_kRpcDataPointers[i]->mutex = xSemaphoreCreateMutexStatic(&gs_kRpcDataPointers[i]->mutexStaticBuffer);
@@ -419,8 +395,9 @@ static void TriggerInterCoreIRQWhileIRQDisabled(void)
 {
     /* ensures memory accesses are retired and visible by the other core before the ISR is triggered */
     __DSB();
-    IOMUXC_GPR->GPR7 |= IOMUXC_GPR_GPR7_GINT(1);
-    IOMUXC_GPR->GPR7 &= ~IOMUXC_GPR_GPR7_GINT(1);
+    IOMUXC_GPR->GPR7 &= ~IOMUXC_GPR_GPR7_GINT(1U);
+    IOMUXC_GPR->GPR7 |= IOMUXC_GPR_GPR7_GINT(1U);
+    IOMUXC_GPR->GPR7 &= ~IOMUXC_GPR_GPR7_GINT(1U);
     /* NOTE this might clear an incoming pending interrupt request from the CM4
      * which occurred after NVIC_DisableIRQ(GPR_IRQ_IRQn) and before NVIC_ClearPendingIRQ(GPR_IRQ_IRQn),
      * but as we poll for communication completion on the CM4 side this does not matter
@@ -449,8 +426,9 @@ static void TriggerInterCoreIRQ(void)
     __DSB();
     __ISB();
 
-    IOMUXC_GPR->GPR7 |= IOMUXC_GPR_GPR7_GINT(1);
-    IOMUXC_GPR->GPR7 &= ~IOMUXC_GPR_GPR7_GINT(1);
+    IOMUXC_GPR->GPR7 &= ~IOMUXC_GPR_GPR7_GINT(1U);
+    IOMUXC_GPR->GPR7 |= IOMUXC_GPR_GPR7_GINT(1U);
+    IOMUXC_GPR->GPR7 &= ~IOMUXC_GPR_GPR7_GINT(1U);
     /* NOTE this might clear an incoming pending interrupt request from the CM4
      * which occurred after NVIC_DisableIRQ(GPR_IRQ_IRQn) and before NVIC_ClearPendingIRQ(GPR_IRQ_IRQn)
      * but as we poll for communication completion on the CM4 side this does not matter
@@ -485,7 +463,7 @@ static qmc_status_t ConsistencyCheck(const rpc_call_data_t *const pRpcCallData)
     BaseType_t semaphoreRet = pdFALSE;
     (void)semaphoreRet;
 
-    /* should a command still be pending from a previos invocation we have to wait
+    /* should a command still be pending from a previous invocation we have to wait
      * until its completed or else time out and return an inconsistency error
      * if isNew is reset to false by the CM4, we can be sure that the CM4 wrote
      * the return value of the old command
@@ -495,7 +473,7 @@ static qmc_status_t ConsistencyCheck(const rpc_call_data_t *const pRpcCallData)
     {
         /* if we can not get the inter-core mutex, then continue normally
          *  -> some task has recently performed or will shortly perform an inter-core interrupt */
-        if (pdTRUE == xSemaphoreTake(gs_rpcTriggerIrqMutex, RPC_TRIGGER_IRQ_MUTEX_TIMEOUT_TICKS))
+        if (pdTRUE == xSemaphoreTake(gs_rpcTriggerIrqMutex, portMAX_DELAY))
         {
             /* maybe the IRQ was missed on the CM4 */
             TriggerInterCoreIRQ();
@@ -530,7 +508,7 @@ static qmc_status_t ConsistencyCheck(const rpc_call_data_t *const pRpcCallData)
  * SHM region's state for consistency. If the remote calls state is not consistent
  * with the expectations, this functions tries to solve this issue by retriggering
  * the CM4 and waiting for completion of an old remote call request. If this
- * wait should time out an error is returned.
+ * wait should time out, an error is returned.
  *
  * In case of an error the acquired mutex is always released.
  * Otherwise, the remote call is left locked.
@@ -558,8 +536,7 @@ static qmc_status_t PrepareCall(const rpc_call_data_t *const pRpcCallData)
      * so wait for the max. amount of time the processing might take before timeout
      * (consistency check + processing time)
      */
-    if (pdTRUE ==
-        xSemaphoreTake(pRpcCallData->mutex, 2 * (pRpcCallData->timeoutTicks + RPC_TRIGGER_IRQ_MUTEX_TIMEOUT_TICKS)))
+    if (pdTRUE == xSemaphoreTake(pRpcCallData->mutex, portMAX_DELAY))
     {
         /* critical section entered */
 
@@ -598,8 +575,8 @@ static qmc_status_t PrepareCall(const rpc_call_data_t *const pRpcCallData)
  * This function sets the necessary synchronization flags and notifies the CM4
  * about the pending remote call request.
  *
- * Reentrant function, multiple invocations for different remote calls are
- * (different rpc_call_data_t structures) allowed.
+ * Reentrant function, multiple invocations for different remote calls
+ * (different rpc_call_data_t structures) are allowed.
  *
  * @param[in] pRpcCallData Pointer to a rpc_call_data_t struct describing the remote call.
  * @return A qmc_status_t status code.
@@ -619,7 +596,7 @@ static qmc_status_t NotifyCM4(const rpc_call_data_t *const pRpcCallData)
      * that the following part is not entered by any other task
      * as this would lead to potential problems with triggering the inter-core
      * interrupt (see also TriggerInterCoreIRQ()) */
-    if (pdTRUE == xSemaphoreTake(gs_rpcTriggerIrqMutex, RPC_TRIGGER_IRQ_MUTEX_TIMEOUT_TICKS))
+    if (pdTRUE == xSemaphoreTake(gs_rpcTriggerIrqMutex, portMAX_DELAY))
     {
         /* disable communication interrupt during these operations, otherwise
          * an event interrupt after setting "isProcessed = false" might
@@ -629,7 +606,7 @@ static qmc_status_t NotifyCM4(const rpc_call_data_t *const pRpcCallData)
          * we clear event group here -> command return missed -> command timeout
          */
         NVIC_DisableIRQ(GPR_IRQ_IRQn);
-        /* see triggerInterCoreIRQ for reasoning of barrier */
+        /* see TriggerInterCoreIRQ for reasoning of barrier */
         __DSB();
         __ISB();
 
@@ -698,8 +675,8 @@ static qmc_status_t NotifyWaitCM4(const rpc_call_data_t *const pRpcCallData)
         {
             /* timed out
              * set back isProcessed to true
-             * the event bit for the timed out command is not set anymore in the communication ISR
-             * after this point (so the result of the timed out command is ignored)
+             * the event bit for the timed-out command is not set anymore in the communication ISR
+             * after this point (so the result of the timed-out command is ignored)
              * still, there might be a problem if a command hangs until we are at this point again
              * then, the result of the old (hanging) invocation might be returned
              * to avoid such cases the state of the communication flags is checked beforehand
@@ -749,7 +726,7 @@ qmc_status_t RPC_KickFunctionalWatchdog(rpc_watchdog_id_t id)
     const rpc_call_data_t *const pRpcCallData = &gs_funcWdCallData;
 
     /* check arguments */
-    if ((id >= kRPC_FunctionalWatchdog1) && (id <= kRPC_FunctionalWatchdogLast))
+    if ((id >= kRPC_FunctionalWatchdogFirst) && (id <= kRPC_FunctionalWatchdogLast))
     {
         /* valid -> prepare remote call */
         ret = PrepareCall(pRpcCallData);
@@ -782,7 +759,7 @@ qmc_status_t RPC_KickSecureWatchdog(const uint8_t *data, const size_t dataLen)
     const rpc_call_data_t *const pRpcCallData = &gs_secWdCallData;
 
     /* invalid arguments */
-    if ((NULL == data) || (dataLen > RPC_SECWD_MAX_MSG_SIZE))
+    if ((NULL == data) || (0U == dataLen) || (dataLen > RPC_SECWD_MAX_MSG_SIZE))
     {
         DEBUG_LOG_E(DEBUG_M7_TAG "RPC call invalid arguments!\r\n");
         ret = kStatus_QMC_ErrArgInvalid;
@@ -818,7 +795,7 @@ qmc_status_t RPC_RequestNonceFromSecureWatchdog(uint8_t *nonce, size_t *length)
     const rpc_call_data_t *const pRpcCallData = &gs_secWdCallData;
 
     /* invalid arguments */
-    if ((NULL == nonce) || (NULL == length))
+    if ((NULL == nonce) || (NULL == length) || (0U == *length))
     {
         DEBUG_LOG_E(DEBUG_M7_TAG "RPC call invalid arguments!\r\n");
         ret = kStatus_QMC_ErrArgInvalid;
@@ -844,7 +821,11 @@ qmc_status_t RPC_RequestNonceFromSecureWatchdog(uint8_t *nonce, size_t *length)
         {
             if (*length >= gs_rpcSHM.secWd.dataLen)
             {
-                (void)vmemcpy(nonce, gs_rpcSHM.secWd.data, gs_rpcSHM.secWd.dataLen);
+                /* need to buffer function arguments as otherwise there are multiple unsequenced volatile reads (CERT C)
+                 */
+                volatile void *const pData = gs_rpcSHM.secWd.data;
+                uint32_t dataLen           = gs_rpcSHM.secWd.dataLen;
+                (void)vmemcpy(nonce, pData, dataLen);
                 *length = gs_rpcSHM.secWd.dataLen;
             }
             else
@@ -962,8 +943,6 @@ qmc_status_t RPC_SetTimeToRTC(const qmc_timestamp_t *timestamp)
     qmc_status_t ret                          = kStatus_QMC_Err;
     const rpc_call_data_t *const pRpcCallData = &gs_rtcCallData;
 
-    /* TODO inform about time base change */
-
     /* invalid arguments */
     if (NULL == timestamp)
     {
@@ -994,8 +973,8 @@ qmc_status_t RPC_SetTimeToRTC(const qmc_timestamp_t *timestamp)
         g_needsRefresh_getTime = true;
 
         /* run callback function if it is registered */
-        if(g_TimeChangedCallback)
-        	g_TimeChangedCallback();
+        if (g_TimeChangedCallback)
+            g_TimeChangedCallback();
     }
 
     return ret;
@@ -1005,13 +984,29 @@ qmc_status_t RPC_Reset(qmc_reset_cause_id_t cause)
 {
     qmc_status_t ret                          = kStatus_QMC_Err;
     const rpc_call_data_t *const pRpcCallData = &gs_resetCallData;
+    qmc_reset_cause_id_t causeSanitized       = cause;
 
     /* check for invalid arguments */
     if ((kQMC_ResetNone != cause) && (kQMC_ResetRequest != cause) && (kQMC_ResetFunctionalWd != cause) &&
         (kQMC_ResetSecureWd != cause))
     {
-        cause = kQMC_ResetSecureWd;
-        ret   = kStatus_QMC_Ok;
+    	/* we still perform the reset, but with legal cause kQMC_ResetSecureWd as precaution
+    	 * (this cause leads to a boot into restricted mode - we should not miss such occasions)
+    	 * however, we log that this happened */
+        causeSanitized = kQMC_ResetSecureWd;
+
+        /* issue log entry */
+        log_record_t resetLogEntry              = {0};
+        resetLogEntry.type                      = kLOG_SystemData;
+        resetLogEntry.data.systemData.source    = LOG_SRC_RpcModule;
+        resetLogEntry.data.systemData.category  = LOG_CAT_Fault;
+        resetLogEntry.data.systemData.eventCode = LOG_EVENT_InvalidResetCause;
+        /* logging is best effort, even if it would fail, we still want to perform the reset */
+        (void)LOG_QueueLogEntry(&resetLogEntry, true);
+
+        /* we want to go further with the reset, so we set the return code to kStatus_QMC_Ok after sanitizing the input 
+         * (in case of a successful reset, the M7 will never see the return code anyhow) */
+        ret = kStatus_QMC_Ok;
     }
     else
     {
@@ -1031,16 +1026,16 @@ qmc_status_t RPC_Reset(qmc_reset_cause_id_t cause)
         /* issue log entry if reset is about to be performed */
         log_record_t resetLogEntry              = {0};
         resetLogEntry.type                      = kLOG_SystemData;
-        resetLogEntry.data.systemData.source    = LOG_SRC_SecureWatchdog;
+        resetLogEntry.data.systemData.source    = LOG_SRC_RpcModule;
         resetLogEntry.data.systemData.category  = LOG_CAT_General;
         resetLogEntry.data.systemData.eventCode = LOG_EVENT_ResetRequest;
-        /* logging is best effort, even if it would fail, we still want to perform the reset */
-        LOG_QueueLogEntry(&resetLogEntry, true);
+        /* logging is best effort, even if it would fail, we still continue with the reset! */
+        (void)LOG_QueueLogEntry(&resetLogEntry, true);
         /* wait a bit so that log entries can be written (best effort not ensured) */
-        vTaskDelay(RPC_WAIT_TICKS_BEFORE_RESET);
+        vTaskDelay(pdMS_TO_TICKS(RPC_WAIT_MS_BEFORE_RESET));
 
         /* call specific data preparation */
-        gs_rpcSHM.reset.cause = cause;
+        gs_rpcSHM.reset.cause = causeSanitized;
 
         /* notify CM4 and wait for result */
         ret = NotifyWaitCM4(pRpcCallData);
@@ -1173,6 +1168,83 @@ qmc_status_t RPC_RevertFwUpdate(void)
 
         /* clean up remote call */
         RPC_CleanupCall(pRpcCallData);
+    }
+
+    return ret;
+}
+
+qmc_status_t RPC_GetMcuTemperature(float *temp)
+{
+    qmc_status_t ret                          = kStatus_QMC_Err;
+    const rpc_call_data_t *const pRpcCallData = &gs_mcuTempCallData;
+
+    /* invalid arguments */
+    if (NULL == temp)
+    {
+        ret = kStatus_QMC_ErrArgInvalid;
+    }
+    /* valid arguments */
+    else
+    {
+        /* prepare remote call */
+        ret = PrepareCall(pRpcCallData);
+    }
+
+    /* process if no errors occurred */
+    if (kStatus_QMC_Ok == ret)
+    {
+        /* notify CM4 and wait for result */
+        ret = NotifyWaitCM4(pRpcCallData);
+
+        /* call specific return data passing */
+        if (kStatus_QMC_Ok == ret)
+        {
+            *temp = gs_rpcSHM.mcuTemp.temp;
+        }
+
+        /* cleanup remote call */
+        RPC_CleanupCall(pRpcCallData);
+    }
+
+    return ret;
+}
+
+qmc_status_t RPC_MemoryWriteIntsDisabled(const qmc_mem_write_t *write)
+{
+    qmc_status_t ret = kStatus_QMC_Err;
+
+    /* invalid arguments */
+    if (NULL == write)
+    {
+        ret = kStatus_QMC_ErrArgInvalid;
+    }
+    else
+    {
+        /* ensure the M4 is not currently in a memory write RPC
+         * (should not be the case anyhow, but better check) */
+        while(gs_rpcSHM.memWrite.status.isNew)
+        {
+            /* notify CM4 to finish the RPC (maybe it was missed) */
+            TriggerInterCoreIRQWhileIRQDisabled();
+        }
+
+        /* set data */
+        gs_rpcSHM.memWrite.write = *write;
+        /* see NotifyCM4() */
+        gs_rpcSHM.memWrite.status.isProcessed = false;
+        __DMB();
+        gs_rpcSHM.memWrite.status.isNew = true;
+        
+        /* poll until operation has been completed */
+        do
+        {
+            /* notify CM4 */
+            TriggerInterCoreIRQWhileIRQDisabled();
+        } while (gs_rpcSHM.memWrite.status.isNew);
+        gs_rpcSHM.memWrite.status.isProcessed = true;
+        __DSB();
+        
+        ret = kStatus_QMC_Ok;
     }
 
     return ret;

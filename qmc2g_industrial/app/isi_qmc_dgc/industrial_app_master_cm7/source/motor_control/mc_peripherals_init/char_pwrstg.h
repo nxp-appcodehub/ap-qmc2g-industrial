@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -17,8 +17,8 @@ File Name:
 Date:  April 6, 2017, 7:58:48
 Board:  HVP-MC3PH
 ----------------------------------------------------------------------*/
-#ifndef _M1_CHAR_PWRSTG_H_
-#define _M1_CHAR_PWRSTG_H_
+#ifndef M1_CHAR_PWRSTG_H
+#define M1_CHAR_PWRSTG_H
 
 #define DTCOMP_TABLE_SIZE    (65)
 #define DTCOMP_LINCOEFF      (0.002741950752F)
@@ -92,7 +92,7 @@ Board:  HVP-MC3PH
     0.007988878061F \
 }
 
-#endif /* _M1_CHAR_PWRSTG_H_ */
+#endif /* M1_CHAR_PWRSTG_H */
 /*
 *######################################################################
 *                           End of File

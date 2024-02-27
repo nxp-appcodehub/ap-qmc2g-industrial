@@ -1,12 +1,12 @@
 /*
  * Copyright 2013 - 2015, Freescale Semiconductor, Inc.
- * Copyright 2016-2022 NXP
+ * Copyright 2016-2023 NXP
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef _MCDRV_ADC_IMXRT117x_H_
-#define _MCDRV_ADC_IMXRT117x_H_
+#ifndef MCDRV_ADC_IMXRT117x_H
+#define MCDRV_ADC_IMXRT117x_H
 
 #include "gdflib.h"
 #include "mlib_types.h"
@@ -21,7 +21,7 @@
 #define CALIB_MA_NUM   8 // Moving average filter number for phase current offsets
 
 
-typedef struct _channel_info
+typedef struct channel_info
 {
 	uint16_t ui16ChanNum; 			/* Channel number */
 	uint16_t ui16Side;				/* A or B side */
@@ -29,7 +29,7 @@ typedef struct _channel_info
 
 }channel_info_t;
 
-typedef struct _channel_table
+typedef struct channel_table
 {
 	channel_info_t sLPADC1IA;
 	channel_info_t sLPADC2IA;
@@ -44,13 +44,13 @@ typedef struct _channel_table
 	uint16_t ui16Average;           /* Average number = 2^ui16Average */
 }channel_table_t;
 
-typedef struct _pha_bc
+typedef struct pha_bc
 {
     GDFLIB_FILTER_MA_T_A32 sFiltPhaB; /* phase B offset filter */
     GDFLIB_FILTER_MA_T_A32 sFiltPhaC; /* phase C offset filter */
 
-    uint16_t *pui16RsltRegPhaB;            /* phase B result register */
-    uint16_t *pui16RsltRegPhaC;            /* phase C result register */
+    uint16_t const volatile *pui16RsltRegPhaB;            /* phase B result register */
+    uint16_t const volatile *pui16RsltRegPhaC;            /* phase C result register */
     uint16_t ui16CalibPhaB;              /* phase B offset calibration */
     uint16_t ui16CalibPhaC;              /* phase C offset calibration */
     uint16_t ui16OffsetPhaB;             /* phase B offset result */
@@ -59,13 +59,13 @@ typedef struct _pha_bc
     uint16_t ui16ADC2Seg0CmdNum;
 } pha_bc_t;
 
-typedef struct _pha_ac
+typedef struct pha_ac
 {
     GDFLIB_FILTER_MA_T_A32 sFiltPhaA; /* phase A offset filter */
     GDFLIB_FILTER_MA_T_A32 sFiltPhaC; /* phase C offset filter */
 
-    uint16_t *pui16RsltRegPhaA;            /* phase A result register */
-    uint16_t *pui16RsltRegPhaC;            /* phase C result register */
+    uint16_t const volatile *pui16RsltRegPhaA;            /* phase A result register */
+    uint16_t const volatile *pui16RsltRegPhaC;            /* phase C result register */
     uint16_t ui16CalibPhaA;              /* phase A offset calibration */
     uint16_t ui16CalibPhaC;              /* phase C offset calibration */
     uint16_t ui16OffsetPhaA;             /* phase A offset result */
@@ -74,13 +74,13 @@ typedef struct _pha_ac
     uint16_t ui16ADC2Seg0CmdNum;
 } pha_ac_t;
 
-typedef struct _pha_ab
+typedef struct pha_ab
 {
     GDFLIB_FILTER_MA_T_A32 sFiltPhaA; /* phase A offset filter */
     GDFLIB_FILTER_MA_T_A32 sFiltPhaB; /* phase B offset filter */
 
-    uint16_t *pui16RsltRegPhaA;            /* phase A result register */
-    uint16_t *pui16RsltRegPhaB;            /* phase B result register */
+    uint16_t const volatile *pui16RsltRegPhaA;            /* phase A result register */
+    uint16_t const volatile *pui16RsltRegPhaB;            /* phase B result register */
     uint16_t ui16CalibPhaA;              /* phase A offset calibration */
     uint16_t ui16CalibPhaB;              /* phase B offset calibration */
     uint16_t ui16OffsetPhaA;             /* phase A offset result */
@@ -89,7 +89,7 @@ typedef struct _pha_ab
     uint16_t ui16ADC2Seg0CmdNum;
 } pha_ab_t;
 
-typedef struct _mcdrv_adc
+typedef struct mcdrv_adc
 {
 	GMCLIB_3COOR_T_F16 *psIABC; /* pointer to the 3-phase currents */
 	frac16_t *pf16UDcBus;       /* pointer to the DC bus voltage */
@@ -98,9 +98,9 @@ typedef struct _mcdrv_adc
     pha_ac_t sCurrSec23;        /* ADC setting for SVM sectors 2&3 */
     pha_ab_t sCurrSec45;        /* ADC setting for SVM sectors 4&5 */
 
-    uint16_t *pui16RsltRegVDcb; /* DCB voltage result register */
+    uint16_t const volatile *pui16RsltRegVDcb; /* DCB voltage result register */
 
-    uint16_t *pui16RsltRegAux; /* Auxiliary result register */
+    uint16_t const volatile *pui16RsltRegAux; /* Auxiliary result register */
 
     uint16_t *pui16SVMSector;
 
@@ -221,4 +221,4 @@ void MCDRV_AuxValGet(mcdrv_adc_t *this);
 }
 #endif
 
-#endif /* _MCDRV_ADC_IMXRT117x_H_ */
+#endif /* MCDRV_ADC_IMXRT117x_H */

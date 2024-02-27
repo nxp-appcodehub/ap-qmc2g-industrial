@@ -8,73 +8,72 @@
  * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
-		*(EXCLUDE_FILE(
-						*freertos_kernel*
-						*interrupts.o*
-						*fsl_clock.o*
-						
-						*tsn_tasks.o*
-       					*cyclic_task.o*
-       					*tsn_task.o*
-       					*tsn_board.o*
-       					*tsn_common/log.o*
-       					*lwip_ethernetif.o
-       					*memcpy.o*
-       					*sdk_printf.o*
-       					*tsn_common/stats_task.o*
-       					*tsn_common/stats.o
-       					*libavb-freertos.a:*
-       					*libavb-core.a:*
-       					*libm.a:
-       					*libc_nano.a:
-       					*libgcc.a:
-       					*fsl_component_serial_manager.o*
-       					*fsl_component_serial_port_uart.o*
-       					*fsl_adapter_lpuart.o*
-       					*fsl_debug_console.o*
-       					*fsl_str.o*
-       					*freertos/main.o*
-       					*fsl_cache.o*
-       					*fsl_enet_qos.o*
-       					*fsl_component_generic_list.o*
-       					*application_util.o*
-       					*api_motorcontrol.o*
-       					*lwip*
-		) *.text*)
-		
-	   /*tsn_tasks.c */
+    *(EXCLUDE_FILE(
+        *freertos_kernel*
+        *interrupts.o*
+        *fsl_clock.o*
+
+        *tsn_tasks.o*
+        *cyclic_task.o*
+        *tsn_task.o*
+        *tsn_board.o*
+        *tsn_common/log.o*
+        *lwip_ethernetif.o
+        *memcpy.o*
+        *sdk_printf.o*
+        *tsn_common/stats_task.o*
+        *tsn_common/stats.o
+        *libavb-freertos.a:*
+        *libavb-core.a:*
+        *libm.a:
+        *libc_nano.a:
+        *libgcc.a:
+        *fsl_component_serial_manager.o*
+        *fsl_component_serial_port_uart.o*
+        *fsl_adapter_lpuart.o*
+        *fsl_debug_console.o*
+        *fsl_str.o*
+        *freertos/main.o*
+        *fsl_cache.o*
+        *fsl_enet_qos.o*
+        *fsl_component_generic_list.o*
+        *application_util.o*
+        *api_motorcontrol.o*
+        *lwip*
+    ) *.text*)
+
+      /*tsn_tasks.c */
        *tsn_tasks.o*(.text.system_config_get_tsn_app)
        *tsn_tasks.o*(.text.TsnInitTask)
        *tsn_tasks.o*(.text.stats_init)
-       
+
        /*tsn_app/cyclic_task.c */
        *cyclic_task.o*(.text.cyclic_task_set_period)
        *cyclic_task.o*(.text.cyclic_task_init)
        *cyclic_task.o*(.text.stats_init)
-       
+
        /*tsn_app/tsn_task.c */
        *tsn_task.o*(.text.tsn_task_stats_init)
        *tsn_task.o*(.text.tsn_task_net_init)
        *tsn_task.o*(.text.tsn_task_net_exit)
        *tsn_task.o*(.text.tsn_task_register)
-       
+
        /*tsn_common/lwip_ethernetif.c */
        *lwip_ethernetif.o*(.text.low_level_init)
        *lwip_ethernetif.o*(.text.ethernetif_init)
-       
+
        /*tsn_common/stats_task.c */
        *tsn_common/stats_task.o*(.text.STATS_AsyncInit)
        *tsn_common/stats_task.o*(.text.STATS_TaskInit)
-       
+
        /*tsn_common/stats.c */
        *tsn_common/stats.o*(.text.hist_init)
-       
- 
+
+
        *libavb-freertos.a:(.text.init)
        *libavb-freertos.a:(.text.exit)
        *libavb-core.a:(.text.init)
        *libavb-core.a:(.text.exit)
        *freertos/main.o*(.text.init)
        *freertos/main.o*(.text.exit)
-       
-       
+

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -192,6 +192,8 @@
 #define NAFE_REG_OPT_COEF14 0xAE
 #define NAFE_REG_OPT_COEF15 0xAF
 
+#define MAX_LOGICAL_CHANNELS 16u
+
 /*******************************************************************************
  * Prototypes
  ******************************************************************************/
@@ -318,7 +320,7 @@ typedef struct
 
 typedef struct
 {
-    uint32_t chnIndex;
+    uint16_t chnIndex;
     NAFE_inputSel_t inputSel;
     NAFE_hvInputPos_t hvAip;
     NAFE_hvInputNeg_t hvAin;
@@ -332,8 +334,8 @@ typedef struct
 
 typedef struct
 {
-    uint32_t devAddr;
-    uint32_t currentChnIndex;
+    uint16_t devAddr;
+    uint16_t currentChnIndex;
     NAFE_sysConfig_t *sysConfig;
     NAFE_chnConfig_t *chConfig;
     NAFE_sampleMode_t currentSampleMode;
@@ -348,7 +350,7 @@ typedef struct
     uint32_t chnSampleCnt;                          /* Channel sample counter.For MCMR and MCCR non-Block. */
     uint32_t contSampleAmt;                         /* Continuous sample amount. For SCCR and MCCR modes. */
     uint32_t contSampleCnt;                         /* Continuous sample counter. For SCCR and MCCR modes. */
-    uint32_t requestedChn;                          /* Channel to read from. For SCCR and SCSR modes. */
+    uint16_t requestedChn;                          /* Channel to read from. For SCCR and SCSR modes. */
     NAFE_regDataSize_t adcResolutionBits;
 } NAFE_xferHdl_t;
 

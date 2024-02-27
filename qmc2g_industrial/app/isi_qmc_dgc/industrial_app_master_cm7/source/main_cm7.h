@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -44,8 +44,10 @@
 #include "datalogger_tasks.h"
 #include "freemaster.h"
 #include "freemaster_tsa.h"
+#include "freemaster_tasks.h"
 #include "motor_control_task.h"
 #include "mcinit.h"
+#include "cloud_service.h"
 
 //------------------------------------------------------------------------------
 // Extern
@@ -125,11 +127,11 @@ typedef struct _header
 // Function Prototypes                                                          
 //------------------------------------------------------------------------------
 
+/* Init task definition */
 extern void DataHubTask(void *pvParameters);
-
-// Init task definition
+extern void DataloggerTask(void *pvParameters);
 extern void StartupTask(void *pvParameters);
-
+extern void JsonMotorAPIServiceTask(void *pvParameters);
 extern void AwdgConnectionServiceTask(void *pvParameters);
 
 //------------------------------------------------------------------------------

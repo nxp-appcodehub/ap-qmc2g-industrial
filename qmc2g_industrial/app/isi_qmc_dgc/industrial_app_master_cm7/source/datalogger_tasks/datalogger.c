@@ -25,23 +25,35 @@
  ******************************************************************************/
 //#define DATALOGGER_POSITIVE_DEBUG
 
+typedef enum log_sdcard_state
+{
+    kLog_SdCardNone     = 0U,
+    kLog_SdCardInserted = 1U,
+    kLog_SdCardMounted  = 2U,
+    kLog_SdCardMountedFail  = 3U
+} log_sdcard_state_t;
+
 typedef struct __attribute__((__packed__)) {
 	uint8_t key[LCRYPTO_EX_AES_KEY_SIZE];
 	uint8_t iv[LCRYPTO_EX_AES_IV_SIZE];
 } lcrypt_keyiv_t;
 
 #define MOTOR_QUEUE_TIMEOUT_ATTEMPTS        20u
+#define QUEUE_READ_BATCH					10u
 
 /*******************************************************************************
  * Prototypes
  ******************************************************************************/
 qmc_status_t CONFIG_Init( void);
 qmc_status_t Datalogger_encrypt_log_entry( log_record_t *psrc, log_encrypted_record_t *pdst, TickType_t ticks);
+qmc_status_t DataloggerExportRecord();
 
 #ifdef FEATURE_DATALOGGER_SDCARD
 qmc_status_t SDCard_MountVolume(void);
+qmc_status_t SDCard_UnMountVolume(void);
 qmc_status_t SDCard_WriteRecord( const char *dir_path, const char *file_path, uint8_t *buf, size_t buf_len);
 qmc_status_t Handle_file( const char * dir_path, const char *file_path);
+qmc_status_t Get_SD_FSTAT( uint32_t *total_sect, uint32_t *free_sect, const char *file_path);
 #endif
 
 static void StopAllMotors(void);
@@ -54,7 +66,7 @@ static void DisableMotorInterrupts(void);
 /*
  * Flash LogRecorder pro datalogger.
  */
-__attribute__((section(".data.$SRAM_OC2")))  recorder_t g_InfRecorder={
+__attribute__((section(".data.$SRAM_OC1")))  recorder_t g_InfRecorder={
 	0,                                      //Idr
 	RECORDER_REC_INF_DATALOGGER_AREABEGIN,  //Pt=AreaBegin
 	0,                                      //RotNumber
@@ -66,7 +78,7 @@ __attribute__((section(".data.$SRAM_OC2")))  recorder_t g_InfRecorder={
 	0											//Flags No Crypto
 };
 
-__attribute__((section(".data.$SRAM_OC2")))  recorder_t g_LogRecorder={
+__attribute__((section(".data.$SRAM_OC1")))  recorder_t g_LogRecorder={
 	0,                                      //Idr
 	RECORDER_REC_DATALOGGER_AREABEGIN,      //Pt=AreaBegin
 	0,                                      //RotNumber
@@ -103,7 +115,7 @@ SemaphoreHandle_t g_Datalogger_Ctrl_xSemaphore = NULL;
 extern EventGroupHandle_t g_systemStatusEventGroupHandle;
 #endif
 
-static bool gs_sdcard_inserted;
+static log_sdcard_state_t gs_sdcard_state;
 static log_encrypted_record_t gs_enc_export_data;
 
 
@@ -123,37 +135,127 @@ TaskHandle_t g_datalogger_task_handle;
  *
  */
 
-static void DataloggerTask(void *pvParameters)
+void DataloggerTask(void *pvParameters)
 {
 	const TickType_t xDelayms = pdMS_TO_TICKS(100);
-	BaseType_t ret = pdFALSE;
-	int i;
 	uint32_t wakeupEvent = 0;
-	bool queueEmpty = true;
+	uint16_t remainingReads = QUEUE_READ_BATCH;
+	bool loopUntilEmpty = false;
+
+#ifdef FEATURE_DATALOGGER_SYNC_WITH_SBL
+	{
+		uint32_t id = FlashGetLastIdr( &g_LogRecorder);
+		while( id > 0)	//count the records with source == SBL (LOG_SRC_SecureBootloader)
+		{
+			qmc_status_t retv = LOG_GetLogRecord( id, &gs_datalogger_rcv_record);
+			if( retv != kStatus_QMC_Ok)
+			{
+				dbgRecPRINTF("Cannot read record. Datalogger1. Id:%d SRC:%d\r\n", id, gs_datalogger_rcv_record.data.defaultData.source);
+				break;
+			}
+			if( gs_datalogger_rcv_record.data.defaultData.source != LOG_SRC_SecureBootloader)
+				break;
+			id--;
+		}
+
+		while( id < FlashGetLastIdr( &g_LogRecorder))	//export all records with source == SBL while going up
+		{
+			id++;
+			qmc_status_t retv = LOG_GetLogRecord( id, &gs_datalogger_rcv_record);
+			if( retv != kStatus_QMC_Ok)
+			{
+				dbgRecPRINTF("Cannot read record. Datalogger2. Id:%d SRC:%d\r\n", id, gs_datalogger_rcv_record.data.defaultData.source);
+				break;
+			}
+			retv = DataloggerExportRecord();	//exports gs_datalogger_rcv_record
+			if( retv != kStatus_QMC_Ok)
+			{
+				dbgRecPRINTF("Cannot export record. Datalogger2. Id:%d SRC:%d\r\n", id, gs_datalogger_rcv_record.data.defaultData.source);
+				break;
+			}
+		}
+	}
+#endif
 
 	while (1)
 	{
+		if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogLoggingService) != kStatus_QMC_Ok)
+		{
+			log_record_t watchdogLogEntry = {0};
+			watchdogLogEntry.type                      = kLOG_SystemData;
+			watchdogLogEntry.data.systemData.source    = LOG_SRC_LoggingService;
+			watchdogLogEntry.data.systemData.category  = LOG_CAT_General;
+			watchdogLogEntry.data.systemData.eventCode = LOG_EVENT_FunctionalWatchdogKickFailed;
+			(void)LOG_QueueLogEntry(&watchdogLogEntry, false);
+		}
+
 		xTaskNotifyWait(0, 0, &wakeupEvent, xDelayms);
 
-		if ((wakeupEvent & kDLG_SHUTDOWN_PowerLoss) || (wakeupEvent & kDLG_SHUTDOWN_WatchdogReset))
+		if ((wakeupEvent & kDLG_SHUTDOWN_PowerLoss) || (wakeupEvent & kDLG_SHUTDOWN_SecureWatchdogReset) || (wakeupEvent & kDLG_SHUTDOWN_FunctionalWatchdogReset))
 		{
 			vTaskPrioritySet(NULL, configMAX_PRIORITIES - 1);
 	        StopAllMotors();
 	        MC_SetTsnCommandInjection(false);
 	        vTaskDelay(pdMS_TO_TICKS(10));
 	        DisableMotorInterrupts();
+
+	        loopUntilEmpty = true;
+
+	        if (wakeupEvent & kDLG_SHUTDOWN_SecureWatchdogReset)
+	        {
+				/* issue log entry if reset is about to be performed */
+				log_record_t resetLogEntry              = {0};
+				resetLogEntry.type                      = kLOG_SystemData;
+				resetLogEntry.data.systemData.source    = LOG_SRC_SecureWatchdog;
+				resetLogEntry.data.systemData.category  = LOG_CAT_General;
+				resetLogEntry.data.systemData.eventCode = LOG_EVENT_ResetSecureWatchdog;
+				/* logging is best effort, even if it would fail, we still continue with the reset! */
+				(void)LOG_QueueLogEntry(&resetLogEntry, true);
+	        }
+	        else if (wakeupEvent & kDLG_SHUTDOWN_FunctionalWatchdogReset)
+	        {
+				/* issue log entry if reset is about to be performed */
+				log_record_t resetLogEntry              = {0};
+				resetLogEntry.type                      = kLOG_SystemData;
+				resetLogEntry.data.systemData.source    = LOG_SRC_FunctionalWatchdog;
+				resetLogEntry.data.systemData.category  = LOG_CAT_General;
+				resetLogEntry.data.systemData.eventCode = LOG_EVENT_ResetFunctionalWatchdog;
+				/* logging is best effort, even if it would fail, we still continue with the reset! */
+				(void)LOG_QueueLogEntry(&resetLogEntry, true);
+	        }
+	        else
+	        {
+				/* issue log entry if reset is about to be performed */
+				log_record_t shutdownLogEntry              = {0};
+				shutdownLogEntry.type                      = kLOG_SystemData;
+				shutdownLogEntry.data.systemData.source    = LOG_SRC_PowerLossInterrupt;
+				shutdownLogEntry.data.systemData.category  = LOG_CAT_General;
+				shutdownLogEntry.data.systemData.eventCode = LOG_EVENT_PowerLoss;
+				/* logging is best effort, even if it would fail, we still continue with the reset! */
+				(void)LOG_QueueLogEntry(&shutdownLogEntry, true);
+	        }
 		}
 
-		wakeupEvent = wakeupEvent & (~(kDLG_LOG_Queued));
+		wakeupEvent = wakeupEvent & (~((uint32_t)kDLG_LOG_Queued));
+
+		remainingReads = QUEUE_READ_BATCH;
 
 		do
 		{
 			if ( xQueueReceive( gs_DataloggerQueueHandler, &gs_datalogger_rcv_record, 0 ) == pdTRUE)
 			{
-				queueEmpty = false;
+				if (!loopUntilEmpty)
+				{
+					remainingReads--;
+				}
 
-				xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY);
+				if( xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY) != pdTRUE)
+				{
+					dbgRecPRINTF("Cannot get g_Datalogger_Ctrl_xSemaphore. Record 0x%x discarded! Datalogger.\r\n", gs_datalogger_rcv_record.type);
+					continue;
+				}
 				qmc_status_t retv = FlashWriteRecord( &gs_datalogger_rcv_record, &g_LogRecorder);
+
 				xSemaphoreGive(g_Datalogger_Ctrl_xSemaphore);
 				if( retv != kStatus_QMC_Ok)
 				{
@@ -162,90 +264,46 @@ static void DataloggerTask(void *pvParameters)
 				}
 				else
 				{
-	#ifdef DATALOGGER_POSITIVE_DEBUG
-					dbgRecPRINTF("Write record. Datalogger. %d\r\n", gs_datalogger_rcv_record.type);
-	#endif
+#ifdef DATALOGGER_POSITIVE_DEBUG
+					dbgRecPRINTF("Write record. Datalogger. Type:%d ID:%d\r\n", gs_datalogger_rcv_record.type, FlashGetLastIdr(&g_LogRecorder));
+#endif
 				}
 
 				if (!(wakeupEvent & kDLG_SHUTDOWN_PowerLoss))
 				{
-#if defined(FEATURE_DATALOGGER_SDCARD) || defined(FEATURE_DATALOGGER_DQUEUE)
-					if( gs_sdcard_inserted || gs_DataloggerDqAlloc)
+					retv = DataloggerExportRecord();
+					if( retv != kStatus_QMC_Ok)
 					{
-						retv = Datalogger_encrypt_log_entry( &gs_datalogger_rcv_record, &gs_enc_export_data, portMAX_DELAY);
-						if( retv != kStatus_QMC_Ok)
-						{
-							xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LOG_FlashError);
-							dbgRecPRINTF("Cannot encrypt log_entry for export. Datalogger.\r\n");
-						}
+						dbgRecPRINTF("Cannot export record. Datalogger. %d\r\n", gs_datalogger_rcv_record.rhead.uuid);
 					}
+#ifdef DATALOGGER_POSITIVE_DEBUG
 					else
 					{
-						//Record is not going to be recorded on SD card nor Cloud service -> set the QMC_SYSEVENT_LOG_MessageLost
-						xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LOG_MessageLost);
-						dbgRecPRINTF("Message is not sent to SD card nor to Cloud service. Datalogger.\r\n");
+						dbgRecPRINTF("Export record. Datalogger. %d\r\n", gs_datalogger_rcv_record.rhead.uuid);
 					}
-#endif
-
-#ifdef FEATURE_DATALOGGER_SDCARD
-					if( gs_sdcard_inserted)
-					{
-						retv = SDCard_WriteRecord( DATALOGGER_SDCARD_DIRPATH, DATALOGGER_SDCARD_FILEPATH, (uint8_t *)&gs_enc_export_data, sizeof( gs_enc_export_data));
-						if( retv != kStatus_QMC_Ok)
-							dbgRecPRINTF("Cannot export log_entry to SDCard. Datalogger.\r\n");
-						else
-						{
-#ifdef DATALOGGER_POSITIVE_DEBUG
-							dbgRecPRINTF("Export log_entry to SDCard. Datalogger.\r\n");
-#endif
-						}
-
-						Handle_file( DATALOGGER_SDCARD_DIRPATH, DATALOGGER_SDCARD_FILEPATH);
-					}
-#endif
-
-#ifdef FEATURE_DATALOGGER_DQUEUE
-					xSemaphoreTake(g_Datalogger_Dq_xSemaphore, portMAX_DELAY);
-					if( gs_DataloggerDqAlloc)
-					{
-						for( i=0; i<DATALOGGER_RCV_QUEUE_CN; i++)
-						{
-							if(NULL != gs_DataloggerDynamicQueue[i].MsgQueueHandle.queueHandle)
-							{
-								ret = xQueueSend( gs_DataloggerDynamicQueue[i].QueueHandle, &gs_enc_export_data, 0);
-#ifdef DATALOGGER_POSITIVE_DEBUG
-								dbgRecPRINTF("DQueue: Send frame to DQueue %d:%s\n\r", i, sizeof(gs_enc_export_data));
-#endif
-
-#ifdef FEATURE_DATALOGGER_DQUEUE_EVENT_BITS
-								xEventGroupSetBits( g_DataloggerDqEventGroupHandle, g_DataloggerDqEventBit);
-#endif
-								if( ret != pdTRUE)
-								{
-									dbgRecPRINTF("DQueue: Cannot send frame to DQueue %d\n\r", i);
-								}
-							}
-						}
-					}
-					xSemaphoreGive(g_Datalogger_Dq_xSemaphore);
 #endif
 				}
 			}
 			else
 			{
-				queueEmpty = true;
+				remainingReads = 0;
 			}
-		} while (!queueEmpty);
+		} while (remainingReads > 0);
 
 	    if (wakeupEvent & kDLG_SHUTDOWN_PowerLoss)
 	    {
 	    	/* Reset the device to prevent it from continuing any further */
 	    	while (RPC_Reset(kQMC_ResetRequest) != kStatus_QMC_Ok){}
 	    }
-	    else if (wakeupEvent & kDLG_SHUTDOWN_WatchdogReset)
+	    else if (wakeupEvent & kDLG_SHUTDOWN_SecureWatchdogReset)
 	    {
 	    	/* Reset the device to prevent it from continuing any further */
 	    	while (RPC_Reset(kQMC_ResetSecureWd) != kStatus_QMC_Ok){}
+	    }
+	    else if (wakeupEvent & kDLG_SHUTDOWN_FunctionalWatchdogReset)
+	    {
+	    	/* Reset the device to prevent it from continuing any further */
+	    	while (RPC_Reset(kQMC_ResetFunctionalWd) != kStatus_QMC_Ok){}
 	    }
 	    else
 	    {
@@ -253,27 +311,169 @@ static void DataloggerTask(void *pvParameters)
 	    }
 
 #ifdef FEATURE_DATALOGGER_SDCARD
-		bool sdcard_status = BOARD_SDCardGetDetectStatus();
-		if( sdcard_status != gs_sdcard_inserted)
-		{
-			gs_sdcard_inserted = sdcard_status;
-			dbgSDcPRINTF("SDCARD CD:%d\n\r", gs_sdcard_inserted);
-
-			if( gs_sdcard_inserted)
+	    bool sdcard_CD = BOARD_SDCardGetDetectStatus();
+	    switch( gs_sdcard_state)
+	    {
+			default:
+			case kLog_SdCardNone:
 			{
-				dbgSDcPRINTF("Card inserted.\r\n");
-
-				SDCard_MountVolume();
-				xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_MEMORY_SdCardAvailable);
+				if( sdcard_CD)
+				{
+					gs_sdcard_state = kLog_SdCardInserted;
+					dbgSDcPRINTF("Card inserted.\r\n");
+				}
+				break;
 			}
-			else
+			case kLog_SdCardInserted:
 			{
-				xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_MEMORY_SdCardAvailable);
-				dbgSDcPRINTF("Card removed.\r\n");
+				if( sdcard_CD)
+				if( SDCard_MountVolume() == kStatus_QMC_Ok)
+				{
+					xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_MEMORY_SdCardAvailable);
+					gs_sdcard_state = kLog_SdCardMounted;
+					dbgSDcPRINTF("Card mounted.\r\n");
+					break;
+				}
+				gs_sdcard_state = kLog_SdCardMountedFail;
+				//Any signaling ???
+				dbgSDcPRINTF("Card mount failed.\r\n");
+				break;
+			}
+			case kLog_SdCardMounted:
+			case kLog_SdCardMountedFail:
+			{
+				if( sdcard_CD) {}
+				else
+				{
+					xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_MEMORY_SdCardAvailable);
+					gs_sdcard_state = kLog_SdCardNone;
+					dbgSDcPRINTF("Card removed.\r\n");
+				}
+				break;
 			}
 		}
 #endif
 	}
+}
+
+qmc_status_t DataloggerExportRecord()
+{
+	qmc_status_t retv = kStatus_QMC_Err;
+	BaseType_t ret = pdFALSE;
+	int i;
+
+#if defined(FEATURE_DATALOGGER_SDCARD) || defined(FEATURE_DATALOGGER_DQUEUE)
+	if( (gs_sdcard_state == kLog_SdCardMounted) || gs_DataloggerDqAlloc)
+	{
+		retv = Datalogger_encrypt_log_entry( &gs_datalogger_rcv_record, &gs_enc_export_data, portMAX_DELAY);
+		if( retv == kStatus_QMC_Ok)
+		{
+#ifdef FEATURE_DATALOGGER_SDCARD
+			if( gs_sdcard_state == kLog_SdCardMounted)
+			{
+				retv = SDCard_WriteRecord( DATALOGGER_SDCARD_DIRPATH, DATALOGGER_SDCARD_FILEPATH, (uint8_t *)&gs_enc_export_data, sizeof( gs_enc_export_data));
+				if( retv != kStatus_QMC_Ok)
+				{
+					dbgRecPRINTF("Cannot export log_entry to SDCard. ID:%d Datalogger.\r\n", gs_datalogger_rcv_record.rhead.uuid);
+				}
+				else
+				{
+#ifdef DATALOGGER_POSITIVE_DEBUG
+					dbgRecPRINTF("Export log_entry to SDCard. ID:%d Datalogger.\r\n", gs_datalogger_rcv_record.rhead.uuid);
+#endif
+				}
+				retv = Handle_file( DATALOGGER_SDCARD_DIRPATH, DATALOGGER_SDCARD_FILEPATH);
+				if( retv != kStatus_QMC_Ok)
+				{
+					dbgRecPRINTF("Cannot handle log_entry files in SDCard. Datalogger.\r\n");
+				}
+				else
+				{
+#ifdef DATALOGGER_POSITIVE_DEBUG
+					dbgRecPRINTF("Handle log_entry files in SDCard. Datalogger.\r\n");
+#endif
+				}
+#ifdef DATALOGGER_REPORT_LOW_MEMORY
+				uint32_t total_sect=0, free_sect=0;
+
+				retv = Get_SD_FSTAT( &total_sect, &free_sect, DATALOGGER_SDCARD_FILEPATH);
+				if( (total_sect > 0) && ( total_sect > free_sect))
+				{
+					const uint32_t treshold_sect = total_sect * DATALOGGER_LOW_MEMORY_TRESHOLD / 100;
+					if( treshold_sect > free_sect)
+					{
+						xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LOG_LowMemory);
+#ifdef DATALOGGER_POSITIVE_DEBUG
+						dbgRecPRINTF("LOG_LowMemory reported. Datalogger.\r\n");
+#endif
+					}
+					else
+					{
+						xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LOG_LowMemory);
+#ifdef DATALOGGER_POSITIVE_DEBUG
+						dbgRecPRINTF("LOG_LowMemory restored. Datalogger.\r\n");
+#endif
+					}
+				}
+				else
+				{
+					dbgRecPRINTF("Cannot get correct number of sectors %d/%d of FAT SDCard. Datalogger.\r\n", total_sect, free_sect);
+				}
+#endif
+			}
+#endif
+#ifdef FEATURE_DATALOGGER_DQUEUE
+			if( xSemaphoreTake(g_Datalogger_Dq_xSemaphore, portMAX_DELAY) == pdTRUE)
+			{
+				if( gs_DataloggerDqAlloc)
+				{
+					for( i=0; i<DATALOGGER_RCV_QUEUE_CN; i++)
+					{
+						if(NULL != gs_DataloggerDynamicQueue[i].MsgQueueHandle.queueHandle)
+						{
+							ret = xQueueSend( gs_DataloggerDynamicQueue[i].QueueHandle, &gs_enc_export_data, 0);
+							vTaskDelay( ( TickType_t ) 100 );
+#ifdef DATALOGGER_POSITIVE_DEBUG
+							dbgRecPRINTF("DQueue: Send frame to DQueue %d:%s\n\r", i, sizeof(gs_enc_export_data));
+#endif
+
+#ifdef FEATURE_DATALOGGER_DQUEUE_EVENT_BITS
+							xEventGroupSetBits( g_DataloggerDqEventGroupHandle, g_DataloggerDqEventBit);
+#endif
+							if( ret != pdTRUE)
+							{
+								dbgRecPRINTF("DQueue: Cannot send frame to DQueue %d\n\r", i);
+							}
+						}
+					}
+				}
+				xSemaphoreGive(g_Datalogger_Dq_xSemaphore);
+			}
+			else
+			{
+				dbgRecPRINTF("DQueue: Cannot get g_Datalogger_Dq_xSemaphore. Record 0x%x discarded. DQueue.\n\r", gs_datalogger_rcv_record.type );
+			}
+#endif
+		}
+		else
+		{
+			//Record is not going to be recorded on SD card nor Cloud service because of failed encryption process -> set the QMC_SYSEVENT_LOG_MessageLost and QMC_SYSEVENT_LOG_FlashError
+			xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LOG_FlashError);
+			dbgRecPRINTF("Cannot encrypt log_entry for export. Datalogger.\r\n");
+
+			xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LOG_MessageLost);
+			dbgRecPRINTF("Message is not sent to SD card nor to Cloud service. Datalogger encrypt error.\r\n");
+		}
+	}
+	else
+	{
+		//Record is not going to be recorded on SD card nor Cloud service -> set the QMC_SYSEVENT_LOG_MessageLost
+		xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_LOG_MessageLost);
+		dbgRecPRINTF("Message is not sent to SD card nor to Cloud service. Datalogger.\r\n");
+		retv = kStatus_QMC_Ok;
+	}
+#endif
+	return retv;
 }
 
 /*
@@ -284,6 +484,11 @@ qmc_status_t DataloggerInit()
 {
 	int i;
 	qmc_status_t retv = kStatus_QMC_Err;
+
+	if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogLoggingService) != kStatus_QMC_Ok)
+	{
+		FAULT_RaiseFaultEvent(kFAULT_FunctionalWatchdogInitFail);
+	}
 
 	LCRYPTO_init();
 
@@ -310,35 +515,33 @@ qmc_status_t DataloggerInit()
 		}
 	}
 
-	xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY);
-	retv = FlashRecorderInit( &g_InfRecorder);
-	xSemaphoreGive(g_Datalogger_Ctrl_xSemaphore);
+	retv = LOG_InitDatalogger();
 	if( retv != kStatus_QMC_Ok)
 	{
-		dbgRecPRINTF("InfFlashRecorderInit fail. Datalogger.\r\n");
 		dbgRecPRINTF("Format inf recorder.\r\n");
-		xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY);
+		if( xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY) != pdTRUE)
+		{
+			dbgRecPRINTF("InfFlashRecorderFormat fail 1. Cannot get g_Datalogger_Ctrl_xSemaphore. Datalogger.\r\n");
+			goto datalogger_init_failed;
+		}
 		retv = FlashRecorderFormat( &g_InfRecorder);
 		xSemaphoreGive(g_Datalogger_Ctrl_xSemaphore);
 		if( retv != kStatus_QMC_Ok)
 		{
-			dbgRecPRINTF("InfFlashRecorderFormat fail. Datalogger.\r\n");
+			dbgRecPRINTF("InfFlashRecorderFormat fail 3. Datalogger.\r\n");
 			goto datalogger_init_failed;
 		}
-	}
-	xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY);
-	retv = FlashRecorderInit( &g_LogRecorder);
-	xSemaphoreGive(g_Datalogger_Ctrl_xSemaphore);
-	if( retv != kStatus_QMC_Ok)
-	{
-		dbgRecPRINTF("FlashRecorderInit fail. Datalogger.\r\n");
 		dbgRecPRINTF("Format Datalogger.\r\n");
-		xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY);
+		if( xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY) != pdTRUE)
+		{
+			dbgRecPRINTF("InfFlashRecorderFormat fail 2. Cannot get g_Datalogger_Ctrl_xSemaphore. Datalogger.\r\n");
+			goto datalogger_init_failed;
+		}
 		retv = FlashRecorderFormat( &g_LogRecorder);
 		xSemaphoreGive(g_Datalogger_Ctrl_xSemaphore);
 		if( retv != kStatus_QMC_Ok)
 		{
-			dbgRecPRINTF("FlashRecorderFormat fail. Datalogger.\r\n");
+			dbgRecPRINTF("FlashRecorderFormat fail 4. Datalogger.\r\n");
 			goto datalogger_init_failed;
 		}
 	}
@@ -352,15 +555,24 @@ qmc_status_t DataloggerInit()
     	dbgSDcPRINTF("Cannot init SD_Host interface. Datalogger.\n\r");
     }
 
-	gs_sdcard_inserted = BOARD_SDCardGetDetectStatus();
-
-	if( gs_sdcard_inserted)
+	if( BOARD_SDCardGetDetectStatus())
 	{
-		SDCard_MountVolume();
-		xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_MEMORY_SdCardAvailable);
+		if( SDCard_MountVolume() == kStatus_QMC_Ok)
+		{
+			xEventGroupSetBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_MEMORY_SdCardAvailable);
+			gs_sdcard_state = kLog_SdCardMounted;
+			dbgSDcPRINTF("Card mounted.\r\n");
+		}
+		else
+		{
+			xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_MEMORY_SdCardAvailable);
+			gs_sdcard_state = kLog_SdCardMountedFail;
+			dbgSDcPRINTF("Card mount failed.\r\n");
+		}
 	}
 	else
 	{
+		gs_sdcard_state = kLog_SdCardNone;
 		xEventGroupClearBits(g_systemStatusEventGroupHandle, QMC_SYSEVENT_MEMORY_SdCardAvailable);
 	}
 #endif
@@ -406,16 +618,15 @@ qmc_status_t DataloggerInit()
 
 	gs_DataloggerDqInitialized = true;
 
-	if (pdPASS != xTaskCreate(DataloggerTask, "DataloggerTask", (20*configMINIMAL_STACK_SIZE), NULL, (tskIDLE_PRIORITY+1), &g_datalogger_task_handle))
+	if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogLoggingService) != kStatus_QMC_Ok)
 	{
-		dbgRecPRINTF("DataloggerTask create fail. Datalogger.\r\n");
-		goto datalogger_init_failed;
+		log_record_t watchdogLogEntry = {0};
+		watchdogLogEntry.type                      = kLOG_SystemData;
+		watchdogLogEntry.data.systemData.source    = LOG_SRC_LoggingService;
+		watchdogLogEntry.data.systemData.category  = LOG_CAT_General;
+		watchdogLogEntry.data.systemData.eventCode = LOG_EVENT_FunctionalWatchdogKickFailed;
+		LOG_QueueLogEntry(&watchdogLogEntry, false);
 	}
-
-
-#ifdef DATALOGGER_POSITIVE_DEBUG
-	dbgRecPRINTF("DataloggerTask create OK. Datalogger.\r\n");
-#endif
 
 	return kStatus_QMC_Ok;
 
@@ -450,6 +661,7 @@ qmc_status_t LOG_QueueLogEntry(const log_record_t* entry, bool hasPriority)
     {
     	ret = xQueueSend( gs_DataloggerQueueHandler, entry, 0);
     }
+	vTaskDelay( ( TickType_t ) 1000 );
 
 	if( ret != pdTRUE)
 		return kStatus_QMC_Err;
@@ -474,19 +686,21 @@ qmc_status_t LOG_GetNewLoggingQueueHandle(qmc_msg_queue_handle_t** handle)
 	if( handle == NULL)
 		return kStatus_QMC_ErrArgInvalid;
 
-	xSemaphoreTake(g_Datalogger_Dq_xSemaphore, portMAX_DELAY);
-	for( i=0; i<DATALOGGER_RCV_QUEUE_CN; i++)
+	if( xSemaphoreTake(g_Datalogger_Dq_xSemaphore, portMAX_DELAY) == pdTRUE)
 	{
-		if(NULL == gs_DataloggerDynamicQueue[i].MsgQueueHandle.queueHandle)
+		for( i=0; i<DATALOGGER_RCV_QUEUE_CN; i++)
 		{
-			gs_DataloggerDynamicQueue[i].MsgQueueHandle.queueHandle = &(gs_DataloggerDynamicQueue[i].QueueHandle);
-			*handle = &(gs_DataloggerDynamicQueue[i].MsgQueueHandle);
-			gs_DataloggerDqAlloc = true;
-			xSemaphoreGive(g_Datalogger_Dq_xSemaphore);
-			return kStatus_QMC_Ok;
+			if(NULL == gs_DataloggerDynamicQueue[i].MsgQueueHandle.queueHandle)
+			{
+				gs_DataloggerDynamicQueue[i].MsgQueueHandle.queueHandle = &(gs_DataloggerDynamicQueue[i].QueueHandle);
+				*handle = &(gs_DataloggerDynamicQueue[i].MsgQueueHandle);
+				gs_DataloggerDqAlloc = true;
+				xSemaphoreGive(g_Datalogger_Dq_xSemaphore);
+				return kStatus_QMC_Ok;
+			}
 		}
+		xSemaphoreGive(g_Datalogger_Dq_xSemaphore);
 	}
-	xSemaphoreGive(g_Datalogger_Dq_xSemaphore);
 	dbgRecPRINTF("xQueueCreate dynamic fail. Datalogger.\r\n");
 	return kStatus_QMC_Err;
 }
@@ -507,23 +721,24 @@ qmc_status_t LOG_ReturnLoggingQueueHandle(const qmc_msg_queue_handle_t* handle)
 	if( handle == NULL)
 		return kStatus_QMC_ErrArgInvalid;
 
-	xSemaphoreTake(g_Datalogger_Dq_xSemaphore, portMAX_DELAY);
-
-	xQueueReset( *handle->queueHandle);
-
-	gs_DataloggerDqAlloc = false;
-	for( i=0; i<DATALOGGER_RCV_QUEUE_CN; i++)
+	if( xSemaphoreTake(g_Datalogger_Dq_xSemaphore, portMAX_DELAY) == pdTRUE)
 	{
-		/* search handle and mark it as available again */
-		if(handle == &(gs_DataloggerDynamicQueue[i].MsgQueueHandle))
+		xQueueReset( *handle->queueHandle);
+
+		gs_DataloggerDqAlloc = false;
+		for( i=0; i<DATALOGGER_RCV_QUEUE_CN; i++)
 		{
-			gs_DataloggerDynamicQueue[i].MsgQueueHandle.queueHandle = NULL;
-			retval = kStatus_QMC_Ok;
+			/* search handle and mark it as available again */
+			if(handle == &(gs_DataloggerDynamicQueue[i].MsgQueueHandle))
+			{
+				gs_DataloggerDynamicQueue[i].MsgQueueHandle.queueHandle = NULL;
+				retval = kStatus_QMC_Ok;
+			}
+			if( gs_DataloggerDynamicQueue[i].MsgQueueHandle.queueHandle != NULL)
+				gs_DataloggerDqAlloc = true;
 		}
-		if( gs_DataloggerDynamicQueue[i].MsgQueueHandle.queueHandle != NULL)
-			gs_DataloggerDqAlloc = true;
+		xSemaphoreGive(g_Datalogger_Dq_xSemaphore);
 	}
-	xSemaphoreGive(g_Datalogger_Dq_xSemaphore);
 	return retval;
 }
 
@@ -546,7 +761,7 @@ qmc_status_t LOG_DequeueEncryptedLogEntry(const qmc_msg_queue_handle_t* handle, 
 	if( handle->queueHandle == NULL)
 		return kStatus_QMC_ErrArgInvalid;
 
-	if( xQueueReceive( *handle->queueHandle, entry, timeout ) == pdTRUE)
+	if( xQueueReceive( *handle->queueHandle, entry, pdMS_TO_TICKS(timeout) ) == pdTRUE)
 		return kStatus_QMC_Ok;
 
 	return kStatus_QMC_Timeout;
@@ -561,14 +776,17 @@ qmc_status_t LOG_DequeueEncryptedLogEntry(const qmc_msg_queue_handle_t* handle, 
  */
 qmc_status_t LOG_GetLogRecord(uint32_t id, log_record_t* record)
 {
-	xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY);
-	void *pt = FlashGetRecord( id, &g_LogRecorder, record, portMAX_DELAY);
-	xSemaphoreGive(g_Datalogger_Ctrl_xSemaphore);
-	if( pt == NULL)
+	if( xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY) == pdTRUE)
 	{
-		return kStatus_QMC_Err;
+		void *pt = FlashGetRecord( id, &g_LogRecorder, record, portMAX_DELAY);
+		xSemaphoreGive(g_Datalogger_Ctrl_xSemaphore);
+		if( pt == NULL)
+		{
+			return kStatus_QMC_Err;
+		}
+		return kStatus_QMC_Ok;
 	}
-	return kStatus_QMC_Ok;
+	return kStatus_QMC_Err;
 }
 
 /*!
@@ -581,20 +799,23 @@ qmc_status_t LOG_GetLogRecord(uint32_t id, log_record_t* record)
 qmc_status_t LOG_GetLogRecordEncrypted(uint32_t id, log_encrypted_record_t* record)
 {
 	log_record_t lrec;
-	xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY);
-	void * pt = FlashGetRecord( id, &g_LogRecorder, &lrec, portMAX_DELAY);
-	xSemaphoreGive(g_Datalogger_Ctrl_xSemaphore);
-	if( pt == NULL)
+	if( xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY) == pdTRUE)
 	{
-		return kStatus_QMC_Err;
-	}
+		void * pt = FlashGetRecord( id, &g_LogRecorder, &lrec, portMAX_DELAY);
+		xSemaphoreGive(g_Datalogger_Ctrl_xSemaphore);
+		if( pt == NULL)
+		{
+			return kStatus_QMC_Err;
+		}
 
-	if( Datalogger_encrypt_log_entry( &lrec, record, portMAX_DELAY) != kStatus_QMC_Ok)
-	{
-		return kStatus_QMC_Err;
-	}
+		if( Datalogger_encrypt_log_entry( &lrec, record, portMAX_DELAY) != kStatus_QMC_Ok)
+		{
+			return kStatus_QMC_Err;
+		}
 
-	return kStatus_QMC_Ok;
+		return kStatus_QMC_Ok;
+	}
+	return kStatus_QMC_Err;
 }
 
 /*!
@@ -602,10 +823,13 @@ qmc_status_t LOG_GetLogRecordEncrypted(uint32_t id, log_encrypted_record_t* reco
  */
 uint32_t LOG_GetLastLogId()
 {
-	xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY);
-	qmc_status_t retv = FlashGetLastIdr( &g_LogRecorder);
-	xSemaphoreGive(g_Datalogger_Ctrl_xSemaphore);
-	return retv;
+	if( xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY) == pdTRUE)
+	{
+		uint32_t idr = FlashGetLastIdr( &g_LogRecorder);
+		xSemaphoreGive(g_Datalogger_Ctrl_xSemaphore);
+		return idr;
+	}
+	return 0;
 }
 
 /*!
@@ -613,9 +837,32 @@ uint32_t LOG_GetLastLogId()
  */
 qmc_status_t LOG_InitDatalogger()
 {
-	xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY);
-	qmc_status_t retv = FlashRecorderInit( &g_LogRecorder);
-	xSemaphoreGive(g_Datalogger_Ctrl_xSemaphore);
+	qmc_status_t retv = kStatus_QMC_Err;
+
+	if( xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY) == pdTRUE)
+	{
+		retv = FlashRecorderInit( &g_InfRecorder);
+		xSemaphoreGive(g_Datalogger_Ctrl_xSemaphore);
+		if( retv != kStatus_QMC_Ok)
+		{
+			dbgRecPRINTF("InfFlashRecorderInit fail. Datalogger.\r\n");
+			return retv;
+		}
+
+		if( xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY) == pdTRUE)
+		{
+			retv = FlashRecorderInit( &g_LogRecorder);
+			xSemaphoreGive(g_Datalogger_Ctrl_xSemaphore);
+			if( retv != kStatus_QMC_Ok)
+			{
+				dbgRecPRINTF("DataFlashRecorderInit fail. Datalogger.\r\n");
+			}
+		}
+		else
+		{
+			retv = kStatus_QMC_Err;
+		}
+	}
 	return retv;
 }
 
@@ -624,9 +871,12 @@ qmc_status_t LOG_InitDatalogger()
  */
 qmc_status_t LOG_FormatDatalogger()
 {
-	xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY);
-	qmc_status_t retv = FlashRecorderFormat( &g_LogRecorder);
-	xSemaphoreGive(g_Datalogger_Ctrl_xSemaphore);
+	qmc_status_t retv = kStatus_QMC_Err;
+	if( xSemaphoreTake(g_Datalogger_Ctrl_xSemaphore, portMAX_DELAY) == pdTRUE)
+	{
+		 retv = FlashRecorderFormat( &g_LogRecorder);
+		xSemaphoreGive(g_Datalogger_Ctrl_xSemaphore);
+	}
 	return retv;
 }
 
@@ -641,7 +891,7 @@ qmc_status_t Datalogger_encrypt_log_entry( log_record_t *psrc, log_encrypted_rec
 	//Get rnd number and use it as SYMKEY and IV
 	retv = LCRYPTO_SE_get_RND( (uint8_t *)&keyiv, sizeof( keyiv));
 	if( retv != kStatus_QMC_Ok)
-		return retv;
+		goto safe_return;
 
 	memcpy( g_export_aes_ctx.iv, keyiv.iv, sizeof( keyiv.iv));
 	memcpy( g_export_aes_ctx.key, keyiv.key, sizeof( keyiv.key));
@@ -651,7 +901,8 @@ qmc_status_t Datalogger_encrypt_log_entry( log_record_t *psrc, log_encrypted_rec
 	if( rbuff == NULL)
 	{
 		dbgRecPRINTF("LCRYPTO Cannot alloc mem16.\n\r");
-		return kStatus_QMC_ErrMem;
+		retv = kStatus_QMC_ErrMem;
+		goto safe_return;
 	}
 	uint8_t *dst16 = (uint8_t *)MAKE_NUMBER_ALIGN( (uint32_t)rbuff, 16);
 	uint8_t *src16 = dst16 + rsize16;
@@ -660,11 +911,12 @@ qmc_status_t Datalogger_encrypt_log_entry( log_record_t *psrc, log_encrypted_rec
 	//Encrypt log_record data using keyiv.iv (IV) and keyiv.key (SYMKEY)
 	//Input (src) and output (dst) buffers must be alligned(16)!!!
 	retv = LCRYPTO_encrypt_aes256_cbc( dst16, src16, sizeof(log_record_t), &g_export_aes_ctx, ticks);
+
 	if( retv != kStatus_QMC_Ok)
 	{
 		vPortFree( rbuff);
 		dbgRecPRINTF("LCRYPTO Encrypt AES CBC#2 Err:%d\r\n", retv);
-		return retv;
+		goto safe_return;
 	}
 	memcpy( pdst->data.lr_enc, dst16, sizeof(pdst->data.lr_enc));
 	vPortFree( rbuff);
@@ -682,7 +934,8 @@ qmc_status_t Datalogger_encrypt_log_entry( log_record_t *psrc, log_encrypted_rec
 	else
 	{
 		dbgRecPRINTF("RSA Encryption Error !!!\n\r");
-		return kStatus_QMC_Err;
+		retv = kStatus_QMC_Err;
+		goto safe_return;
 	}
 
 	//Compute Hash (SHA2-384) of encrypted data
@@ -698,7 +951,8 @@ qmc_status_t Datalogger_encrypt_log_entry( log_record_t *psrc, log_encrypted_rec
 	else
 	{
 		dbgRecPRINTF("SHA2-384 Error %d!!!\n\r", retv);
-		return kStatus_QMC_Err;
+		retv = kStatus_QMC_Err;
+		goto safe_return;
 	}
 
 	//Sign ECDSA_SHA2-384 of hash
@@ -713,12 +967,22 @@ qmc_status_t Datalogger_encrypt_log_entry( log_record_t *psrc, log_encrypted_rec
 	else
 	{
 		dbgRecPRINTF("Data sign Error %d!!!\n\r", retv);
-		return kStatus_QMC_Err;
+		retv = kStatus_QMC_Err;
+		goto safe_return;
 	}
 
 	pdst->length = sizeof( log_encrypted_record_t);
 
-	return kStatus_QMC_Ok;
+	retv = kStatus_QMC_Ok;
+
+safe_return:
+	//Zeroize g_export_aes_ctx in terms of security requirements
+	LCRYPTO_zeroize( (uint8_t*)&g_export_aes_ctx, sizeof(g_export_aes_ctx));
+
+	//Zeroize keyiv in terms of security requirements
+	LCRYPTO_zeroize( (uint8_t *)&keyiv, sizeof( keyiv));
+
+	return retv;
 }
 
 /*!

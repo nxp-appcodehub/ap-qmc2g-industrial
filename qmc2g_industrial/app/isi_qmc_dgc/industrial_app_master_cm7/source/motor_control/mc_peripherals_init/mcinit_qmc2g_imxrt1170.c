@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -88,7 +88,7 @@ static void eFlexPWM1_init(void)
 	PWM1->SM[0].VAL1  = BOARD_BOOTCLOCKRUN_BUS_CLK_ROOT/(2.0*M1_PWM_FREQ)-1;             // Get VAL1 value from given PWM frequency
 #endif
 	PWM1->SM[0].VAL0 = 0;
-	PWM1->SM[0].VAL2  = PWM1->SM[0].INIT/2; // 50% duty
+	PWM1->SM[0].VAL2  = (int16_t)(PWM1->SM[0].INIT)/2; // 50% duty
 	PWM1->SM[0].VAL3  = PWM1->SM[0].VAL1/2; // 50% duty
 
 	PWM1->SM[1].INIT  = PWM1->SM[0].INIT;
@@ -244,14 +244,14 @@ static void eFlexPWM2_init(void) // Synchronized with PWM1
 
 	/* PWM frequency and duty setting */
 #ifdef OVERDRIVE_MODE
-	PWM2->SM[0].INIT  = -((int16_t)(BOARD_BOOTCLOCKOVERDRIVERUN_BUS_CLK_ROOT/(2.0*M1_PWM_FREQ))); // Get INIT value from given PWM frequency
-	PWM2->SM[0].VAL1  = BOARD_BOOTCLOCKOVERDRIVERUN_BUS_CLK_ROOT/(2.0*M1_PWM_FREQ)-1;             // Get VAL1 value from given PWM frequency
+	PWM2->SM[0].INIT  = -((int16_t)(BOARD_BOOTCLOCKOVERDRIVERUN_BUS_CLK_ROOT/(2.0*M2_PWM_FREQ))); // Get INIT value from given PWM frequency
+	PWM2->SM[0].VAL1  = BOARD_BOOTCLOCKOVERDRIVERUN_BUS_CLK_ROOT/(2.0*M2_PWM_FREQ)-1;             // Get VAL1 value from given PWM frequency
 #else
-	PWM2->SM[0].INIT  = -((int16_t)(BOARD_BOOTCLOCKRUN_BUS_CLK_ROOT/(2.0*M1_PWM_FREQ))); // Get INIT value from given PWM frequency
-	PWM2->SM[0].VAL1  = BOARD_BOOTCLOCKRUN_BUS_CLK_ROOT/(2.0*M1_PWM_FREQ)-1;             // Get VAL1 value from given PWM frequency
+	PWM2->SM[0].INIT  = -((int16_t)(BOARD_BOOTCLOCKRUN_BUS_CLK_ROOT/(2.0*M2_PWM_FREQ))); // Get INIT value from given PWM frequency
+	PWM2->SM[0].VAL1  = BOARD_BOOTCLOCKRUN_BUS_CLK_ROOT/(2.0*M2_PWM_FREQ)-1;             // Get VAL1 value from given PWM frequency
 #endif
 	PWM2->SM[0].VAL0 = 0;
-	PWM2->SM[0].VAL2  = PWM2->SM[0].INIT/2; // 50% duty
+	PWM2->SM[0].VAL2  = (int16_t)(PWM2->SM[0].INIT)/2; // 50% duty
 	PWM2->SM[0].VAL3  = PWM2->SM[0].VAL1/2; // 50% duty
 
 	PWM2->SM[1].INIT  = PWM2->SM[0].INIT;
@@ -292,9 +292,9 @@ static void eFlexPWM2_init(void) // Synchronized with PWM1
 	PWM2->SM[1].DISMAP[0] = (PWM2->SM[0].DISMAP[0] & ~(PWM_DISMAP_DIS0A_MASK|PWM_DISMAP_DIS0B_MASK))|PWM_DISMAP_DIS0A(1<<M2_FAULT_NUM)|PWM_DISMAP_DIS0B(1<<M2_FAULT_NUM);
 	PWM2->SM[2].DISMAP[0] = (PWM2->SM[0].DISMAP[0] & ~(PWM_DISMAP_DIS0A_MASK|PWM_DISMAP_DIS0B_MASK))|PWM_DISMAP_DIS0A(1<<M2_FAULT_NUM)|PWM_DISMAP_DIS0B(1<<M2_FAULT_NUM);
 
-	PWM2->FCTRL = (PWM2->FCTRL & ~PWM_FCTRL_FLVL_MASK)|PWM_FCTRL_FLVL(1<<M1_FAULT_NUM); // A logic 1 on fault indicates a fault condition
+	PWM2->FCTRL = (PWM2->FCTRL & ~PWM_FCTRL_FLVL_MASK)|PWM_FCTRL_FLVL(1<<M2_FAULT_NUM); // A logic 1 on fault indicates a fault condition
 	PWM2->FCTRL = (PWM2->FCTRL & ~PWM_FCTRL_FAUTO_MASK); // Manual clearing for fault0~3
-	PWM2->FCTRL = (PWM2->FCTRL & ~PWM_FCTRL_FSAFE_MASK)|PWM_FCTRL_FSAFE(1<<M1_FAULT_NUM); // Safe mode for fault
+	PWM2->FCTRL = (PWM2->FCTRL & ~PWM_FCTRL_FSAFE_MASK)|PWM_FCTRL_FSAFE(1<<M2_FAULT_NUM); // Safe mode for fault
 
 	PWM2->FSTS = (PWM2->FSTS & ~PWM_FSTS_FFULL_MASK)|PWM_FSTS_FFULL(1<<M2_FAULT_NUM); // Full cycle recovery for fault0
 	PWM2->FCTRL2 = (PWM2->FCTRL2 & ~PWM_FCTRL2_NOCOMB_MASK)|PWM_FCTRL2_NOCOMB(1<<M2_FAULT_NUM); // No combinational path for fault. Fault signal will be filtered
@@ -347,14 +347,14 @@ static void eFlexPWM3_init(void) // Synchronized with PWM1
 
 	/* PWM frequency and duty setting */
 #ifdef OVERDRIVE_MODE
-	PWM3->SM[0].INIT  = -((int16_t)(BOARD_BOOTCLOCKOVERDRIVERUN_BUS_CLK_ROOT/(2.0*M1_PWM_FREQ))); // Get INIT value from given PWM frequency
-	PWM3->SM[0].VAL1  = BOARD_BOOTCLOCKOVERDRIVERUN_BUS_CLK_ROOT/(2.0*M1_PWM_FREQ)-1;             // Get VAL1 value from given PWM frequency
+	PWM3->SM[0].INIT  = -((int16_t)(BOARD_BOOTCLOCKOVERDRIVERUN_BUS_CLK_ROOT/(2.0*M3_PWM_FREQ))); // Get INIT value from given PWM frequency
+	PWM3->SM[0].VAL1  = BOARD_BOOTCLOCKOVERDRIVERUN_BUS_CLK_ROOT/(2.0*M3_PWM_FREQ)-1;             // Get VAL1 value from given PWM frequency
 #else
-	PWM3->SM[0].INIT  = -((int16_t)(BOARD_BOOTCLOCKRUN_BUS_CLK_ROOT/(2.0*M1_PWM_FREQ))); // Get INIT value from given PWM frequency
-	PWM3->SM[0].VAL1  = BOARD_BOOTCLOCKRUN_BUS_CLK_ROOT/(2.0*M1_PWM_FREQ)-1;             // Get VAL1 value from given PWM frequency
+	PWM3->SM[0].INIT  = -((int16_t)(BOARD_BOOTCLOCKRUN_BUS_CLK_ROOT/(2.0*M3_PWM_FREQ))); // Get INIT value from given PWM frequency
+	PWM3->SM[0].VAL1  = BOARD_BOOTCLOCKRUN_BUS_CLK_ROOT/(2.0*M3_PWM_FREQ)-1;             // Get VAL1 value from given PWM frequency
 #endif
 	PWM3->SM[0].VAL0 = 0;
-	PWM3->SM[0].VAL2  = PWM3->SM[0].INIT/2; // 50% duty
+	PWM3->SM[0].VAL2  = (int16_t)(PWM3->SM[0].INIT)/2; // 50% duty
 	PWM3->SM[0].VAL3  = PWM3->SM[0].VAL1/2; // 50% duty
 
 	PWM3->SM[1].INIT  = PWM3->SM[0].INIT;
@@ -450,14 +450,14 @@ static void eFlexPWM4_init(void) // Synchronized with PWM1
 
 	/* PWM frequency and duty setting */
 #ifdef OVERDRIVE_MODE
-	PWM4->SM[0].INIT  = -((int16_t)(BOARD_BOOTCLOCKOVERDRIVERUN_BUS_CLK_ROOT/(2.0*M1_PWM_FREQ))); // Get INIT value from given PWM frequency
-	PWM4->SM[0].VAL1  = BOARD_BOOTCLOCKOVERDRIVERUN_BUS_CLK_ROOT/(2.0*M1_PWM_FREQ)-1;             // Get VAL1 value from given PWM frequency
+	PWM4->SM[0].INIT  = -((int16_t)(BOARD_BOOTCLOCKOVERDRIVERUN_BUS_CLK_ROOT/(2.0*M4_PWM_FREQ))); // Get INIT value from given PWM frequency
+	PWM4->SM[0].VAL1  = BOARD_BOOTCLOCKOVERDRIVERUN_BUS_CLK_ROOT/(2.0*M4_PWM_FREQ)-1;             // Get VAL1 value from given PWM frequency
 #else
-	PWM4->SM[0].INIT  = -((int16_t)(BOARD_BOOTCLOCKRUN_BUS_CLK_ROOT/(2.0*M1_PWM_FREQ))); // Get INIT value from given PWM frequency
-	PWM4->SM[0].VAL1  = BOARD_BOOTCLOCKRUN_BUS_CLK_ROOT/(2.0*M1_PWM_FREQ)-1;             // Get VAL1 value from given PWM frequency
+	PWM4->SM[0].INIT  = -((int16_t)(BOARD_BOOTCLOCKRUN_BUS_CLK_ROOT/(2.0*M4_PWM_FREQ))); // Get INIT value from given PWM frequency
+	PWM4->SM[0].VAL1  = BOARD_BOOTCLOCKRUN_BUS_CLK_ROOT/(2.0*M4_PWM_FREQ)-1;             // Get VAL1 value from given PWM frequency
 #endif
 	PWM4->SM[0].VAL0 = 0;
-	PWM4->SM[0].VAL2  = PWM4->SM[0].INIT/2; // 50% duty
+	PWM4->SM[0].VAL2  = (int16_t)(PWM4->SM[0].INIT)/2; // 50% duty
 	PWM4->SM[0].VAL3  = PWM4->SM[0].VAL1/2; // 50% duty
 
 	PWM4->SM[1].INIT  = PWM4->SM[0].INIT;
@@ -750,9 +750,6 @@ static void qdc1_init(void)
 	ENC1->CTRL3 = ENC_CTRL3_PMEN_MASK|ENC_CTRL3_PRSC(M1_QDC_TIMER_PRESCALER);
 	ENC1->CTRL |= ENC_CTRL_XIE_MASK; // Enable index signal interrupt
 
-	NVIC_SetPriority(ENC1_IRQn, 3); // Priority 1
-	NVIC_EnableIRQ(ENC1_IRQn);
-
 	g_sM1QdcSensor.pQDC_base = ENC1;
 	g_sM1QdcSensor.ui8MotorNum = MOTOR_1;
 	MCDRV_QdcInit(&g_sM1QdcSensor);
@@ -770,11 +767,8 @@ static void qdc2_init(void)
 	ENC2->UPOS = 0;
 	ENC2->FILT = ENC_FILT_FILT_CNT(2)|ENC_FILT_FILT_PER(1);
 	ENC2->CTRL2 |= ENC_CTRL2_MOD_MASK|ENC_CTRL2_REVMOD_MASK; // Enable modulo counting, and REV is controlled by modulo counting
-	ENC2->CTRL3 = ENC_CTRL3_PMEN_MASK|ENC_CTRL3_PRSC(M1_QDC_TIMER_PRESCALER);
+	ENC2->CTRL3 = ENC_CTRL3_PMEN_MASK|ENC_CTRL3_PRSC(M2_QDC_TIMER_PRESCALER);
 	ENC2->CTRL |= ENC_CTRL_XIE_MASK; // Enable index signal interrupt
-
-//	NVIC_SetPriority(ENC2_IRQn, 3); // Priority 1
-//	NVIC_EnableIRQ(ENC2_IRQn);
 
 	g_sM2QdcSensor.pQDC_base = ENC2;
 	g_sM2QdcSensor.ui8MotorNum = MOTOR_2;
@@ -793,11 +787,8 @@ static void qdc3_init(void)
 	ENC3->UPOS = 0;
 	ENC3->FILT = ENC_FILT_FILT_CNT(2)|ENC_FILT_FILT_PER(1);
 	ENC3->CTRL2 |= ENC_CTRL2_MOD_MASK|ENC_CTRL2_REVMOD_MASK; // Enable modulo counting, and REV is controlled by modulo counting
-	ENC3->CTRL3 = ENC_CTRL3_PMEN_MASK|ENC_CTRL3_PRSC(M1_QDC_TIMER_PRESCALER);
+	ENC3->CTRL3 = ENC_CTRL3_PMEN_MASK|ENC_CTRL3_PRSC(M3_QDC_TIMER_PRESCALER);
 	ENC3->CTRL |= ENC_CTRL_XIE_MASK; // Enable index signal interrupt
-
-//	NVIC_SetPriority(ENC3_IRQn, 3); // Priority 1
-//	NVIC_EnableIRQ(ENC3_IRQn);
 
 	g_sM3QdcSensor.pQDC_base = ENC3;
 	g_sM3QdcSensor.ui8MotorNum = MOTOR_3;
@@ -816,11 +807,8 @@ static void qdc4_init(void)
 	ENC4->UPOS = 0;
 	ENC4->FILT = ENC_FILT_FILT_CNT(2)|ENC_FILT_FILT_PER(1);
 	ENC4->CTRL2 |= ENC_CTRL2_MOD_MASK|ENC_CTRL2_REVMOD_MASK; // Enable modulo counting, and REV is controlled by modulo counting
-	ENC4->CTRL3 = ENC_CTRL3_PMEN_MASK|ENC_CTRL3_PRSC(M1_QDC_TIMER_PRESCALER);
+	ENC4->CTRL3 = ENC_CTRL3_PMEN_MASK|ENC_CTRL3_PRSC(M4_QDC_TIMER_PRESCALER);
 	ENC4->CTRL |= ENC_CTRL_XIE_MASK; // Enable index signal interrupt
-
-//	NVIC_SetPriority(ENC4_IRQn, 3); // Priority 1
-//	NVIC_EnableIRQ(ENC4_IRQn);
 
 	g_sM4QdcSensor.pQDC_base = ENC4;
 	g_sM4QdcSensor.ui8MotorNum = MOTOR_4;

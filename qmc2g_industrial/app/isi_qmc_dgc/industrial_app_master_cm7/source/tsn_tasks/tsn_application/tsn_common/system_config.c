@@ -44,14 +44,8 @@ struct board_config *system_config_get_board(void)
  */
 struct net_config *system_config_get_net(int port_id)
 {
-    char port[10];
-
     if (port_id >= BOARD_NUM_PORTS)
         return NULL;
-
-    snprintf(port, 10, "/port%u", port_id);
-
-    /*MAc address and IP address must be hard coded*/
 
     return &system_cfg.net[port_id];
 }

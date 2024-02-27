@@ -28,8 +28,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _MID_DEF_H_
-#define _MID_DEF_H_
+#ifndef MID_DEF_H
+#define MID_DEF_H
 
 #include <mcinit.h>
 #include "m1_pmsm_appconfig.h"
@@ -333,4 +333,4 @@ typedef struct
 
 extern mid_struct_t g_sMID;
 
-#endif /* _MID_DEF_H_ */
+#endif /* MID_DEF_H */

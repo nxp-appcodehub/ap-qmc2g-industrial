@@ -43,6 +43,40 @@
 /*!
  * @brief Converts a JSON ticket from the server to a binary ticket.
  *
+ * @startuml
+ * start
+ * :Validate and parse JSON in pJson;
+ * if () then (fail)
+ *   :return JSONIllegalDocument;
+ *   stop
+ * endif
+ * :pSignatureStr = Get value of ticket.signature field in JSON;
+ * if () then (fail)
+ *   :return JSONIllegalDocument;
+ *   stop
+ * endif
+ * :pTimeoutStr = Get value of ticket.timeout field in JSON;
+ * if () then (fail)
+ *   :return JSONIllegalDocument;
+ *   stop
+ * endif
+ * :uint32_t timeout = 0
+ * AWDG_UTILS_ParseUint32(pTimeoutStr, timeoutStrLength, &timeout);
+ * if () then (fail)
+ *  :return JSONIllegalDocument;
+ *  stop
+ * endif
+ * :signature = B64 decode pSignatureStr;
+ * if () then (fail)
+ *  :return JSONIllegalDocument;
+ *  stop
+ * endif
+ * :~*pTicketBuffer = timeout LE | signature
+ * ~*pTicketBufferSize = length of data in pTicketBuffer;
+ * :return JSONSuccess;
+ * stop
+ * @enduml
+ * 
  * @param[in] pJson Pointer to the JSON string to convert.
  * @param[in] jsonLen Length of the JSON string.
  * @param[out] pTicketBuffer Pointer to the buffer where the converted ticket is written.
@@ -52,7 +86,7 @@
  *                                  variable.
  * @return JSONStatus_t status code
  * @retval JSONSuccess The function was successful.
- * @retval !JSONSuccess An error occurred.
+ * @retval JSONIllegalDocument An error occurred.
  */
 JSONStatus_t AWDG_TICKET_JsonToBinaryTicket(const char *pJson,
                                             const size_t jsonLen,
@@ -60,6 +94,7 @@ JSONStatus_t AWDG_TICKET_JsonToBinaryTicket(const char *pJson,
                                             size_t *pTicketBufferSize)
 {
     JSONStatus_t jsonRet      = JSONIllegalDocument;
+    JSONTypes_t  jsonType     = JSONInvalid;
     int intRet                = -1;
     const char *pSignatureStr = NULL;
     size_t signatureStrLength = 0U;
@@ -89,16 +124,16 @@ JSONStatus_t AWDG_TICKET_JsonToBinaryTicket(const char *pJson,
 
     /* get signature field */
     jsonRet = JSON_SearchConst(pJson, jsonLen, AWDG_TICKET_JSON_SIGNATURE_FIELD, AWDG_TICKET_JSON_SIGNATURE_FIELD_LEN,
-                               &pSignatureStr, &signatureStrLength, NULL);
-    if (JSONSuccess != jsonRet)
+                               &pSignatureStr, &signatureStrLength, &jsonType);
+    if ((JSONSuccess != jsonRet) || (JSONString != jsonType))
     {
         return JSONIllegalDocument;
     }
 
     /* get timeout field */
     jsonRet = JSON_SearchConst(pJson, jsonLen, AWDG_TICKET_JSON_TIMEOUT_FIELD, AWDG_TICKET_JSON_TIMEOUT_FIELD_LEN,
-                               &pTimeoutStr, &timeoutStrLength, NULL);
-    if (JSONSuccess != jsonRet)
+                               &pTimeoutStr, &timeoutStrLength, &jsonType);
+    if ((JSONSuccess != jsonRet) || (JSONNumber != jsonType))
     {
         return JSONIllegalDocument;
     }

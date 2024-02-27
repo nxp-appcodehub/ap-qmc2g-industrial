@@ -119,8 +119,15 @@ static err_t low_level_init(struct netif *netif)
     /* set MAC hardware address length */
     netif->hwaddr_len = ETHARP_HWADDR_LEN;
 
-    /* set MAC hardware address, read from system_cfg */
-    memcpy(netif->hwaddr, net_cfg->hw_addr, netif->hwaddr_len);
+    if (netif->hwaddr_len <= NETIF_MAX_HWADDR_LEN)
+    {
+    	/* set MAC hardware address, read from system_cfg */
+    	memcpy(netif->hwaddr, net_cfg->hw_addr, netif->hwaddr_len);
+    }
+    else
+    {
+    	goto err;
+    }
 
     /* maximum transfer unit */
     netif->mtu = ETHER_MTU;
@@ -251,7 +258,7 @@ static struct pbuf *low_level_input(struct netif *netif)
 {
     struct ethernetif *ethernetif = netif->state;
     struct pbuf *p;
-    int len;
+    int16_t len;
 
     len = PBUF_POOL_BUFSIZE;
 

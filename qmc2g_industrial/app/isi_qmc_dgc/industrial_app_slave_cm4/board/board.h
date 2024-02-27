@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 NXP
+ * Copyright 2022-2023 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -8,6 +8,7 @@
 #ifndef _BOARD_H_
 #define _BOARD_H_
 
+#include "clock_config.h"
 #include "fsl_common.h"
 #include "fsl_gpio.h"
 #include "fsl_clock.h"
@@ -465,13 +466,18 @@
 #define SPI_DEVICE_SEL1_HIGH() GPIO_PortSet(BOARD_SPI_DEVICE_SEL1_GPIO, 1U << BOARD_SPI_DEVICE_SEL1_PIN) 
 
 /*! @brief The MIPI panel pins. */
-/*define BOARD_MIPI_PANEL_RST_GPIO   		GPIO5 // potential conflict with LPUART8_RX (Freemaster)
-#define BOARD_MIPI_PANEL_RST_PIN    		10 */
+#if FEATURE_LCD_RESET_PIN_USED
+#define BOARD_MIPI_PANEL_RST_GPIO   		GPIO5 // potential conflict with LPUART8_RX (Freemaster)
+#define BOARD_MIPI_PANEL_RST_PIN    		10
+#endif /* #if FEATURE_LCD_RESET_PIN_USED */
+
+#if FEATURE_LCD_POWER_PIN_USED
 #define BOARD_MIPI_PANEL_POWER_GPIO 		GPIO6 // potential conflict with BOARD_SPI_DEVICE_SEL0_GPIO (2nd option)
 #define BOARD_MIPI_PANEL_POWER_PIN  		10
 /* Back light pin. */
 #define BOARD_MIPI_PANEL_BL_GPIO 			BOARD_MIPI_PANEL_POWER_GPIO
 #define BOARD_MIPI_PANEL_BL_PIN  			BOARD_MIPI_PANEL_POWER_PIN
+#endif /* #if FEATURE_LCD_POWER_PIN_USED */
 
 /* Touch panel. */
 #define BOARD_MIPI_PANEL_TOUCH_I2C_BASEADDR      BOARD_GENERAL_I2C_BASEADDR
@@ -479,10 +485,13 @@
 #define BOARD_MIPI_PANEL_TOUCH_I2C_CLOCK_SOURCE  BOARD_GENERAL_I2C_CLOCK_SOURCE_SELECT
 #define BOARD_MIPI_PANEL_TOUCH_I2C_CLOCK_DIVIDER BOARD_GENERAL_I2C_CLOCK_SOURCE_DIVIDER
 #define BOARD_MIPI_PANEL_TOUCH_I2C_CLOCK_FREQ    BOARD_GENERAL_I2C_CLOCK_FREQ
-/*#define BOARD_MIPI_PANEL_TOUCH_RST_GPIO          GPIO5 // potential conflict with LPUART8_TX (Freemaster)
-#define BOARD_MIPI_PANEL_TOUCH_RST_PIN           9 */
+
+#if FEATURE_LCD_TOUCH_PINS_USED
+#define BOARD_MIPI_PANEL_TOUCH_RST_GPIO          GPIO5 // potential conflict with LPUART8_TX (Freemaster)
+#define BOARD_MIPI_PANEL_TOUCH_RST_PIN           9
 #define BOARD_MIPI_PANEL_TOUCH_INT_GPIO          GPIO6 // potential conflict with BOARD_SPI_DEVICE_SEL1_GPIO (2nd option)
 #define BOARD_MIPI_PANEL_TOUCH_INT_PIN           11
+#endif /* #if FEATURE_LCD_TOUCH_PINS_USED */
 
 /* SD card */
 #define BOARD_HAS_SDCARD (1U)

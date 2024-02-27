@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -125,7 +125,7 @@ static void NAFE_formatResultArray(void *pData, NAFE_chnGain_t chGain, NAFE_regD
  *
  * @retval Returns status.
  */
-static status_t NAFE_setChannel(NAFE_devHdl_t *devHdl, uint32_t chnIndex);
+static status_t NAFE_setChannel(NAFE_devHdl_t *devHdl, uint16_t chnIndex);
 
 /*!
  * @brief Starts the blocking SCSR operation.
@@ -213,6 +213,11 @@ status_t NAFE_init(NAFE_devHdl_t *devHdl, NAFE_xferHdl_t *xferHdl)
     {
     	return kStatus_Fail;
     }
+
+	if (xferHdl->chnAmt > MAX_LOGICAL_CHANNELS)
+	{
+		return kStatus_Fail;
+	}
 
     /* Check enabled channel mask. */
     chnMask = devHdl->sysConfig->enabledChnMask;
@@ -321,7 +326,10 @@ status_t NAFE_startSample(NAFE_devHdl_t *devHdl, NAFE_xferHdl_t *xferHdl)
     xferHdl->contSampleCnt= 0u;                                    /* For continuous sample modes. */
     xferHdl->chnSampleCnt = 0u;                                    /* For multi-channel sample modes. */
 
-    assert(xferHdl->chnAmt <= 16u);
+	if ((xferHdl->chnAmt > MAX_LOGICAL_CHANNELS) || (xferHdl->requestedChn >= MAX_LOGICAL_CHANNELS))
+	{
+		return kStatus_Fail;
+	}
 
 	status = NAFE_readRegBlock(devHdl, NAFE_REG_SYS_STATUS0, &sys_status0_reg, kNafeRegDataSize_16bits);  /* Read the SYS_STATUS0 register */
 	if ((status == kStatus_Fail) || (!(sys_status0_reg & SYS_STATUS0_CHIP_READY_MASK))) /* Check if the CHIP is ready (powered on) */
@@ -458,7 +466,7 @@ static inline status_t NAFE_writeRegBlock(NAFE_devHdl_t *devHdl, uint16_t regAdd
     uint32_t combCmd = 0;
 
     NAFE_combCmdForAccessRegs(devHdl->devAddr, regAddr, kNafeRegAccess_write, &combCmd);
-    return NAFE_HAL_writeRegBlock(devHdl->halHdl, combCmd, data, regSize);
+    return NAFE_HAL_writeRegBlock((FLEXIO_SPI_Type *) devHdl->halHdl, combCmd, data, (uint16_t) regSize);
 }
 
 /*!
@@ -477,7 +485,7 @@ static inline status_t NAFE_readRegBlock(NAFE_devHdl_t *devHdl, uint16_t regAddr
     uint32_t combCmd = 0;
 
     NAFE_combCmdForAccessRegs(devHdl->devAddr, regAddr, kNafeRegAccess_read, &combCmd);
-    return NAFE_HAL_readRegBlock(devHdl->halHdl, combCmd, data, regSize);
+    return NAFE_HAL_readRegBlock((FLEXIO_SPI_Type *) devHdl->halHdl, combCmd, data, (uint16_t) regSize);
 }
 
 /*!
@@ -493,7 +501,7 @@ static inline status_t NAFE_sendCmdBlock(NAFE_devHdl_t *devHdl, uint32_t cmd)
     uint32_t combCmd = 0;
 
     NAFE_combCmdForInstructionCmds(devHdl->devAddr, cmd, &combCmd);
-    return NAFE_HAL_sendCmdBlock(devHdl->halHdl, combCmd);
+    return NAFE_HAL_sendCmdBlock((FLEXIO_SPI_Type *) devHdl->halHdl, combCmd);
 }
 
 /*!
@@ -626,7 +634,7 @@ static void NAFE_formatResultArray(void *pData, NAFE_chnGain_t chGain, NAFE_regD
 
     if(dataSizeInBits == kNafeRegDataSize_24bits)
     {
-        while (len--)
+        while (len > 0)
         {
             *u32Result <<= 8u;
             s32Tmp = (int32_t)*u32Result;
@@ -634,11 +642,12 @@ static void NAFE_formatResultArray(void *pData, NAFE_chnGain_t chGain, NAFE_regD
             *f64Result = (s32Tmp * 10.0) / (0x1000000 * PGA);
             u32Result--;
             f64Result--;
+            len--;
         }
     }
     else if(dataSizeInBits == kNafeRegDataSize_16bits)
     {
-        while (len--)
+        while (len > 0)
         {
             u32Tmp = *u16Result;
             u32Tmp <<= 16u;
@@ -647,6 +656,7 @@ static void NAFE_formatResultArray(void *pData, NAFE_chnGain_t chGain, NAFE_regD
             *f64Result = (s32Tmp * 10.0) / (0x1000000 * PGA);
             u16Result--;
             f64Result--;
+            len--;
         }
     }
 }
@@ -659,8 +669,13 @@ static void NAFE_formatResultArray(void *pData, NAFE_chnGain_t chGain, NAFE_regD
  *
  * @retval Returns status.
  */
-static status_t NAFE_setChannel(NAFE_devHdl_t *devHdl, uint32_t chnIndex)
+static status_t NAFE_setChannel(NAFE_devHdl_t *devHdl, uint16_t chnIndex)
 {
+	if (chnIndex >= MAX_LOGICAL_CHANNELS)
+	{
+		return kStatus_Fail;
+	}
+
 	status_t status = NAFE_sendCmdBlock(devHdl, chnIndex);
     devHdl->currentChnIndex = chnIndex;
 
@@ -716,8 +731,8 @@ static status_t NAFE_scsrBlock(NAFE_devHdl_t *devHdl, NAFE_xferHdl_t *xferHdl)
     }
 
     /* Read the result. */
-    status = NAFE_readRegBlock(devHdl, NAFE_REG_CH_DATA0 + devHdl->currentChnIndex, \
-    		xferHdl->pResult, xferHdl->adcResolutionBits);
+    status = NAFE_readRegBlock(devHdl, (uint16_t) NAFE_REG_CH_DATA0 + devHdl->currentChnIndex, \
+    		(uint32_t*) xferHdl->pResult, xferHdl->adcResolutionBits);
 
 	if (status != kStatus_Success)
 	{
@@ -773,8 +788,8 @@ static status_t NAFE_sccrBlock(NAFE_devHdl_t *devHdl, NAFE_xferHdl_t *xferHdl)
         NAFE_HAL_delay(NAFE_READING_DELAY);
 
         /* Read the result. */
-        status = NAFE_readRegBlock(devHdl, NAFE_REG_CH_DATA0 + devHdl->currentChnIndex, \
-            pResult, xferHdl->adcResolutionBits);
+        status = NAFE_readRegBlock(devHdl, (uint16_t) NAFE_REG_CH_DATA0 + devHdl->currentChnIndex, \
+        		(uint32_t*) pResult, xferHdl->adcResolutionBits);
 
         if (status != kStatus_Success)
         {
@@ -847,8 +862,8 @@ static status_t NAFE_mcsrBlock(NAFE_devHdl_t *devHdl, NAFE_xferHdl_t *xferHdl)
     }
 
     /* Read the result. */
-    status = NAFE_readRegBlock(devHdl, NAFE_REG_CH_DATA0 + adc_conv_ch, \
-    		xferHdl->pResult, xferHdl->adcResolutionBits);
+    status = NAFE_readRegBlock(devHdl, (uint16_t) NAFE_REG_CH_DATA0 + adc_conv_ch, \
+    		(uint32_t*) xferHdl->pResult, xferHdl->adcResolutionBits);
 
     if (status != kStatus_Success)
     {
@@ -946,8 +961,8 @@ static status_t NAFE_mcmrBlock(NAFE_devHdl_t *devHdl, NAFE_xferHdl_t *xferHdl)
         }
 
         /* Read the result. */
-        status = NAFE_readRegBlock(devHdl, NAFE_REG_CH_DATA0 + devHdl->chConfig[i].chnIndex, \
-                              pResult, xferHdl->adcResolutionBits);
+        status = NAFE_readRegBlock(devHdl, (uint16_t) NAFE_REG_CH_DATA0 + devHdl->chConfig[i].chnIndex, \
+        		(uint32_t*) pResult, xferHdl->adcResolutionBits);
 
         if (status != kStatus_Success)
         {
@@ -1055,8 +1070,8 @@ static status_t NAFE_mccrBlock(NAFE_devHdl_t *devHdl, NAFE_xferHdl_t *xferHdl)
             NAFE_HAL_delay(NAFE_READING_DELAY);
 
             /* Read the result. */
-            status = NAFE_readRegBlock(devHdl, NAFE_REG_CH_DATA0 + devHdl->chConfig[i].chnIndex, \
-                pResult, xferHdl->adcResolutionBits);
+            status = NAFE_readRegBlock(devHdl, (uint16_t) NAFE_REG_CH_DATA0 + devHdl->chConfig[i].chnIndex, \
+                (uint32_t*) pResult, xferHdl->adcResolutionBits);
 
             if (status != kStatus_Success)
             {

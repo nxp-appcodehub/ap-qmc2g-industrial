@@ -152,7 +152,7 @@ void GPIO13_Combined_0_31_IRQHandler(void)
 void SNVS_HP_NON_TZ_IRQHandler(void)
 {
     /* caused by HP RTC periodic interrupt */
-    if (SNVS_HP_RTC_GetStatusFlags(SNVS) & kSNVS_RTC_PeriodicInterruptFlag)
+    if (SNVS_HP_RTC_GetStatusFlags(SNVS) & (uint32_t)kSNVS_RTC_PeriodicInterruptFlag)
     {
         /* clear interrupt flag */
         SNVS_HP_RTC_ClearStatusFlags(SNVS, kSNVS_RTC_PeriodicInterruptFlag);

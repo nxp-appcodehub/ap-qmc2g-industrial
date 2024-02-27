@@ -65,6 +65,8 @@ sss_status_t QMC2_SE_FactoryReset(scp03_keys_t *scp03);
 sss_status_t QMC2_SE_GetRpcSeedAndKey(scp03_keys_t *scp03, uint8_t *data, size_t dataLength, uint8_t *key, size_t keyLength);
 /* Erase object*/
 sss_status_t QMC2_SE_EraseObj(scp03_keys_t *scp03, uint32_t objectId);
+/* sha512*/
+sss_status_t SE_MbedtlsSha512(uint32_t input, size_t ilen, uint8_t output[64],  int is384);
 ////////////////////////////////////////////////////////////////////////////////
 // EOF
 ////////////////////////////////////////////////////////////////////////////////

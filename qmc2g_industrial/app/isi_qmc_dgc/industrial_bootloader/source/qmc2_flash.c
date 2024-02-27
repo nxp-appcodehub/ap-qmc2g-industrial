@@ -12,7 +12,7 @@
  * @file    sbl_flash.c
  * @brief   Flash API.
  */
-
+#include "fsl_common.h"
 #include <qmc2_boot_cfg.h>
 #include <qmc2_flash.h>
 #include "fsl_romapi.h"
@@ -135,10 +135,39 @@ const uint32_t g_customLUT[CUSTOM_LUT_LENGTH] = {
 
 };
 
-void flexspi1_octal_bus_init_with_rxSC( flexspi_read_sample_clock_t rxSampleClock);
+static void flexspi1_octal_bus_init_with_rxSC( flexspi_read_sample_clock_t rxSampleClock);
+static void allowCm7ReadWriteToFlexSPIs(void);
+static void allowCm7ReadToFlexSPIs(void);
 /**************************************************************************************
  * 									Private functions								  *
  **************************************************************************************/
+/* Allow CM7 read/write access to FlexSPI peripherals. */
+static void allowCm7ReadWriteToFlexSPIs(void)
+{
+	RDC->MR[8].MRC = 0x400000F3U;
+	RDC->MR[16].MRC = 0x400000F3U;
+	RDC->PDAP[3] = 0x0000000BU;
+	RDC->PDAP[4] = 0x0000000BU;
+
+   	/* Data Synchronization Barrier, Instruction Synchronization Barrier, and Data Memory Barrier. */
+    __DSB();
+    __ISB();
+    __DMB();
+}
+/* Allow CM7 read access to FlexSPI peripherals. */
+static void allowCm7ReadToFlexSPIs(void)
+{
+	RDC->MR[8].MRC = 0x400000F2U;
+	RDC->MR[16].MRC = 0x400000F2U;
+	RDC->PDAP[3] = 0x0000000AU;
+	RDC->PDAP[4] = 0x0000000AU;
+
+   	/* Data Synchronization Barrier, Instruction Synchronization Barrier, and Data Memory Barrier. */
+    __DSB();
+    __ISB();
+    __DMB();
+}
+
 void flexspi1_octal_bus_init_with_rxSC( flexspi_read_sample_clock_t rxSampleClock)
 {
     flexspi_config_t config;
@@ -214,13 +243,20 @@ void flexspi1_octal_bus_init_with_rxSC( flexspi_read_sample_clock_t rxSampleCloc
  **************************************************************************************/
 sss_status_t QMC2_FLASH_OctalRamInit(void)
 {
+	/* Allow CM7 read/write access to FlexSPI peripherals. */
+	allowCm7ReadWriteToFlexSPIs();
 	flexspi1_octal_bus_init_with_rxSC( kFLEXSPI_ReadSampleClkExternalInputFromDqsPad);
+	/* Allow CM7 read access to FlexSPI peripherals. */
+	allowCm7ReadToFlexSPIs();
 	return kStatus_SSS_Success;
 }
 
 sss_status_t QMC2_FLASH_DriverInit(void)
 {
 	status_t status = kStatus_Fail;
+
+	/* Allow CM7 read/write access to FlexSPI peripherals. */
+	allowCm7ReadWriteToFlexSPIs();
 
     ROM_API_Init();
 
@@ -231,15 +267,16 @@ sss_status_t QMC2_FLASH_DriverInit(void)
     if (status != kStatus_Success)
     {
     	PRINTF("\r\nERROR: Get FLEXSPI NOR configuration block failure!\r\n");
-    	return kStatus_SSS_Fail;
+    	goto cleanup;
     }
 
+    status = kStatus_Fail;
 	/* Init FlexSPI1 because the FlexSPI2 was initialized by ROM */
 	status = ROM_FLEXSPI_NorFlash_Init(FLEXSPI1_INSTANCE, &flexspi1NorCfg);
     if (status != kStatus_Success)
     {
     	PRINTF("\r\nERROR: ROM Flash Init failed!\r\n");
-    	return kStatus_SSS_Fail;
+    	goto cleanup;
     }
 
     flexspi2NorCfg.memConfig.lookupTable[20] = 0x8200421;
@@ -248,7 +285,16 @@ sss_status_t QMC2_FLASH_DriverInit(void)
 	flexspi2NorCfg.memConfig.lookupTable[37] = 0x2204;
 	flexspi2NorCfg.memConfig.lookupTable[44] = 0x460;
 
-	return kStatus_SSS_Success;
+cleanup:
+
+	allowCm7ReadToFlexSPIs();
+
+	if (status == kStatus_Success)
+	{
+		return kStatus_SSS_Success;
+	}
+
+	return status;
 }
 
 
@@ -295,6 +341,8 @@ sss_status_t QMC2_FLASH_Erase(uint32_t dst, uint32_t length)
 	/* Disable interrupts */
 	primask = DisableGlobalIRQ();
 
+	/* Allow CM7 read/write access to FlexSPI peripherals. */
+	allowCm7ReadWriteToFlexSPIs();
 
 	USER_LED4_ON();
 	while((len >= QSPI_FLASH_ERASE_SECTOR_SIZE))
@@ -332,13 +380,14 @@ cleanup:
 	USER_LED4_OFF();
 	/* Invalidate Data cache. */
 	DCACHE_InvalidateByRange(dst, length);
+	/* Allow CM7 write access to FlexSPI peripherals. */
+	allowCm7ReadToFlexSPIs();
     /* Enable interrupts */
     EnableGlobalIRQ(primask);
 
 	return sssStatus;
 }
 
-//TODO remove commented code
 sss_status_t QMC2_FLASH_ProgramPages(uint32_t dst, const void *src, uint32_t length)
 {
 	status_t status = kStatus_Fail;
@@ -353,18 +402,12 @@ sss_status_t QMC2_FLASH_ProgramPages(uint32_t dst, const void *src, uint32_t len
 	uint32_t len = length;
 
 	bool isSrcAddrEncryptedXip = false;
-
 	if(src == NULL)
 	{
 		return kStatus_SSS_InvalidArgument;
 	}
 
 	if(!((dst & EXAMPLE_FLEXSPI1_AMBA_BASE) || (dst & EXAMPLE_FLEXSPI2_AMBA_BASE)))
-	{
-		return kStatus_SSS_InvalidArgument;
-	}
-
-	if(((dst % PGM_PAGE_SIZE) != 0))
 	{
 		return kStatus_SSS_InvalidArgument;
 	}
@@ -398,6 +441,10 @@ sss_status_t QMC2_FLASH_ProgramPages(uint32_t dst, const void *src, uint32_t len
 
 	/* Disable interrupts */
 	primask = DisableGlobalIRQ();
+
+	/* Allow CM7 read/write access to FlexSPI peripherals. */
+	allowCm7ReadWriteToFlexSPIs();
+
 	USER_LED3_ON();
 
 	while((len >= PGM_PAGE_SIZE))
@@ -464,6 +511,8 @@ cleanup:
 	USER_LED3_OFF();
 	/* Invalidate Data cache. */
 	DCACHE_InvalidateByRange(dst, length);
+	/* Allow CM7 read access to FlexSPI peripherals. */
+	allowCm7ReadToFlexSPIs();
     /* Enable interrupts */
     EnableGlobalIRQ(primask);
 
@@ -499,6 +548,10 @@ sss_status_t QMC2_FLASH_encXipMemcmp(uint32_t encXipAddress, uint32_t address, u
 
 	/* Disable interrupts */
 	primask = DisableGlobalIRQ();
+
+	/* Allow CM7 read/write access to FlexSPI peripherals. */
+	allowCm7ReadWriteToFlexSPIs();
+
 	while(length >= RAM_BUFFER_SIZE)
 	{
 		status = ROM_FLEXSPI_NorFlash_Read(FLEXSPI2_INSTANCE, &flexspi2NorCfg, (uint32_t *)ramBuffer, encXipAddr, RAM_BUFFER_SIZE);
@@ -546,10 +599,11 @@ sss_status_t QMC2_FLASH_encXipMemcmp(uint32_t encXipAddress, uint32_t address, u
 
 cleanup:
 
-	    /* Enable interrupts */
+		/* Allow CM7 read access to FlexSPI peripherals. */
+		allowCm7ReadToFlexSPIs();
+
+		/* Enable interrupts */
 	    EnableGlobalIRQ(primask);
 
 		return sssStatus;
 	}
-
-

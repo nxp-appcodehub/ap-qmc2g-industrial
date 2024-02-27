@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -8,8 +8,8 @@
  * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
 
-#ifndef MCDRV_QDC_H_
-#define MCDRV_QDC_H_
+#ifndef MCDRV_QDC_H
+#define MCDRV_QDC_H
 
 #include "amclib.h"
 #include "amclib_FP.h"
@@ -23,7 +23,7 @@
  ******************************************************************************/
 
 
-typedef struct _qdc_to
+typedef struct qdc_to
 {
 	frac16_t    f16PosErr; // Position error to the tracking observer
 	AMCLIB_TRACK_OBSRV_T_FLT    sTO; // Tracking observer
@@ -31,7 +31,7 @@ typedef struct _qdc_to
 	float_t     fltSpeedEstim;
 }qdc_to_t;
 
-typedef struct _qdc_speed
+typedef struct qdc_speed
 {
 	int16_t i16POSDH;
 	uint16_t ui16POSDPERH;
@@ -55,7 +55,7 @@ typedef struct _qdc_speed
 	int32_t i32Position_1;
 }qdc_speed_t;
 
-typedef struct _qdc_block
+typedef struct qdc_block
 {
 	qdc_to_t    sSpeedEstim;    // A module to estimate speed by tracking observer
 	qdc_speed_t sSpeed;			// A module to calculate speed by QDC HW feature
@@ -209,4 +209,4 @@ extern void MCDRV_GetRotorCurrentRev(qdc_block_t *this);
 }
 #endif
 
-#endif /* MCDRV_QDC_H_ */
+#endif /* MCDRV_QDC_H */

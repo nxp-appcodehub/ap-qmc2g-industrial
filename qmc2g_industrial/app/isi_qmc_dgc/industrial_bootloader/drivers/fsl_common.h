@@ -172,6 +172,7 @@ enum _status_groups
     kStatusGroup_MECC = 152,                  /*!< Group number for MECC status codes. */
     kStatusGroup_ENET_QOS = 153,              /*!< Group number for ENET_QOS status codes. */
     kStatusGroup_LOG = 154,                   /*!< Group number for LOG status codes. */
+	kStatusGroup_QMC = 158,                   /*!< Group number for QuadMotorControl specific status codes. */
 };
 
 /*! \public

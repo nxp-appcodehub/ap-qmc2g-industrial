@@ -28,8 +28,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MECH_MEASURE_H_
-#define MECH_MEASURE_H_
+#ifndef MECH_MEASURE_H
+#define MECH_MEASURE_H
 
 #include "mid_def.h"
 
@@ -46,4 +46,4 @@ extern void MID_getMech(mid_get_mech_t* sMechMeasFcn);
 }
 #endif
 
-#endif /* MECH_MEASURE_H_ */
+#endif /* MECH_MEASURE_H */

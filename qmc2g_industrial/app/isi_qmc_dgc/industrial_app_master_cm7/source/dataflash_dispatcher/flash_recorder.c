@@ -22,6 +22,16 @@ AT_NONCACHEABLE_SECTION_ALIGN( lcrypto_aes_ctx_t g_flash_recorder_ctx1, 32);
 AT_NONCACHEABLE_SECTION_ALIGN( lcrypto_aes_ctx_t g_flash_recorder_ctx2, 32);
 
 /*
+ * Function returns the value of the Last Id in log.
+ * Return value:
+ * value of the Last Id in log.
+ */
+uint32_t FlashGetLastIdr( recorder_t *prec)
+{
+	return prec->Idr;
+}
+
+/*
  * Function checks the hash value stored in first DATALOGGER_HASH_SIZE bytes of input data pointed by *pt
  * and checks it against hash of remaining data started at offset DATALOGGER_HASH_SIZE.
  * Return value:
@@ -35,6 +45,9 @@ static qmc_status_t HashRecordCheck( void *pt, recorder_t *prec)
 {
 	qmc_status_t retv;
 	const TickType_t xDelayms = pdMS_TO_TICKS( DATALOGGER_MUTEX_XDELAYS_MS);
+
+	if( prec->RecordSize < DATALOGGER_HASH_SIZE)
+		return kStatus_QMC_ErrArgInvalid;
 	const int dsize = prec->RecordSize - DATALOGGER_HASH_SIZE;
 
 	uint8_t *shabuff = pvPortMalloc( 2*DATALOGGER_HASH_SIZE + dsize + 32);
@@ -77,8 +90,13 @@ static qmc_status_t HashRecordCheck( void *pt, recorder_t *prec)
  */
 static qmc_status_t HashRecordUpdate( void *pt, recorder_t *prec)
 {
-	qmc_status_t retv;
+	qmc_status_t retv = kStatus_QMC_Err;
 	const TickType_t xDelayms = pdMS_TO_TICKS( DATALOGGER_MUTEX_XDELAYS_MS);
+	if( prec->RecordSize < DATALOGGER_HASH_SIZE)
+	{
+		dbgRecPRINTF("dec HRU Cannot dsize.\n\r");
+		return kStatus_QMC_ErrArgInvalid;
+	}
 	const int dsize = prec->RecordSize - DATALOGGER_HASH_SIZE;
 	uint8_t *shabuff = pvPortMalloc( prec->RecordSize +32);
 	if( shabuff == NULL)
@@ -145,6 +163,12 @@ qmc_status_t FlashWriteRecord( void *pt, recorder_t *prec)
 	qmc_status_t retv;
 	int state;
 
+	if( prec == NULL)
+		return kStatus_QMC_ErrArgInvalid;
+
+	if( pt == NULL)
+		return kStatus_QMC_ErrArgInvalid;
+
 	record_head_t *h=( record_head_t *)pt;
 	h->uuid=prec->Idr;
 	h->uuid++;
@@ -180,8 +204,6 @@ qmc_status_t FlashWriteRecord( void *pt, recorder_t *prec)
 		state = FlashAlignPt( &flash_pt, prec);
 		if( state != 0)
 		{
-			//volatile uint32_t xxxx = (uint32_t)&state;
-
 			//Erase page
 			retv=dispatcher_erase_sectors( (uint8_t *)flash_pt, 1, portMAX_DELAY);
 #ifdef FLASH_RECORDER_POSITIVE_DEBUG
@@ -189,7 +211,7 @@ qmc_status_t FlashWriteRecord( void *pt, recorder_t *prec)
 #endif
 			if( retv!= kStatus_QMC_Ok)
 			{
-				dbgRecPRINTF("FlashWriteRecord erase Err:%d\n\r", retv);
+				dbgRecPRINTF("FlashWriteRecord1 erase Err:%d\n\r", retv);
 				vPortFree( rbuff);
 				return retv;	//error
 			}
@@ -221,7 +243,7 @@ qmc_status_t FlashWriteRecord( void *pt, recorder_t *prec)
 		vPortFree( rbuff);
 		if( retv != kStatus_QMC_Ok)
 		{
-			dbgRecPRINTF("FlashWriteRecord Err:%d uuid:%d\n\r", retv, h->uuid);
+			dbgRecPRINTF("FlashWriteRecord2 Err:%d uuid:%d\n\r", retv, h->uuid);
 			return retv;
 		}
 
@@ -241,7 +263,7 @@ qmc_status_t FlashWriteRecord( void *pt, recorder_t *prec)
 #endif
 			if( retv!= kStatus_QMC_Ok)
 			{
-				dbgRecPRINTF("FlashWriteRecord erase Err:%d\n\r", retv);
+				dbgRecPRINTF("FlashWriteRecord3 erase Err:%d\n\r", retv);
 				return retv;	//error
 			}
 		}
@@ -249,7 +271,7 @@ qmc_status_t FlashWriteRecord( void *pt, recorder_t *prec)
 		retv=dispatcher_write_memory( (uint8_t *)flash_pt, pt, prec->RecordSize, portMAX_DELAY);
 		if( retv != kStatus_QMC_Ok)
 		{
-			dbgRecPRINTF("FlashWriteRecord Err:%d uuid:%d\n\r", retv, h->uuid);
+			dbgRecPRINTF("FlashWriteRecord4 Err:%d uuid:%d\n\r", retv, h->uuid);
 			return retv;
 		}
 
@@ -281,18 +303,18 @@ qmc_status_t FlashWriteRecord( void *pt, recorder_t *prec)
 			{
 				//OK, try once to format InfRecorder
 #ifdef FLASH_RECORDER_POSITIVE_DEBUG
-				dbgRecPRINTF("FlashWriteRecord format inf\n\r");
+				dbgRecPRINTF("FlashWriteRecord5 format inf\n\r");
 #endif
 				retv = FlashRecorderFormat( (recorder_t *)prec->InfRec);
 				if( retv != kStatus_QMC_Ok)
 				{
-					dbgRecPRINTF("FlashWriteRecord inf1 Err:%d\n\r", retv);
+					dbgRecPRINTF("FlashWriteRecord6 inf1 Err:%d\n\r", retv);
 					return retv;	//error
 				}
 				retv = FlashWriteRecord ( &inf, (recorder_t *)prec->InfRec);
 				if( retv!= kStatus_QMC_Ok)
 				{
-					dbgRecPRINTF("WriteRecord write inf2 Err:%d\n\r", retv);
+					dbgRecPRINTF("WriteRecord write7 inf2 Err:%d\n\r", retv);
 					return retv;	//error
 				}
 			}
@@ -395,35 +417,54 @@ void *FlashGetAddress( uint32_t idr, recorder_t *prec)
 	uint32_t L1, L2, L3;
 	uint32_t IL, IL1, IL2, IL3, IL1p;
 	uint32_t NIL2;
-	const uint32_t LPSS = prec->PageSize % prec->RecordSize;
-	const uint32_t NPS  = prec->PageSize / prec->RecordSize;
+	const uint32_t LPSS = prec->PageSize % prec->RecordSize;	//size of unused space in the end of each page
+	const uint32_t NPS  = prec->PageSize / prec->RecordSize;	//number of records per page
 
-	IL = prec->Idr - idr + 1;
+	IL = prec->Idr - idr + 1;	//number of records we want to go back
 
-	IL1p = prec->Pt % prec->PageSize / prec->RecordSize;
+	IL1p = prec->Pt % prec->PageSize / prec->RecordSize;	//number of records currently fit in actual page
 	IL1 = (IL > IL1p) ? IL1p : IL;
-	L1 = IL1 * prec->RecordSize + ((IL > IL1p) ? LPSS : 0);
+	L1 = IL1 * prec->RecordSize + ((IL > IL1p) ? LPSS : 0);	//size in bytes to required record
 
 	NIL2 = ((IL > IL1) ? (IL - IL1 - 1) : (IL - IL1)) / NPS;
 	IL2 = NIL2 * NPS;
-	L2 = NIL2 * prec->PageSize;
 
-	IL3 = IL - (IL1 + IL2);
+	uint64_t tmp = (uint64_t)NIL2 * prec->PageSize;
+	if( tmp > UINT32_MAX)
+		return NULL;
+	L2 = (uint32_t)tmp;
+
+	IL3 = IL - (IL1 + IL2);	//IL1, IL2, IL3 that's number of records in logger
 	L3 = IL3 * prec->RecordSize;
 
-	uint32_t Size = L1 + L2 + L3;
+	if( prec->Pt < prec->AreaBegin)
+		return NULL;
+
+	tmp = L1 + L2 + L3;
+	if( tmp > UINT32_MAX)
+		return NULL;
+	uint32_t Size = (uint32_t)tmp;
+
+	if( prec->Pt < prec->AreaBegin)
+		return NULL;
 	uint32_t Asize = prec->Pt - prec->AreaBegin;
+
 	if( Size <= Asize)
-	{
 		return  (void *)(prec->Pt - Size);
-	}
+
+	if( Size < Asize)
+		return NULL;
 	Size = Size - Asize;
-	uint32_t AreaEnd = prec->AreaBegin + prec->AreaLength;
+
+	tmp = prec->AreaBegin + prec->AreaLength;
+	if( tmp > UINT32_MAX)
+		return NULL;
+	uint32_t AreaEnd = (uint32_t)tmp;
+
 	uint32_t Bsize = AreaEnd - prec->Pt - ( prec->PageSize - prec->Pt % prec->PageSize);
 	if( Size <= Bsize)
-	{
 		return (void *)(AreaEnd - Size);
-	}
+
 	return NULL;
 }
 
@@ -476,6 +517,11 @@ int FlashGetStatusInfo( recorder_status_t *rstat, recorder_t *prec)
 	//Let's count all records.
 	uint32_t LastIdr = FlashGetLastIdr( prec);
 	uint32_t FirstIdr = FlashGetFirstIdr( prec);
+	if( LastIdr < FirstIdr)
+	{
+		rstat->cnt = 0;
+		return -1;
+	}
 	rstat->cnt = LastIdr-FirstIdr;
 	return 0;
 }
@@ -486,9 +532,21 @@ int FlashGetStatusInfo( recorder_status_t *rstat, recorder_t *prec)
  */
 qmc_status_t FlashRecorderFormat( recorder_t *prec)
 {
-	qmc_status_t retv = dispatcher_erase_sectors( (void *)prec->AreaBegin, prec->AreaLength/prec->PageSize, portMAX_DELAY);
+	uint32_t sect_cn = prec->AreaLength/prec->PageSize;
+	if( sect_cn > UINT16_MAX)
+	{
+		dbgRecPRINTF("FlashRecorderFormat sect_cn Err:%d\n\r", sect_cn);
+		return kStatus_QMC_ErrArgInvalid;	//error
+	}
+
+	qmc_status_t retv = dispatcher_erase_sectors( (void *)prec->AreaBegin, (uint16_t)sect_cn, portMAX_DELAY);
 	prec->Pt = prec->AreaBegin;
 	prec->Idr = 0;
+
+	if(retv != kStatus_QMC_Ok)
+	{
+		return retv;
+	}
 
 	//make recorder_info_t if InfRecorder exists
 	if( prec->InfRec)
@@ -543,6 +601,10 @@ FlashRecorderInit needs to evaluate start and end of the data area from the each
 qmc_status_t FlashRecorderInit( recorder_t *prec)
 {
 	qmc_status_t retv=kStatus_QMC_Err;
+
+	if( prec == NULL)
+		return kStatus_QMC_ErrArgInvalid;
+
 	uint32_t pt=prec->AreaBegin;
 	prec->Idr=0;
 	
@@ -654,9 +716,10 @@ qmc_status_t FlashRecorderInit( recorder_t *prec)
 	return retv;
 }
 
-uint32_t FlashGetLastIdr( recorder_t *prec)
+bool FlashNextWriteEraseSector( recorder_t *prec)
 {
-	return prec->Idr;
+	uint32_t flash_pt = prec->Pt;
+	return (FlashAlignPt( &flash_pt, prec) != 0);
 }
 
 uint32_t FlashGetFirstIdr( recorder_t *prec)
@@ -667,7 +730,11 @@ uint32_t FlashGetFirstIdr( recorder_t *prec)
 	uint32_t PtSec = PtSecBegin;
 	for(;;)
 	{
-		PtSec += OCTAL_FLASH_SECTOR_SIZE;
+		uint64_t tmp = (uint64_t)PtSec + OCTAL_FLASH_SECTOR_SIZE;
+		if( tmp > UINT32_MAX)
+			return 0;
+		PtSec = (uint32_t)tmp;
+
 		FlashAlignPt( &PtSec, prec);
 		if( PtSecBegin == PtSec)
 			break;

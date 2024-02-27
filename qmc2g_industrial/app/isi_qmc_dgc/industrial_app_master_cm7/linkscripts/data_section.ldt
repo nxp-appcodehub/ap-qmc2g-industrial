@@ -32,17 +32,17 @@
 
 <#if (PLAIN_LOAD_IMAGE) && (memory.name == CODEX) >
     .data_${memory.alias} : ALIGN_WITH_INPUT
-<#else> 
+<#else>
     .data_${memory.alias} : ALIGN(${data_align})
-</#if>    
+</#if>
     {
         FILL(0xff)
 <#if memory.name=="SRAM_ITC_cm7">
-		. = 0x400 ;
-		__vtable_ram__ = ABSOLUTE(.) ;
-        KEEP(*(.data.vtable))
-		FILL(0xff)
-</#if>        
+        . = 0x400 ;
+        __vtable_ram__ = ABSOLUTE(.) ;
+            KEEP(*(.data.vtable))
+        FILL(0xff)
+</#if>
 <#if provide_required>
         PROVIDE(__start_data_${memory.alias} = .) ;
         PROVIDE(__start_data_${memory.name} = .) ;
@@ -58,7 +58,6 @@
         PROVIDE(__end_data_${memory.alias} = .) ;
         PROVIDE(__end_data_${memory.name} = .) ;
      } > ${memory.name} AT>${CODE}
-
 </#if>
 </#list>
 </#if>

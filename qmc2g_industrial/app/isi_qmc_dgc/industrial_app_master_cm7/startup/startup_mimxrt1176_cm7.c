@@ -4,7 +4,7 @@
 // Version : 020421
 //*****************************************************************************
 //
-// Copyright 2016-2022 NXP
+// Copyright 2016-2023 NXP
 // All rights reserved.
 //
 // SPDX-License-Identifier: BSD-3-Clause

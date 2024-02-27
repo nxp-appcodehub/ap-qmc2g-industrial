@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -7,15 +7,20 @@
  * and that you agree to comply with and are bound by, such license terms. If you do not agree to be bound by
  * the applicable license terms, then you may not retain, install, activate or otherwise use the software.
  */
-
+#include "stdint.h"
+#include "fsl_lpuart.h"
 #include "freemaster_tasks.h"
-#include "api_fault.h" // TODO: to test if faults are registered
+#include "api_fault.h"
+#include "task.h"
+#include "api_qmc_common.h"
+#include "board.h"
+#include "mlib_types.h"
 
-fault_system_fault_t eSysFaultsRegistered; // TODO: to test if faults are registered
-mc_fault_t eMotor1FaultsRegistered; // TODO: to test if faults are registered
-mc_fault_t eMotor2FaultsRegistered; // TODO: to test if faults are registered
-mc_fault_t eMotor3FaultsRegistered; // TODO: to test if faults are registered
-mc_fault_t eMotor4FaultsRegistered; // TODO: to test if faults are registered
+fault_system_fault_t eSysFaultsRegistered;
+mc_fault_t eMotor1FaultsRegistered;
+mc_fault_t eMotor2FaultsRegistered;
+mc_fault_t eMotor3FaultsRegistered;
+mc_fault_t eMotor4FaultsRegistered;
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
@@ -31,6 +36,7 @@ mc_fault_t eMotor4FaultsRegistered; // TODO: to test if faults are registered
  ******************************************************************************/
 static uint8_t u8FmstrTsaTemp = 0;
 static bool_t bSendCmd;
+TaskHandle_t g_freemaster_task_handle;
 
 FMSTR_TSA_TABLE_BEGIN(first_table)
 	FMSTR_TSA_RW_VAR(u8FmstrTsaTemp, FMSTR_TSA_UINT8)
@@ -63,14 +69,14 @@ void FreemasterTask(void *pvParameters)
 	{
 	  u8FmstrTsaTemp++;
 
-	/* Set motor command test  - begin */
-	if(bSendCmd == TRUE)
-	{
-		eSetCmdStatus = MC_QueueMotorCommand(&g_sMotorCmdTst);
-		bSendCmd = FALSE;
-	}
+	  /* Set motor command test  - begin */
+	  if(bSendCmd == TRUE)
+	  {
+		  eSetCmdStatus = MC_QueueMotorCommand(&g_sMotorCmdTst);
+		  bSendCmd = FALSE;
+	  }
 
-	/* Set motor command test  - end */
+	  /* Set motor command test  - end */
 
 	  FMSTR_Poll();
 
@@ -87,9 +93,10 @@ void FreemasterTask(void *pvParameters)
 /*!
  * @brief LPUART Module initialization for FreeMASTER
  */
-void init_freemaster_lpuart(void)
+qmc_status_t init_freemaster_lpuart(void)
 {
     lpuart_config_t config;
+    qmc_status_t eStatus = kStatus_QMC_Err;
 
     /*
      * config.baudRate_Bps = 115200U;
@@ -105,8 +112,10 @@ void init_freemaster_lpuart(void)
     config.enableTx = false;
     config.enableRx = false;
 
-    LPUART_Init((LPUART_Type*)BOARD_FMSTR_UART_BASEADDR, &config, BOARD_FMSTR_UART_CLK_FREQ);
-
+    if(kStatus_Success == LPUART_Init((LPUART_Type*)BOARD_FMSTR_UART_BASEADDR, &config, BOARD_FMSTR_UART_CLK_FREQ))
+    {
+    	eStatus = kStatus_QMC_Ok;
+    }
     /* Register communication module used by FreeMASTER driver. */
     FMSTR_SerialSetBaseAddress((LPUART_Type*)BOARD_FMSTR_UART_BASEADDR);
 
@@ -115,7 +124,7 @@ void init_freemaster_lpuart(void)
     EnableIRQ(BOARD_FMSTR_UART_IRQ);
     NVIC_SetPriority(BOARD_FMSTR_UART_IRQ, 6);
 #endif
-
+    return eStatus;
 }
 
 

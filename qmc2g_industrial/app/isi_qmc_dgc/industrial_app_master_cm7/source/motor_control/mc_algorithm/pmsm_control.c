@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -162,7 +162,7 @@ RAM_FUNC_CRITICAL void MCS_PMSMFocCtrlSpeed(mcs_speed_t *psSpeed)
 
 	/* Speed saturation flag given by the Q current controller saturation flag and speed controller saturation flag */
     psSpeed->bSpeedPiStopInteg = (psSpeed->sSpeedPiParams.bLimFlag | psSpeed->bIqPiLimFlag) &
-                                 (MLIB_Abs_FLT(psSpeed->fltSpeedCmd) >= MLIB_Abs_FLT(psSpeed->fltSpeedFilt));
+                                 (bool_t)(MLIB_Abs_FLT(psSpeed->fltSpeedCmd) >= MLIB_Abs_FLT(psSpeed->fltSpeedFilt));
     /* Speed ramp generation */
     psSpeed->fltSpeedRamp = GFLIB_Ramp_FLT(psSpeed->fltSpeedCmd, &psSpeed->sSpeedRampParams);
 
@@ -302,7 +302,7 @@ RAM_FUNC_CRITICAL void MCS_PMSMFocCtrlPosition(mcs_position_t *psPosition)
 	int32_t i32Tmp;
 	int64_t i64Tmp;
 
-	if(psPosition->bIsRandomPosition == FALSE)
+	if(psPosition->bIsRandomPosition == TRUE)
 	{
 		psPosition->sCurveRef.i32Q16PosCmd = psPosition->i32Q16PosCmd;
 

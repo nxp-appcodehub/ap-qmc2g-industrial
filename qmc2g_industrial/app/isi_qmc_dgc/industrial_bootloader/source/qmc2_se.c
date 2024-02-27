@@ -115,7 +115,6 @@ static sss_status_t SE_EraseObject(ex_sss_boot_ctx_t *pCtx, uint32_t object_id);
 /* Read status from SE */
 static sss_status_t SE_ReadStatus(ex_sss_boot_ctx_t *pCtx, se_state_t *seState);
 static sss_status_t SE_MbedtlsSha256(uint32_t input, size_t ilen, uint8_t output[32],  int is224);
-static sss_status_t SE_MbedtlsSha512(uint32_t input, size_t ilen, uint8_t output[64],  int is384);
 
 /* clang-format off */
 #define MandateSCP_UserID_VALUE                 \
@@ -128,70 +127,6 @@ static sss_status_t SE_MbedtlsSha512(uint32_t input, size_t ilen, uint8_t output
 /**************************************************************************************
  * 									Private functions								  *
  **************************************************************************************/
-
-static sss_status_t SE_MbedtlsSha512(uint32_t input, size_t ilen, uint8_t output[64],  int is384)
-{
-	sss_status_t status = kStatus_SSS_Fail;
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
-    mbedtls_sha512_context ctx;
-    uint8_t ramInputBuff[RAM_BUFFER_SIZE];
-    uint32_t address = 0;
-    size_t length = 0;
-    size_t rest = 0;
-
-#if !defined(MBEDTLS_SHA512_NO_SHA384)
-    if(!(is384 == 0 || is384 == 1))
-        return kStatus_SSS_Fail;
-#else
-    if(!(is384 == 0)
-        return kStatus_SSS_Fail;
-#endif
-
-    if(ilen == 0)
-    	return kStatus_SSS_Fail;
-
-    if((uint8_t *)output == NULL)
-    	return kStatus_SSS_Fail;
-
-    mbedtls_sha512_init( &ctx );
-
-    if( ( ret = mbedtls_sha512_starts_ret( &ctx, is384 ) ) != 0 )
-        goto exit;
-
-    rest = ilen % RAM_BUFFER_SIZE;
-    length = ilen - rest;
-    address = input;
-
-    while(length)
-    {
-    	memcpy(ramInputBuff, (void *)address, RAM_BUFFER_SIZE);
-
-    	if( ( ret = mbedtls_sha512_update_ret( &ctx, ramInputBuff, RAM_BUFFER_SIZE ) ) != 0 )
-    		goto exit;
-
-    	length -= RAM_BUFFER_SIZE;
-    	address += RAM_BUFFER_SIZE;
-    }
-
-    if(rest)
-    {
-    	memcpy((void *)ramInputBuff, (void *)address, rest);
-    	if( ( ret = mbedtls_sha512_update_ret( &ctx, ramInputBuff, rest ) ) != 0 )
-    		goto exit;
-    }
-
-    if( ( ret = mbedtls_sha512_finish_ret( &ctx, output ) ) != 0 )
-        goto exit;
-
-    status = kStatus_SSS_Success;
-
-exit:
-    mbedtls_sha512_free( &ctx );
-
-    return status;
-}
-
-
 static sss_status_t SE_MbedtlsSha256(uint32_t input, size_t ilen, uint8_t output[32],  int is224)
 {
 	sss_status_t status = kStatus_SSS_Fail;
@@ -397,8 +332,6 @@ static sss_status_t SE_MandateScp(ex_sss_boot_ctx_t *pCtx)
 
 	sss_session_close(&pCtx->session);
 
-	pSe05xSession = &pSession->s_ctx;
-
 	status = sss_session_open(&pCtx->session, kType_SSS_SE_SE05x,
 			kSE05x_AppletResID_PLATFORM_SCP, kSSS_ConnectionType_Password,
 			&eraseAuthCtx);
@@ -548,14 +481,17 @@ static sss_status_t SE_ReadBinaryData(ex_sss_boot_ctx_t *pCtx, uint32_t object_i
 {
     sss_status_t status = kStatus_SSS_Fail;
     sss_object_t dataObject = {0};
-    size_t len = length;
-    size_t lenInBits = length*8;
+    size_t len = 0;
+    size_t lenInBits = 0;
     uint8_t data[SE_MAX_BYTE_WRITE_LENGTH] = {0};
 
     assert((length > 0) && (length <= 200));
     assert(seData != NULL);
     assert(object_id != 0);
     assert(pCtx != 0);
+
+    lenInBits = length*8;
+    len = length;
 
     status = sss_key_object_init(&dataObject, &pCtx->ks);
     ENSURE_OR_GO_CLEANUP(status == kStatus_SSS_Success);
@@ -1292,10 +1228,10 @@ cleanup:
 
 sss_status_t QMC2_SE_VerifySignature(scp03_keys_t *scp03, se_verify_sign_t *seAuth)
 {
-	sss_status_t status 	= kStatus_SSS_Fail;
+	volatile sss_status_t status = kStatus_SSS_Fail;
 	ex_sss_boot_ctx_t sss_boot_ctx;
 	ex_sss_boot_ctx_t sss_policy_ctx;
-	uint8_t digest[64]  	= {0};
+	uint8_t digest[64]  = {0};
 	size_t digestLen;
 	sss_object_t key_pub;
 	sss_asymmetric_t ctx_verify = {0};
@@ -1319,19 +1255,25 @@ sss_status_t QMC2_SE_VerifySignature(scp03_keys_t *scp03, se_verify_sign_t *seAu
 	memset(&sss_boot_ctx, 0, sizeof(ex_sss_boot_ctx_t));
 	memset(&sss_policy_ctx, 0, sizeof(ex_sss_boot_ctx_t));
 
+	status = kStatus_SSS_Fail;
 	status = SE_EstablishScp03Conn(&sss_boot_ctx, scp03, 0);
 	ENSURE_OR_GO_CLEANUP(status == kStatus_SSS_Success);
 
+	status = kStatus_SSS_Fail;
 	status = SE_EstablishPolicySession(&sss_boot_ctx, &sss_policy_ctx, scp03->aes_policy_key);
 	ENSURE_OR_GO_CLEANUP(status == kStatus_SSS_Success);
 
+	status = kStatus_SSS_Fail;
 	/* Pre-requiste for Verifying Part */
 	status = sss_key_object_init(&key_pub, &sss_policy_ctx.ks);
 	ENSURE_OR_GO_CLEANUP(status == kStatus_SSS_Success);
+
+	status = kStatus_SSS_Fail;
 	/* Get Handle based on ID */
 	status = sss_key_object_get_handle(&key_pub, seAuth->keyId);
 	ENSURE_OR_GO_CLEANUP(status == kStatus_SSS_Success);
 
+	status = kStatus_SSS_Fail;
 	/* doc:start ex_sss_asymmetric-asym-verify */
 	status = sss_asymmetric_context_init(&ctx_verify, &sss_policy_ctx.session, &key_pub, seAuth->algorithm, seAuth->mode);
 	ENSURE_OR_GO_CLEANUP(status == kStatus_SSS_Success);
@@ -1340,8 +1282,16 @@ sss_status_t QMC2_SE_VerifySignature(scp03_keys_t *scp03, se_verify_sign_t *seAu
 	LOG_MAU8_I("digest", digest, digestLen);
 	LOG_MAU8_I("signature", (uint8_t *)seAuth->signDataAddr, (size_t)seAuth->signDataLength);
 
+	status = kStatus_SSS_Fail;
 	status = sss_asymmetric_verify_digest(&ctx_verify, digest, digestLen,
 			(uint8_t *)seAuth->signDataAddr, (size_t)seAuth->signDataLength);
+
+	ENSURE_OR_GO_CLEANUP(status == kStatus_SSS_Success);
+
+	status  = kStatus_SSS_Fail;
+	status = sss_asymmetric_verify_digest(&ctx_verify, digest, digestLen,
+			(uint8_t *)seAuth->signDataAddr, (size_t)seAuth->signDataLength);
+
 	ENSURE_OR_GO_CLEANUP(status == kStatus_SSS_Success);
 
 	LOG_I("Verification Successful !!!");
@@ -1357,7 +1307,7 @@ cleanup:
 	ex_sss_session_close(&sss_policy_ctx);
 	ex_sss_session_close(&sss_boot_ctx);
 
-	return status;
+	return (status + 0x0a0a);
 }
 
 
@@ -1393,16 +1343,41 @@ cleanup:
 sss_status_t QMC2_SE_GetRpcSeedAndKey(scp03_keys_t *scp03, uint8_t *data, size_t dataLength, uint8_t *key, size_t keyLength)
 {
 	sss_status_t status = kStatus_SSS_Fail;
+	status_t caamStatus = kStatus_Fail;
 	ex_sss_boot_ctx_t sss_boot_ctx;
 	ex_sss_boot_ctx_t sss_policy_ctx;
-	sss_rng_context_t rng_ctx;
+
+	SDK_ALIGN(uint8_t seed[RPC_SECWD_MAX_RNG_SEED_SIZE], 32);
+	SDK_ALIGN(caam_handle_t caamHandle, 32);
 
 	assert(scp03 != NULL);
 	assert(data != NULL);
 	assert(key != NULL);
 
+	if((dataLength>RPC_SECWD_MAX_RNG_SEED_SIZE) || (keyLength>RPC_SECWD_MAX_PK_SIZE))
+	{
+		return kStatus_SSS_InvalidArgument;
+	}
+
 	memset(&sss_boot_ctx, 0, sizeof(ex_sss_boot_ctx_t));
 	memset(&sss_policy_ctx, 0, sizeof(ex_sss_boot_ctx_t));
+
+    caamHandle.jobRing = kCAAM_JobRing0;
+
+    /* CAAM RNG already initialized in CRYPTO_InitHardware. */
+	caamStatus = CAAM_RNG_GetRandomData(CAAM, &caamHandle, kCAAM_RngStateHandle0, seed, 32, kCAAM_RngDataAny, NULL);
+	ENSURE_OR_GO_CLEANUP(caamStatus == kStatus_Success);
+
+	caamStatus = CAAM_RNG_Reseed(CAAM, &caamHandle, kCAAM_RngStateHandle0, NULL);
+	ENSURE_OR_GO_CLEANUP(caamStatus == kStatus_Success);
+
+	caamStatus = CAAM_RNG_GetRandomData(CAAM, &caamHandle, kCAAM_RngStateHandle0, seed + 32, 16, kCAAM_RngDataAny, NULL);
+	ENSURE_OR_GO_CLEANUP(caamStatus == kStatus_Success);
+
+	caamStatus = CAAM_RNG_Reseed(CAAM, &caamHandle, kCAAM_RngStateHandle0, NULL);
+	ENSURE_OR_GO_CLEANUP(caamStatus == kStatus_Success);
+
+	memcpy(data, seed, dataLength);
 
 	status = SE_EstablishScp03Conn(&sss_boot_ctx, scp03, 0);
 	ENSURE_OR_GO_CLEANUP(status == kStatus_SSS_Success);
@@ -1413,19 +1388,74 @@ sss_status_t QMC2_SE_GetRpcSeedAndKey(scp03_keys_t *scp03, uint8_t *data, size_t
 	status = SE_ReadBinaryData(&sss_policy_ctx, SE_RPC_KEY_ID, key, keyLength);
 	ENSURE_OR_GO_CLEANUP(status == kStatus_SSS_Success);
 
-	status = sss_rng_context_init(&rng_ctx, &sss_policy_ctx.session);
-	ENSURE_OR_GO_CLEANUP(status == kStatus_SSS_Success);
-
-	status = sss_rng_get_random(&rng_ctx, data, dataLength);
-	ENSURE_OR_GO_CLEANUP(status == kStatus_SSS_Success);
-
-    status = sss_rng_context_free(&rng_ctx);
-    ENSURE_OR_GO_CLEANUP(status == kStatus_SSS_Success);
-
 cleanup:
 
+	/* CAAM RNG already initialized in CRYPTO_InitHardware. */
+	CAAM_RNG_Deinit(CAAM, &caamHandle, kCAAM_RngStateHandle0);
 	ex_sss_session_close(&sss_policy_ctx);
 	ex_sss_session_close(&sss_boot_ctx);
 
 	return status;
+}
+
+sss_status_t SE_MbedtlsSha512(uint32_t input, size_t ilen, uint8_t output[64],  int is384)
+{
+	sss_status_t status = kStatus_SSS_Fail;
+    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    mbedtls_sha512_context ctx;
+    uint8_t ramInputBuff[RAM_BUFFER_SIZE];
+    uint32_t address = 0;
+    size_t length = 0;
+    size_t rest = 0;
+
+#if !defined(MBEDTLS_SHA512_NO_SHA384)
+    if(!(is384 == 0 || is384 == 1))
+        return kStatus_SSS_Fail;
+#else
+    if(!(is384 == 0)
+        return kStatus_SSS_Fail;
+#endif
+
+    if(ilen == 0)
+    	return kStatus_SSS_Fail;
+
+    if((uint8_t *)output == NULL)
+    	return kStatus_SSS_Fail;
+
+    mbedtls_sha512_init( &ctx );
+
+    if( ( ret = mbedtls_sha512_starts_ret( &ctx, is384 ) ) != 0 )
+        goto exit;
+
+    rest = ilen % RAM_BUFFER_SIZE;
+    length = ilen - rest;
+    address = input;
+
+    while(length)
+    {
+    	memcpy(ramInputBuff, (void *)address, RAM_BUFFER_SIZE);
+
+    	if( ( ret = mbedtls_sha512_update_ret( &ctx, ramInputBuff, RAM_BUFFER_SIZE ) ) != 0 )
+    		goto exit;
+
+    	length -= RAM_BUFFER_SIZE;
+    	address += RAM_BUFFER_SIZE;
+    }
+
+    if(rest)
+    {
+    	memcpy((void *)ramInputBuff, (void *)address, rest);
+    	if( ( ret = mbedtls_sha512_update_ret( &ctx, ramInputBuff, rest ) ) != 0 )
+    		goto exit;
+    }
+
+    if( ( ret = mbedtls_sha512_finish_ret( &ctx, output ) ) != 0 )
+        goto exit;
+
+    status = kStatus_SSS_Success;
+
+exit:
+    mbedtls_sha512_free( &ctx );
+
+    return status;
 }

@@ -106,6 +106,22 @@
 #define ALTCP_MBEDTLS_AUTHMODE                        MBEDTLS_SSL_VERIFY_OPTIONAL
 #endif
 
+/**
+ *  Support for using the Secure Sub System API for ALTCP_MBEDTLS
+ *  to access to various types of Cryptographic Sub Systems.
+    (Secure Elements Secure Enclaves Cryptographic HWs)
+ */
+#ifndef ALTCP_MBEDTLS_SSS
+#ifdef SSS_USE_FTR_FILE
+#include "fsl_sss_ftr.h"
+#endif
+#ifdef SSS_HAVE_HOSTCRYPTO_MBEDTLS
+#define ALTCP_MBEDTLS_SSS                             SSS_HAVE_HOSTCRYPTO_MBEDTLS
+#else
+#define ALTCP_MBEDTLS_SSS                             0
+#endif
+#endif
+
 #endif /* LWIP_ALTCP */
 
 #endif /* LWIP_HDR_ALTCP_TLS_OPTS_H */

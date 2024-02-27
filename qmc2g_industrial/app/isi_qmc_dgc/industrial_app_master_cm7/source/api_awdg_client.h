@@ -10,7 +10,7 @@
 
 /*!
  * @file api_awdg_client.h
- * @brief Implements functions for communicating with the AWDG ticket server in an FreeRTOS environment.
+ * @brief Implements functions for communicating with the AWDG ticket server in a FreeRTOS environment.
  *
  */
 #ifndef API_AWDG_CLIENT_H
@@ -23,19 +23,18 @@
  * Definitions
  ******************************************************************************/
 
-#define AWDG_CLIENT_MAX_RAW_SIGNATURE_SIZE (140U) /*!< from qmc2g_industrial_M4SLAVE\source\awdg\awdg_api.h */
+#define AWDG_CLIENT_MAX_RAW_SIGNATURE_SIZE (137U) /*!< from qmc2g_industrial_M4SLAVE\source\awdg\awdg_api.h */
 #define AWDG_CLIENT_MAX_RAW_TICKET_SIZE    (AWDG_CLIENT_MAX_RAW_SIGNATURE_SIZE + 4U)
 #define AWDG_CLIENT_TICKET_NONCE_SIZE      (32U) /*!< from qmc2g_industrial_M4SLAVE\source\awdg\awdg_api.h */
 
 /*! \public
  * @brief TLS Client Error enum
  *
- * Values less than 0 are specific error codes
- * Value of 0 is a generic success response
+ * Values less than 0 are specific error codes.
+ * Value of 0 is a generic success response.
  */
 typedef enum
 {
-    /** Success return value - no error occurred */
     kStatus_AWDG_CLIENT_Ok             = 0,  /*!< Success, no error occurred */
     kStatus_AWDG_CLIENT_ErrArgInvalid  = -1, /*!< Argument invalid */
     kStatus_AWDG_CLIENT_ErrConnection  = -2, /*!< Connection error */
@@ -50,6 +49,45 @@ typedef enum
 /*!
  * @brief Requests a new ticket for the given nonce from the server.
  *
+ * @startuml
+ * start
+ * :se_client_tls_ctx_t kTlsCtx = { SE TLS context (select root cert, client key and client cert from SE) }\n\
+ * SocketsConfig_t kSocketConfig = { Secure socket configuration };
+ * :nonceBase64 = B64 encode pNonce;
+ * if () then (fail)
+ *   :return kStatus_AWDG_CLIENT_ErrArgInvalid;
+ *   stop
+ * endif
+ * :bodyBuffer = '{"nonce":"' + nonceBase64 + '"}'
+ * bodyLen = strlen(bodyBuffer);
+ * :ServerInfo_t serverInfo = {.pHostName = pServerName, .hostNameLength = strlen(pServerName), .port=443}\n\
+ * SecureSocketsTransportParams_t secureSocketsTransportParams\n\
+ * NetworkContext_t netCtx = {.pParams = &secureSocketsTransportParams};
+ * :SE_SecureSocketsTransport_Connect(&netCtx, &serverInfo, &kSocketConfig, &kTlsCtx);
+ * if () then (fail)
+ *   :return kStatus_AWDG_CLIENT_ErrConnection;
+ *   stop
+ * endif
+ * :uint8_t headersResponseBuffer[HTTP_REQUEST_HEADERS_RESPONSE_BUFFER_LEN]\n\
+ * size_t responseLen = 0\n\
+ * uint8_t *pResponse = NULL;
+ * :HTTPS_CLIENT_PostJson(serverInfo.pHostName, serverInfo.hostNameLength, SERVER_PATH, SERVER_PATH_LEN, bodyBuffer, bodyLen, headersResponseBuffer, HTTP_REQUEST_HEADERS_RESPONSE_BUFFER_LEN, &pResponse, &responseLen, &netCtx);
+ * if () then (fail)
+ *   :SecureSocketsTransport_Disconnect(&netCtx);
+ *   :return kStatus_AWDG_CLIENT_ErrRequest;
+ *   stop
+ * endif
+ * :AWDG_TICKET_JsonToBinaryTicket(pResponse, responseLen, pTicketBuffer, pTicketBufferLen);
+ * if () then (fail)
+ *   :SecureSocketsTransport_Disconnect(&netCtx);
+ *   :return kStatus_AWDG_CLIENT_ErrJsonParsing;
+ *   stop
+ * endif
+ * :SecureSocketsTransport_Disconnect(&netCtx);
+ * :return kStatus_AWDG_CLIENT_Ok;
+ * stop
+ * @enduml
+ * 
  * @param[in] pServerName Pointer to the null-terminated host name string to which to connect to
  * @param[in] pNonce Pointer to the nonce fetched from the AWDG
  * @param[out] pTicketBuffer Output pointer to the buffer in which the ticket will be placed (timeout:signature format)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -66,13 +66,13 @@ static inline void NAFE_HAL_delay(uint32_t us)
  * @retval Returns status based on the success of read operations.
  */
 static inline status_t NAFE_HAL_readSpiRxd(FLEXIO_SPI_Type *halHdl, void *data,
-                                       uint32_t dataBits, uint32_t len)
+                                       uint16_t dataBits, uint32_t len)
 {
 #if SPI_RETRY_TIMES
     uint32_t waitTimes;
 #endif /* #if SPI_RETRY_TIMES */
 
-	while (len--)
+	while (len > 0)
 	{
 #if SPI_RETRY_TIMES
         waitTimes = SPI_RETRY_TIMES;
@@ -148,6 +148,8 @@ static inline status_t NAFE_HAL_readSpiRxd(FLEXIO_SPI_Type *halHdl, void *data,
 		{
 			return kStatus_Fail;
 		}
+
+		len--;
 	}
 
 	return kStatus_Success;
@@ -164,7 +166,7 @@ static inline status_t NAFE_HAL_readSpiRxd(FLEXIO_SPI_Type *halHdl, void *data,
  * @retval Returns status based on the success of the write operation.
  */
 status_t NAFE_HAL_writeRegBlock(FLEXIO_SPI_Type *halHdl, uint32_t cmd,
-                            uint32_t data, uint32_t dataBits);
+                            uint32_t data, uint16_t dataBits);
 
 /*!
  * @brief Sends a command to read data from a AFE register, then reads and returns the response.
@@ -177,7 +179,7 @@ status_t NAFE_HAL_writeRegBlock(FLEXIO_SPI_Type *halHdl, uint32_t cmd,
  * @retval Returns status based on the success of the write operation.
  */
 status_t NAFE_HAL_readRegBlock(FLEXIO_SPI_Type *halHdl, uint32_t cmd,
-                           uint32_t *data, uint32_t dataBits);
+                           uint32_t *data, uint16_t dataBits);
 
 /*!
  * @brief Sends a command to the AFE.

@@ -3070,6 +3070,12 @@ status_t CAAM_HASH_Update(caam_hash_ctx_t *ctx, const uint8_t *input, size_t inp
         return status;
     }
 
+#if defined(CAAM_OUT_INVALIDATE) && (CAAM_OUT_INVALIDATE > 0u)
+    /* NOTE: DCACHE must be set to write-trough mode to safely invalidate cache!! */
+    /* Invalidate unaligned data can cause memory corruption in write-back mode   */
+    DCACHE_InvalidateByRange((uint32_t)&ctxInternal->word[0u], (uint32_t)kCAAM_HashCtxNumWords * sizeof(uint32_t));
+#endif /* CAAM_OUT_INVALIDATE */
+
     /* after job is complete, copy numRemain bytes at the end of the input[] to the context */
     (void)caam_memcpy((&ctxInternal->blk.b[0]), input + inputSize - numRemain, numRemain);
     ctxInternal->blksz = numRemain;

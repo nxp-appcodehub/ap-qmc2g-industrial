@@ -28,8 +28,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _MID_SM_STATES_H_
-#define _MID_SM_STATES_H_
+#ifndef MID_SM_STATES_H
+#define MID_SM_STATES_H
 
 #include "mid_sm_ctrl.h"
 #include "mid_auxiliary.h"
@@ -52,5 +52,5 @@ extern mid_struct_t g_sMID;
 
 /*! @brief global variables */
 
-#endif /* _MID_SM_STATES_ */
+#endif /* MID_SM_STATES */
 

@@ -10,7 +10,7 @@
 
 /*!
  * @file lwdg_int.c
- * @brief Contains the LWG module implementation for creating and managing one logical watchdog.
+ * @brief Contains the LWDG module implementation for creating and managing one logical watchdog.
  *
  * This module is designed for internal use only, for public use see the LWDGU module!
  * Pointer arguments are not checked for validity!
@@ -59,8 +59,15 @@ lwdg_status_t LWDG_Init(volatile logical_watchdog_t *const pDog, const uint32_t 
 lwdg_tick_status_t LWDG_Tick(volatile logical_watchdog_t *const pDog)
 {
     assert(NULL != pDog);
+    /* to comply with CERT C rule PRE31-C we buffer variables from the volatile struct */
+    bool tmpIsRunning = pDog->isRunning;
+    bool tmpIsExpired = pDog->isExpired;
+    uint32_t tmpTicksToTimeout = pDog->ticksToTimeout;
+    (void) tmpIsRunning;
+    (void) tmpIsExpired;
+    (void) tmpTicksToTimeout;
     /* check our assumptions on the watchdog state */
-    assert((false == pDog->isRunning) || (true == pDog->isExpired) || (pDog->ticksToTimeout > 0U));
+    assert((false == tmpIsRunning) || (true == tmpIsExpired) || (tmpTicksToTimeout > 0U));
 
     lwdg_tick_status_t ret = kStatus_LWDG_TickErr;
 
@@ -93,8 +100,11 @@ lwdg_tick_status_t LWDG_Tick(volatile logical_watchdog_t *const pDog)
 lwdg_kick_status_t LWDG_Kick(volatile logical_watchdog_t *const pDog)
 {
     assert(NULL != pDog);
-    /* check our assumptions about the watchdogs timeoutTicks value */
-    assert(pDog->timeoutTicks < UINT32_MAX);
+    /* to comply with CERT C rule PRE31-C we buffer variables from the volatile struct */
+    uint32_t tmpTimeoutTicks = pDog->timeoutTicks;
+    (void) tmpTimeoutTicks;
+    /* check our assumptions about the watchdog's timeoutTicks value */
+    assert(tmpTimeoutTicks < UINT32_MAX);
 
     lwdg_kick_status_t ret = kStatus_LWDG_KickErr;
 

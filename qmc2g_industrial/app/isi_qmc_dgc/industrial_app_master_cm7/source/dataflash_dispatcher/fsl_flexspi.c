@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -117,7 +117,7 @@ static void FLEXSPI_Memset(void *src, uint8_t value, size_t length)
     /* Keyword volatile is to avoid compiler opitimizing this API into memset() in library. */
     for (volatile uint32_t i = 0U; i < length; i++)
     {
-        *p = value;
+		*p = value;
         p++;
     }
 }
@@ -166,9 +166,6 @@ static uint32_t FLEXSPI_CalculateDll(FLEXSPI_Type *base, flexspi_device_config_t
             {
                 isUnifiedConfig = false;
             }
-            break;
-        default:
-            assert(false);
             break;
     }
 
@@ -345,9 +342,18 @@ void FLEXSPI_Init(FLEXSPI_Type *base, const flexspi_config_t *config)
 
     /* Configure IP Fifo watermarks. */
     base->IPRXFCR &= ~FLEXSPI_IPRXFCR_RXWMRK_MASK;
-    base->IPRXFCR |= FLEXSPI_IPRXFCR_RXWMRK((uint32_t)config->rxWatermark / 8U - 1U);
+
+    if( (uint32_t)config->rxWatermark / 8U >= 1U )
+    	base->IPRXFCR |= FLEXSPI_IPRXFCR_RXWMRK((uint32_t)config->rxWatermark / 8U - 1U);
+    else
+    	base->IPRXFCR |= FLEXSPI_IPRXFCR_RXWMRK(0);
+
     base->IPTXFCR &= ~FLEXSPI_IPTXFCR_TXWMRK_MASK;
-    base->IPTXFCR |= FLEXSPI_IPTXFCR_TXWMRK((uint32_t)config->txWatermark / 8U - 1U);
+
+    if( ((uint32_t)config->txWatermark / 8U) >= 1U )
+    	base->IPTXFCR |= FLEXSPI_IPTXFCR_TXWMRK((uint32_t)config->txWatermark / 8U - 1U);
+    else
+    	base->IPTXFCR |= FLEXSPI_IPTXFCR_TXWMRK(0);
 
     /* Reset flash size on all ports */
     for (i = 0; i < (uint32_t)kFLEXSPI_PortCount; i++)
@@ -609,10 +615,15 @@ void FLEXSPI_UpdateLUT(FLEXSPI_Type *base, uint32_t index, const uint32_t *cmd, 
     base->LUTKEY = FLEXSPI_LUT_KEY_VAL;
     base->LUTCR  = 0x02;
 
+    //uint32_t max = sizeof(base->LUT)/sizeof(base->LUT[0]) - index;
+    uint32_t max = 64U;
+    if( count > max)
+    	count = max;
+
     lutBase = &base->LUT[index];
     for (i = 0; i < count; i++)
     {
-        *lutBase++ = *cmd++;
+    		*lutBase++ = *cmd++;
     }
 
     /* Lock LUT. */
@@ -682,7 +693,7 @@ status_t FLEXSPI_WriteBlocking(FLEXSPI_Type *base, uint32_t *buffer, size_t size
         {
             for (i = 0U; i < 2U * txWatermark; i++)
             {
-                base->TFDR[i] = *buffer++;
+				base->TFDR[i] = *buffer++;
             }
 
             size = size - 8U * txWatermark;
@@ -691,7 +702,7 @@ status_t FLEXSPI_WriteBlocking(FLEXSPI_Type *base, uint32_t *buffer, size_t size
         {
             for (i = 0U; i < ((size + 3U) / 4U); i++)
             {
-                base->TFDR[i] = *buffer++;
+				base->TFDR[i] = *buffer++;
             }
             size = 0U;
         }
@@ -785,7 +796,7 @@ status_t FLEXSPI_ReadBlocking(FLEXSPI_Type *base, uint32_t *buffer, size_t size)
         {
             for (i = 0U; i < 2U * rxWatermark; i++)
             {
-                *buffer++ = base->RFDR[i];
+				*buffer++ = base->RFDR[i];
             }
 
             size = size - 8U * rxWatermark;
@@ -794,7 +805,7 @@ status_t FLEXSPI_ReadBlocking(FLEXSPI_Type *base, uint32_t *buffer, size_t size)
         {
             for (i = 0U; i < ((size + 3U) / 4U); i++)
             {
-                *buffer++ = base->RFDR[i];
+				*buffer++ = base->RFDR[i];
             }
             size = 0;
         }
@@ -1123,7 +1134,7 @@ void FLEXSPI_TransferHandleIRQ(FLEXSPI_Type *base, flexspi_handle_t *handle)
                     {
                         for (i = 0; i < 2U * txWatermark; i++)
                         {
-                            base->TFDR[i] = *handle->data++;
+							base->TFDR[i] = *handle->data++;
                         }
 
                         handle->dataSize = handle->dataSize - 8U * txWatermark;
@@ -1132,7 +1143,7 @@ void FLEXSPI_TransferHandleIRQ(FLEXSPI_Type *base, flexspi_handle_t *handle)
                     {
                         for (i = 0; i < (handle->dataSize + 3U) / 4U; i++)
                         {
-                            base->TFDR[i] = *handle->data++;
+							base->TFDR[i] = *handle->data++;
                         }
                         handle->dataSize = 0;
                     }

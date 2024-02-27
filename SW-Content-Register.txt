@@ -1,8 +1,8 @@
 Release Name: i.MX RT Industrial Drive Development Platform - Application Software Pack
-Release Version: 1.1
-Package License: LA_OPT_NXP_Software_License v48 July 2023, license in Section 2.2 applies
+Release Version: 1.2
+Package License: LA_OPT_NXP_Software_License v53 December 2023, license in Section 2.3 applies
 Package License File: License.txt
-Content Type: Application Software Pack (source code)
+Distribution Type: Application Software Pack (source code)
 Release Location: https://github.com/nxp-appcodehub/ap-qmc2g-industrial
 Origin: NXP (proprietary)
 
@@ -54,6 +54,7 @@ mbed TLS			       Name: mbed TLS
                            Description: C library that implements cryptographic primitives, X.509 certificate manipulation and the SSL/TLS and DTLS protocols
                            Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/mbedtls
 						   Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_slave_cm4/mbedtls
+						   Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_bootloader/mbedtls
                            Origin: ARM (Apache-2.0)
 						   URL: https://github.com/Mbed-TLS/mbedtls
 						   
@@ -194,4 +195,37 @@ VGLite			           Name: VGLite GPU Driver
                            Description: VeriSilicon's platform independent VGLite Graphics library
                            Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/vglite
                            Origin: VeriSilicon (MIT)
-						   Url: http://www.verisilicon.com/ 
+						   Url: http://www.verisilicon.com/
+						   
+incbin					   Name: incbin                       
+                           Outgoing License: Unlicense                    
+                           License File: 3rd_party_licenses/unlicense.txt                      
+                           Format: source code, header files         
+						   Description: Include binary and textual files in your C/C++ applications with ease
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver/contrib
+						   Url: https://github.com/graphitemaster/incbin
+						   
+pattern					   Name: pattern
+                           Outgoing License: BSD-3-Clause                    
+                           License File: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver/mongrel_LICENSE.txt                     
+                           Format: source code, header files         
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver/contrib
+						   Origin: Zed A. Shaw and Mongrel2 Project Contributors
+						   Url: https://github.com/mongrel2/mongrel2
+						   
+miniz					   Name: miniz
+                           Outgoing License: MIT                    
+                           License File: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver/contrib/miniz_LICENSE.txt                     
+                           Format: source code, header files      
+						   Description: Lossless, high performance data compression library
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver/contrib
+						   Origin: RAD Game Tools and Valve Software, Rich Geldreich and Tenacious Software LLC
+						   Url: https://github.com/richgel999/miniz/tree/master
+						   
+http11_parser			   Name: http11_parser
+                           Outgoing License: BSD-3-Clause                     
+                           License File: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver/mongrel_LICENSE.txt                    
+                           Format: source code, header files      
+                           Location: qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver/parser
+						   Origin: Zed A. Shaw and Mongrel2 Project Contributors
+						   Url: https://github.com/mongrel2/mongrel2					   

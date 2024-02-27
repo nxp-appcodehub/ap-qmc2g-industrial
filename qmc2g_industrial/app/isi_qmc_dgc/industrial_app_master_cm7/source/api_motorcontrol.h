@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -208,11 +208,19 @@ qmc_status_t MC_QueueMotorCommand(const mc_motor_command_t* cmd);
 qmc_status_t MC_DequeueMotorStatus(const qmc_msg_queue_handle_t* handle, uint32_t timeout, mc_motor_status_t* status);
 
  /*!
- * @brief Enables or disables the execution of motor commands sent via the TSN connection.
+ * @brief Enables or disables the execution of motor commands sent via the TSN connection for all motors at once.
  *
  * @param[in] isOn true = command injection enabled; false = command injection disabled
  */
 void MC_SetTsnCommandInjection(bool isOn);
+
+/*!
+* @brief Enables or disables the execution of motor commands sent via the TSN connection for a specific motor.
+*
+* @param[in] isOn true = command injection enabled; false = command injection disabled
+* @param[in] motorId id of the motor that should be affected
+*/
+qmc_status_t MC_SetTsnCommandInjectionById(bool isOn, mc_motor_id_t motorId);
 
  /*!
  * @brief Request a new message queue handle to receive motor status messages.

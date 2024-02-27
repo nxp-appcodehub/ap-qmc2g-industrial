@@ -41,6 +41,7 @@
 #include "main_cm7.h"
 #include "api_qmc_common.h"
 #include "api_rpc_internal.h"
+#include "api_mem_fault_info.h"
 #include "qmc_features_config.h"
 #include "task.h"
 
@@ -85,17 +86,115 @@ void HardFault_Handler(void)
 #endif
 
 /***************************************************************************//*!
- * @brief   MemManage exception handler
- * @details It will stop application in debug mode with software breakpoint
- *          when memory fault event occur.
+ * @brief   Extended MemManage exception handler
+ * @details Forwards write requests to the CCM or ANADIG module to the M4.
+ * 			Otherwise, it will stop application in debug mode with software 
+ *          breakpoint when hard fault event occur.
  ******************************************************************************/
+#if !defined(NO_SBL) || defined(DEBUG_M4_WRITE_FORWARDING)
+/* no optimization */
+__attribute__((optimize("O0")))
+void MemManage_HandlerFaultStackFrame(mem_fault_info_stack_frame_t *const pFaultStackFrame)
+{
+	/* check that fault address register is valid, a data access caused the fault
+	 * and that the fault address lied within CCM or ANADIG range */
+	if((SCB->CFSR & SCB_CFSR_MMARVALID_Msk) &&
+	   (SCB->CFSR & SCB_CFSR_DACCVIOL_Msk) &&
+	      /* CCM */
+	   (((SCB->MMFAR >= 0x40CC0000U) && (SCB->MMFAR <= 0x40CC7FFFU)) ||
+          /* ANADIG */
+	    ((SCB->MMFAR >= 0x40C84000U) && (SCB->MMFAR <= 0x40C87FFFU))))
+	{
+		mem_fault_info_t memFaultInfo = {0U};
+
+		/* get information about memory access fault */
+		if(!MEM_FAULT_INFO_GetWriteAccessFaultInformation(pFaultStackFrame, (uintptr_t)SCB->MMFAR, &memFaultInfo))
+		{
+			/* unsupported write access -> halt or reboot */
+			#ifdef DEBUG
+			  __asm("BKPT #0x03");
+			#endif
+			  NVIC_SystemReset();
+		}
+
+		/* forward request to M4 which will either succeed or the system will be reset */
+		qmc_mem_write_t write = {
+			.baseAddress = memFaultInfo.address,
+			.dataWords =  (memFaultInfo.dataWords <= QMC_MEM_WRITE_MAX_DATA_WORDS) ?
+				  		   memFaultInfo.dataWords : QMC_MEM_WRITE_MAX_DATA_WORDS,
+			.accessSize = memFaultInfo.accessSize
+		};
+		memcpy(write.data, memFaultInfo.data, ((uint32_t)write.dataWords) * sizeof(uint32_t));
+		qmc_status_t ret = RPC_MemoryWriteIntsDisabled(&write);
+		(void) ret;
+		/* can not fail if pointer is valid */
+		assert(kStatus_QMC_Ok == ret);
+
+		/* we performed the access using the M4, skip the instruction that caused the fault */
+		pFaultStackFrame->pc += memFaultInfo.insWidth;
+		/* simulate writeback if necessary */
+		if(NULL != memFaultInfo.pWritebackGpr)
+		{
+			*memFaultInfo.pWritebackGpr = memFaultInfo.writebackValue;
+		}
+
+		/* clear active MMFSR faults */
+		SCB->CFSR |= SCB->CFSR & (SCB_CFSR_MMARVALID_Msk | SCB_CFSR_MLSPERR_Msk | SCB_CFSR_MSTKERR_Msk |
+								  SCB_CFSR_MUNSTKERR_Msk | SCB_CFSR_DACCVIOL_Msk | SCB_CFSR_IACCVIOL_Msk);
+    }
+ 	else
+	{
+		#ifdef DEBUG
+		  __asm("BKPT #0x03");
+		#endif
+		  NVIC_SystemReset();
+	}
+}
+#endif
+
+/***************************************************************************//*!
+ * @brief   MemManage exception handler
+ * @details Extends the fault stack frame and calls 
+ *          MemManage_HandlerFaultStackFrame if the SBL is used.
+ ******************************************************************************/
+#if defined(NO_SBL) && !defined(DEBUG_M4_WRITE_FORWARDING)
 void MemManage_Handler(void)
 {
-#ifdef DEBUG
-  __asm("BKPT #0x03");
-#endif
-  NVIC_SystemReset();
+	#ifdef DEBUG
+		__asm("BKPT #0x03");
+	#endif
+		NVIC_SystemReset();
 }
+#else
+/* naked as we use our own custom prologue and epilogue 
+ * should have highest priority (0) */
+__attribute__((naked))
+void MemManage_Handler(void)
+{
+	/* push remaining GPRs and LR which were not pushed by hardware on stack with fault stack frame,
+	 * move active stack pointer into argument 0 register and call extended handler,
+	 * return after execution of extended handler */
+	__asm volatile
+	(
+		/* if bit 2 in lr is set, then psp was active prior to exception */
+		"tst lr, #4 \n"
+		"beq 1f \n"
+		/* psp was active, now msp is active */
+		"mrs r0, psp \n"
+		"stmdb r0!, {r4, r5, r6, r7, r8, r9, r10, r11, lr} \n"
+		/* r4 is callee saved */
+		"mov r4, r0 \n"
+		"bl MemManage_HandlerFaultStackFrame \n"
+		"ldm r4, {r4, r5, r6, r7, r8, r9, r10, r11, pc} \n"
+		/* msp was active and is still active */
+		"1: \n"
+		"push {r4, r5, r6, r7, r8, r9, r10, r11, lr} \n"
+		"mov r0, sp \n"
+		"bl MemManage_HandlerFaultStackFrame \n"
+		"pop {r4, r5, r6, r7, r8, r9, r10, r11, pc} \n"
+	);
+}
+#endif
 
 /***************************************************************************//*!
  * @brief   BusFault exception handler
@@ -123,7 +222,6 @@ void UsageFault_Handler(void)
   NVIC_SystemReset();
 }
 
-//TODO: Consider a combined handler that sets/clears all event bits in one go
 /***************************************************************************//*!
  * @brief   User button interrupt handler
  * @details .
@@ -207,8 +305,8 @@ void BOARD_USER_BUTTON1_IRQ_HANDLER(void)
     }
 
 	/* Update event group */
-    xEventGroupSetBitsFromISR(g_inputButtonEventGroupHandle, setBits, NULL);
     xEventGroupClearBitsFromISR(g_inputButtonEventGroupHandle, clearBits);
+    xEventGroupSetBitsFromISR(g_inputButtonEventGroupHandle, setBits, NULL);
 
     SDK_ISR_EXIT_BARRIER;
 }
@@ -280,8 +378,8 @@ void BOARD_DIG_IN0_IRQ_HANDLER(void)
 	}
 
 	/* Update event group */
-    xEventGroupSetBitsFromISR(g_inputButtonEventGroupHandle, setBits, NULL);
     xEventGroupClearBitsFromISR(g_inputButtonEventGroupHandle, clearBits);
+    xEventGroupSetBitsFromISR(g_inputButtonEventGroupHandle, setBits, NULL);
 
 	SDK_ISR_EXIT_BARRIER;
 }
@@ -301,8 +399,8 @@ void BOARD_DIG_IN2_IRQ_HANDLER(void)
 	{
     	if(GPIO_PinRead(BOARD_DIG_IN2_GPIO, BOARD_DIG_IN2_GPIO_PIN))
     	{
-    		xEventGroupSetBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT2_HIGH, NULL);
     		xEventGroupClearBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT2_LOW);
+    		xEventGroupSetBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT2_HIGH, NULL);
 #if FEATURE_ENABLE_GPIO_SW_DEBOUNCING
     		buttonPressedTime = currentTicks;
 #endif /* FEATURE_ENABLE_GPIO_SW_DEBOUNCING */
@@ -310,12 +408,12 @@ void BOARD_DIG_IN2_IRQ_HANDLER(void)
 #if FEATURE_ENABLE_GPIO_SW_DEBOUNCING
     		if ((currentTicks - buttonPressedTime) >= pdMS_TO_TICKS(GPIO_SW_DEBOUNCE_MS))
 			{
+    			xEventGroupClearBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT2_HIGH);
 				xEventGroupSetBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT2_LOW, NULL);
-				xEventGroupClearBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT2_HIGH);
 			}
 #else
+    		xEventGroupClearBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT2_HIGH);
 			xEventGroupSetBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT2_LOW, NULL);
-			xEventGroupClearBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT2_HIGH);
 #endif /* FEATURE_ENABLE_GPIO_SW_DEBOUNCING */
     	}
 		GPIO_PortClearInterruptFlags(BOARD_DIG_IN2_GPIO, 1U << BOARD_DIG_IN2_GPIO_PIN);
@@ -337,8 +435,8 @@ void BOARD_DIG_IN3_IRQ_HANDLER(void)
 	{
     	if(GPIO_PinRead(BOARD_DIG_IN3_GPIO, BOARD_DIG_IN3_GPIO_PIN))
     	{
-    		xEventGroupSetBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT3_HIGH, NULL);
     		xEventGroupClearBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT3_LOW);
+    		xEventGroupSetBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT3_HIGH, NULL);
 #if FEATURE_ENABLE_GPIO_SW_DEBOUNCING
     		buttonPressedTime = currentTicks;
 #endif /* FEATURE_ENABLE_GPIO_SW_DEBOUNCING */
@@ -346,12 +444,12 @@ void BOARD_DIG_IN3_IRQ_HANDLER(void)
 #if FEATURE_ENABLE_GPIO_SW_DEBOUNCING
     		if ((currentTicks - buttonPressedTime) >= pdMS_TO_TICKS(GPIO_SW_DEBOUNCE_MS))
 			{
+    			xEventGroupClearBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT3_HIGH);
 				xEventGroupSetBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT3_LOW, NULL);
-				xEventGroupClearBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT3_HIGH);
 			}
 #else
+    		xEventGroupClearBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT3_HIGH);
 			xEventGroupSetBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT3_LOW, NULL);
-			xEventGroupClearBitsFromISR(g_inputButtonEventGroupHandle, QMC_IOEVENT_INPUT3_HIGH);
 #endif /* FEATURE_ENABLE_GPIO_SW_DEBOUNCING */
     	}
 		GPIO_PortClearInterruptFlags(BOARD_DIG_IN3_GPIO, 1U << BOARD_DIG_IN3_GPIO_PIN);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -303,12 +303,12 @@ RAM_FUNC_CRITICAL void MCDRV_QdcSpeedCalUpdate(qdc_block_t *this)
 			{
 				if(this->sSpeed.i8SpeedSign > 0)
 				{
-					i64Numerator = ((int64_t)(1.0) * this->sSpeed.f32SpeedCalConst);
+					i64Numerator = ((int64_t)(1) * this->sSpeed.f32SpeedCalConst);
 					this->sSpeed.f32Speed = (i64Numerator / (uint32_t)(this->sSpeed.ui16Period))<<4;
 				}
 				else
 				{
-					i64Numerator = ((int64_t)(-1.0) * this->sSpeed.f32SpeedCalConst);
+					i64Numerator = ((int64_t)(-1) * this->sSpeed.f32SpeedCalConst);
 					this->sSpeed.f32Speed = (i64Numerator / (uint32_t)(this->sSpeed.ui16Period))<<4;
 				}
 			}

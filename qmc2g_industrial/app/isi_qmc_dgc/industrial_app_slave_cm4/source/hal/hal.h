@@ -21,6 +21,8 @@
 #include <stddef.h>
 #include <assert.h>
 
+#include "qmc_features_config.h"
+
 #include "board.h"
 #include "fsl_debug_console.h"
 
@@ -32,8 +34,8 @@
  ******************************************************************************/
 #define DEBUG_LOG_PRINT_FUNC PRINTF
 
-/* ((HAL_DEBOUNCING_TIMEOUT_RELOAD - 1) ... HAL_DEBOUNCING_TIMEOUT_RELOAD) * HAL_SYSTICK_PERIOD_MS */
-#define HAL_DEBOUNCING_TIMEOUT_RELOAD (2U) /*!< reload value of timeout */
+/* debouncing time > (HAL_DEBOUNCING_TIMEOUT_RELOAD - 1) * HAL_SYSTICK_PERIOD_MS */
+#define HAL_DEBOUNCING_TIMEOUT_RELOAD (2) /*!< reload value of debouncing timeout */
 
 /* 2 ^ HAL_SNVS_RTC_PERIODIC_INTERRUPT_FREQUENCY_EXP = 1024Hz */
 #define HAL_SNVS_RTC_PERIODIC_INTERRUPT_FREQUENCY_EXP (10U) /*!< SNVS RTC periodic interrupt frequency exponent */
@@ -109,14 +111,20 @@ void HAL_SnvsGpioInit(uint32_t initState);
  * Sets up the SysTick interrupt (10ms period), used for debouncing.
  * As the SysTick is an exception (not handled by NVIC),
  * the handler will start to be immediately called after running this function.
+ * 
+ * @return qmc_status_t A qmc_status_t status code.
+ * @retval kStatus_QMC_Ok
+ * The operation did complete successfully, system tick timer is running.
+ * @retval kStatus_QMC_ErrRange
+ * The internally calculated tick reload value is invalid, system tick timer not running!
  */
-void HAL_InitSysTick(void);
+qmc_status_t HAL_InitSysTick(void);
 
 /*!
  * @brief Performs SRTC peripheral initialization.
  *
  * Initializes the SNVS LP domain (also needed for accessing the SNVS LPGPR registers!).
- * Sets up the SNVS peripheral (just starts it).
+ * Sets up the SNVS SRTC peripheral (just starts it).
  * The value of the SRTC is only reset to zero if the SRTC was not running
  * already.
  */
@@ -137,17 +145,19 @@ void HAL_InitRtc(void);
  * We do not use interrupt nesting, but we still assign subpriorities to
  * specify which interrupt should be processed first when multiple ones are
  * pending (all time measurements refer to IMXRT1176 CM4):
- *  1) WDOG1_IRQn (only in case hardware watchdog is near expiration == code does not work)
+ * 
+ *  1. WDOG1_IRQn (only in case hardware watchdog is near expiration == code does not work)
  *      w.c. 359593 cycles 899us (n = 100000)
- *  2) SNVS_HP_NON_TZ_IRQ (ticks functional + authenticated watchdog, every 1ms)
+ *  2. SNVS_HP_NON_TZ_IRQ (ticks functional + authenticated watchdog, every 1ms)
  *      w.c. 71910 cycles 180us (n = 100000; 10 functional watchdogs)
- *  3) GPIO13_Combined_0_31_IRQ (triggered when an input state changes, call pattern unknown)
+ *  3. GPIO13_Combined_0_31_IRQ (triggered when an input state changes, call pattern unknown)
  *      w.c. 83891 cycles 210us (n = 100000)
- *  4) SysTick_IRQ (used for debouncing, every 10ms)
+ *  4. SysTick_IRQ (used for debouncing, every 10ms)
  *      w.c. 47935 cycles 120us (n = 100000)
- *  5) GPR_IRQ_IRQn (triggered in case of communication, call pattern unknown)
- *     w.c. 2813 cycles 8us (n = 100000; without reset)
- *     w.c. 395559 cycles 989us (n = 100000; with reset)
+ *  5. GPR_IRQ_IRQn (triggered in case of communication, call pattern unknown)
+ *     - w.c. 2813 cycles 165us (n = 100000; without reset)
+ *     - w.c. 395559 cycles 1211us (n = 100000; with reset)
+ * 
  *     The communication implementation "polls" the CM7 until it acknowledges
  *     the receival. Therefore, we assign GPR_IRQ_IRQn the lowest priority so that no
  *     other interrupts are blocked. This should be fine as the other interrupts are more
@@ -236,13 +246,13 @@ void HAL_SetFwuStatus(uint8_t status);
 void HAL_SetSrtcOffset(int64_t offset);
 
 /*!
- * @brief Writes the reset status to the battery-backed SNVS GPR.
+ * @brief Writes the reset cause to the battery-backed SNVS GPR.
  *
  * Hint: The type qmc_reset_cause_id_t is not used as enums are always 32 bits wide.
  *
  * Accesses the slow SNVSMIX domain.
  *
- * @param status The reset cause value according to qmc_reset_cause_id_t.
+ * @param cause The reset cause value according to qmc_reset_cause_id_t.
  */
 void HAL_SetResetCause(uint8_t cause);
 
@@ -304,15 +314,19 @@ int64_t HAL_GetSrtcOffset(void);
  * @startuml
  * start
  * :uint8_t tries = 0
- * int64_t srtcValue1 = 0
- * int64_t srtcValue2 = 0;
+ * uint64_t srtcValue1 = 0
+ * uint64_t srtcValue2 = 0;
+ * if () then (NULL == pRtcVal)
+ *   :return kStatus_QMC_ErrArgInvalid;
+ *   stop
+ * endif
  * repeat
- *   :srtcValue1 = ((int64_t)SNVS->LPSRTCMR << 32) | SNVS->LPSRTCLR
- *   srtcValue2 = ((int64_t)SNVS->LPSRTCMR << 32) | SNVS->LPSRTCLR
+ *   :srtcValue1 = ((uint64_t)SNVS->LPSRTCMR << 32) | SNVS->LPSRTCLR
+ *   srtcValue2 = ((uint64_t)SNVS->LPSRTCMR << 32) | SNVS->LPSRTCLR
  *   tries++;
  * repeat while ((tries < 3) && (srtcValue1 != srtcValue2))
- * if () then (tries < 3)
- *   :~*pRtcVal = srtcValue1
+ * if () then (srtcValue1 == srtcValue2)
+ *   :~*pRtcVal = (int64_t)srtcValue1
  *   return kStatus_QMC_Ok;
  * else (else)
  *   :return kStatus_QMC_Timeout;
@@ -348,9 +362,17 @@ void HAL_EnableInterCoreIRQ(void);
 void HAL_DataMemoryBarrier(void);
 
 /*!
+ * @brief Executes a data synchronization barrier.
+ */
+void HAL_DataSynchronizationBarrier(void);
+
+/*!
  * @brief Notifies the CM7 about pending messages / events using the GPR SW interrupt.
  *
  * Before calling this function the inter-core IRQ has to be disabled!
+ * 
+ * Includes a barrier that ensures all memory accesses retire before the 
+ * interrupted is triggered.
  *
  * This function is not reentrant and must not be executed in parallel.
  */
@@ -376,14 +398,30 @@ void HAL_ExitCriticalSectionNonISR(void);
  * @brief Handler to call when the GPIO interrupt is triggered.
  *
  * This function should be called from the GPIO13 interrupt handler.
+ * Part of input debouncing.
  */
 void HAL_GpioInterruptHandler(void);
 
 /*!
  * @brief Handler to call when a periodic interrupt is triggered.
  *
- * This function should be called from the systick interrupt handler.
+ * This function should be called from the SysTick interrupt handler.
+ * Part of input debouncing.
  */
 void HAL_GpioTimerHandler(void);
+
+/*!
+ * @brief Initializes the MCU temperature sensor.
+ *
+ * Must be called before calling HAL_GetMcuTemperature().
+ */
+void HAL_InitMcuTemperatureSensor(void);
+
+/*!
+ * @brief Gets the current MCU temperature.
+ *
+ * HAL_InitMcuTemperatureSensor() must be called before this function.
+ */
+float HAL_GetMcuTemperature(void);
 
 #endif /* _HAL_H_ */

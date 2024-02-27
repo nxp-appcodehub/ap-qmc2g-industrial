@@ -12,6 +12,7 @@
 #include "fsl_common.h"
 #include "fsl_gpio.h"
 #include "fsl_clock.h"
+#include "qmc2_types.h"
 
 /*******************************************************************************
  * Definitions
@@ -417,7 +418,7 @@
 #define BOARD_SLOW_DIG_IN7_NAME        		"DIG_IN7"
 
 /*! @brief The board flash size */
-#define BOARD_FLASH_SIZE (0x1000000U) /*TODO: change is different flash memory used*/
+#define BOARD_FLASH_SIZE (0x1000000U)
 
 /*! @brief The ENET0 PHY address. */
 #define BOARD_ENET0_PHY_ADDRESS (0x02U) /* Phy address of enet port 0. */
@@ -528,6 +529,7 @@ uint32_t BOARD_DebugConsoleSrcFreq(void);
 void BOARD_InitDebugConsole(void);
 
 void BOARD_ConfigMPU(void);
+qmc_status_t BOARD_GetTime(qmc_timestamp_t* timestamp);
 
 #if defined(SDK_I2C_BASED_COMPONENT_USED) && SDK_I2C_BASED_COMPONENT_USED
 void BOARD_LPI2C_Init(LPI2C_Type *base, uint32_t clkSrc_Hz);
@@ -566,7 +568,7 @@ void BOARD_SD_Pin_Config(uint32_t speed, uint32_t strength);
 void BOARD_UserLedsInit(void);
 void BOARD_ShowErrorOnLeds(uint8_t led4, uint8_t led3, uint8_t led2, uint8_t led1);
 uint8_t BOARD_UserBtnsPressed();
-
+qmc_status_t BOARD_GetTime(qmc_timestamp_t* timestamp);
 
 #if defined(__cplusplus)
 }

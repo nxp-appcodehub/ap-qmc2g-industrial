@@ -28,8 +28,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef KE_MEASURE_H_
-#define KE_MEASURE_H_
+#ifndef KE_MEASURE_H
+#define KE_MEASURE_H
 
 #include "mid_def.h"
 
@@ -46,4 +46,4 @@ extern void MID_getKe(mid_get_ke_t* sKeMeasFcn);
 }
 #endif
 
-#endif /* KE_MEASURE_H_ */
+#endif /* KE_MEASURE_H */

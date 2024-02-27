@@ -437,6 +437,8 @@ int tlvGet_TimeStamp(uint8_t *buf, size_t *pBufIndex, const size_t bufLen, SE05x
     return tlvGet_u8buf(buf, pBufIndex, bufLen, tag, pTs->ts, &rspBufSize);
 }
 
+#include "ThreadSafetyWorkaround.h"
+
 smStatus_t DoAPDUTx_s_Case3(Se05xSession_t *pSessionCtx, const tlvHeader_t *hdr, uint8_t *cmdBuf, size_t cmdBufLen)
 {
     uint8_t rxBuf[SE05X_TLV_BUF_SIZE_RSP + 2] = {0};
@@ -446,7 +448,9 @@ smStatus_t DoAPDUTx_s_Case3(Se05xSession_t *pSessionCtx, const tlvHeader_t *hdr,
         apduStatus = SM_NOT_OK;
     }
     else {
+    	ThreadSafetyWorkaround_Lock();
         apduStatus = pSessionCtx->fp_TXn(pSessionCtx, hdr, cmdBuf, cmdBufLen, rxBuf, &rxBufLen, 0);
+        ThreadSafetyWorkaround_Unlock();
     }
     return apduStatus;
 }
@@ -463,7 +467,9 @@ smStatus_t DoAPDUTxRx_s_Case2(Se05xSession_t *pSessionCtx,
         apduStatus = SM_NOT_OK;
     }
     else {
+    	ThreadSafetyWorkaround_Lock();
         apduStatus = pSessionCtx->fp_TXn(pSessionCtx, hdr, cmdBuf, cmdBufLen, rspBuf, pRspBufLen, 0);
+        ThreadSafetyWorkaround_Unlock();
     }
     return apduStatus;
 }
@@ -480,7 +486,9 @@ smStatus_t DoAPDUTxRx_s_Case4(Se05xSession_t *pSessionCtx,
         apduStatus = SM_NOT_OK;
     }
     else {
+    	ThreadSafetyWorkaround_Lock();
         apduStatus = pSessionCtx->fp_TXn(pSessionCtx, hdr, cmdBuf, cmdBufLen, rspBuf, pRspBufLen, 0);
+        ThreadSafetyWorkaround_Unlock();
     }
     return apduStatus;
 }
@@ -497,7 +505,9 @@ smStatus_t DoAPDUTxRx_s_Case4_ext(Se05xSession_t *pSessionCtx,
         apduStatus = SM_NOT_OK;
     }
     else {
+    	ThreadSafetyWorkaround_Lock();
         apduStatus = pSessionCtx->fp_TXn(pSessionCtx, hdr, cmdBuf, cmdBufLen, rspBuf, pRspBufLen, 1);
+        ThreadSafetyWorkaround_Unlock();
     }
     return apduStatus;
 }

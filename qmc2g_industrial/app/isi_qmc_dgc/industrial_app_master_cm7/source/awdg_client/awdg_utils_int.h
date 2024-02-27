@@ -69,6 +69,33 @@ struct NetworkContext
 /*!
  * @brief Convert a string to a number (base 10).
  *
+ * @startuml
+ * start
+ * :Remove leading and trailing whitespaces (see IsWhitespace) from string pStr 
+ * Resulting string is defined by pTrimmedStr and trimmedStrLen;
+ * if (trimmedStrLen) then (0 || > UINT32_MAX_DIGITS)
+ *   :return false;
+ *   stop
+ * endif
+ * :result = 0
+ * power = 1;
+ * while(c in reversed pTrimmedStr)
+ *   :val = DigitToValue(c);
+ *   if () then (val == UINT8_MAX)
+ *     :return false;
+ *     stop
+ *   endif
+ *   :result = result + val * power
+ *   power = power * 10;
+ *   if (overflow) then (true)
+ *     :return false;
+ *     stop
+ *   endif 
+ * endwhile (else)
+ * :~*pNumber = result;
+ * stop
+ * @enduml
+ * 
  * @param[in] pStr Pointer to the string representing the number.
  * @param[in] strLen Length of the string.
  * @param[out] pNumber Pointer to an uint32_t in which the result is stored.
@@ -83,6 +110,16 @@ bool AWDG_UTILS_ParseUint32(const char *pStr, size_t strLen, uint32_t *pNumber);
  *
  * See www.freertos.org/network-interface.html.
  *
+ * @startuml
+ * start
+ * :ret = SecureSocketsTransport_Recv(pNetworkContext, pBuffer, bytesToRecv);
+ * if (ret) then (one of {MBEDTLS_ERR_SSL_TIMEOUT, MBEDTLS_ERR_SSL_WANT_READ, MBEDTLS_ERR_SSL_WANT_WRITE})
+ *   :ret = 0 (retry);
+ * endif
+ * :return ret;
+ * stop
+ * @enduml
+ * 
  * @param[in, out] pNetworkContext Implementation-defined network context.
  * @param[in, out] pBuffer Buffer to receive the data into.
  * @param[in] bytesToRecv Number of bytes requested from the network.
@@ -95,6 +132,16 @@ int32_t AWDG_UTILS_SERecv(NetworkContext_t *pNetworkContext, void *pBuffer, size
  *
  * See www.freertos.org/network-interface.html.
  *
+ * @startuml
+ * start
+ * :ret = SecureSocketsTransport_Send(pNetworkContext, pBuffer, bytesToSend);
+ * if (ret) then (one of {MBEDTLS_ERR_SSL_TIMEOUT, MBEDTLS_ERR_SSL_WANT_READ, MBEDTLS_ERR_SSL_WANT_WRITE})
+ *   :ret = 0 (retry);
+ * endif
+ * :return ret;
+ * stop
+ * @enduml
+ * 
  * @param[in, out] pNetworkContext Implementation-defined network context.
  * @param[in] pBuffer Buffer containing the bytes to send over the network.
  * @param[in] bytesToSend Number of bytes to send over the network.

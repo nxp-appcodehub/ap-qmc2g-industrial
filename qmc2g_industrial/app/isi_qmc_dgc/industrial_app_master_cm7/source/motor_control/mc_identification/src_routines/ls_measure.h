@@ -28,8 +28,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LS_MEASURE_H_
-#define LS_MEASURE_H_
+#ifndef LS_MEASURE_H
+#define LS_MEASURE_H
 
 #include "mid_def.h"
 
@@ -46,4 +46,4 @@ extern void MID_getLs(mid_get_ls_t* sLsMeasFcn);
 }
 #endif
 
-#endif /* LS_MEASURE_H_ */
+#endif /* LS_MEASURE_H */

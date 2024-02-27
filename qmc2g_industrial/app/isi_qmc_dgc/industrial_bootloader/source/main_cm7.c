@@ -15,6 +15,8 @@
 #include <qmc2_boot.h>
 #include "fsl_device_registers.h"
 #include "fsl_debug_console.h"
+#include "resource_config_sbl.h"
+
 
 #include "fsl_rdc.h"
 #include "fsl_gpt.h"
@@ -55,6 +57,9 @@ int main(void)
 #if (SSS_HAVE_HOSTCRYPTO_MBEDTLS)
     CRYPTO_InitHardware();
 #endif /* defined(MBEDTLS) */
+
+    // RDC for SBL only
+    BOARD_InitBootTEE_Sbl();
 
     /* Print VTOR address to be aware of execution address. */
     PRINTF("\r\n\r\nVTOR address of the qmc2 Bootloader - SCB->VTOR: 0x%08X\r\n", SCB->VTOR);

@@ -28,7 +28,7 @@
  * 									Public functions								  *
  **************************************************************************************/
 /* Program FWU image from SD to FWU storage. */
-sss_status_t QMC2_FWU_SdToFwuStorage(boot_data_t *boot, log_entry_t *log)
+sss_status_t QMC2_FWU_SdToFwuStorage(boot_data_t *boot, log_event_code_t *log)
  {
 	sss_status_t status = kStatus_SSS_Fail;
 	uint32_t offset = FW_HEADER_BLOCK_SIZE;
@@ -60,19 +60,19 @@ sss_status_t QMC2_FWU_SdToFwuStorage(boot_data_t *boot, log_entry_t *log)
 	}
 
 	status = QMC2_FLASH_Erase(SBL_FWU_STORAGE_ADDRESS, pgmAlignedSize);
-	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_ExtMemOprFailed);
+	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, LOG_EVENT_ExtMemOprFailed);
 
 	status = QMC2_SD_FATFS_Open(SD_CARD_FW_UPDATE_FILE);
-	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_SdCardFailed);
+	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, LOG_EVENT_SdCardFailed);
 
 	length = boot->fwuManifest.man.fwuDataLength - unalignedChunk;
 	while(length)
 	{
 		status = QMC2_SD_FATFS_Read(buffer, PGM_PAGE_SIZE, offset);
-		ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_SdCardFailed);
+		ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, LOG_EVENT_SdCardFailed);
 
 		status = QMC2_FLASH_ProgramPages(SBL_FWU_STORAGE_ADDRESS+offset,  buffer,  PGM_PAGE_SIZE);
-		ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_ExtMemOprFailed);
+		ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, LOG_EVENT_ExtMemOprFailed);
 
 		length -= PGM_PAGE_SIZE;
 		offset += PGM_PAGE_SIZE;
@@ -83,29 +83,29 @@ sss_status_t QMC2_FWU_SdToFwuStorage(boot_data_t *boot, log_entry_t *log)
 	if (unalignedChunk)
 	{
 		status = QMC2_SD_FATFS_Read(buffer, unalignedChunk, offset);
-		ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_SdCardFailed);
+		ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, LOG_EVENT_SdCardFailed);
 
 		status = QMC2_FLASH_ProgramPages(SBL_FWU_STORAGE_ADDRESS+offset,  buffer,  unalignedChunk);
-		ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_ExtMemOprFailed);
+		ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, LOG_EVENT_ExtMemOprFailed);
 	}
 
 	status = QMC2_SD_FATFS_Read(buffer, FW_HEADER_BLOCK_SIZE, 0);
-	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_SdCardFailed);
+	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, LOG_EVENT_SdCardFailed);
 
 	status = QMC2_FLASH_ProgramPages(SBL_FWU_STORAGE_ADDRESS,  buffer,  FW_HEADER_BLOCK_SIZE);
-	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_ExtMemOprFailed);
+	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, LOG_EVENT_ExtMemOprFailed);
 
 	status = QMC2_SD_FATFS_Delete(SD_CARD_FW_UPDATE_FILE);
-	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_SdCardFailed);
+	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, LOG_EVENT_SdCardFailed);
 
 	status = QMC2_SD_FATFS_Close();
-	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_SdCardFailed);
+	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, LOG_EVENT_SdCardFailed);
 
 	/* Read manifest again from FWU storage. */
 	status = QMC2_FWU_ReadManifest(&boot->fwuManifest, &boot->seData.manVersion, false);
-	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_InvalidFwuVersion);
+	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, LOG_EVENT_InvalidFwuVersion);
 
-	return status;
+	return kStatus_SSS_Success;
 
 exit:
 
@@ -114,19 +114,30 @@ exit:
 
 	memset(&boot->fwuManifest, 0, sizeof(fwu_manifest_t));
 
-	return status;
+	return kStatus_SSS_Fail;
 }
 
 /* Program FW update. */
-sss_status_t QMC2_FWU_Program(boot_data_t *boot, log_entry_t *log)
+sss_status_t QMC2_FWU_Program(boot_data_t *boot, log_event_code_t *log)
  {
 	sss_status_t status = kStatus_SSS_Fail;
+	uint32_t *manifest_loc = ((uint32_t *)SBL_FWU_STORAGE_ADDRESS);
 	uint32_t pgmAlignedSize = 0;
 
 	assert(boot != NULL);
 	assert(log != NULL);
 
-	/* Aling the size to pgm page */
+	if((*manifest_loc) != ((uint32_t)MAIN_FW_UPDATE_VENDOR_ID))
+	{
+		return kStatus_SSS_Fail;
+	}
+
+	if(boot->fwuManifest.man.fwDataLength == 0)
+	{
+		return kStatus_SSS_Fail;
+	}
+
+	/* Align the size to pgm page */
 	if(boot->fwuManifest.man.fwDataLength % PGM_PAGE_SIZE)
 	{
 		pgmAlignedSize = boot->fwuManifest.man.fwDataLength + (PGM_PAGE_SIZE - (boot->fwuManifest.man.fwDataLength % PGM_PAGE_SIZE));
@@ -136,7 +147,7 @@ sss_status_t QMC2_FWU_Program(boot_data_t *boot, log_entry_t *log)
 		pgmAlignedSize = boot->fwuManifest.man.fwDataLength;
 	}
 
-	/* Check if alinged size fits into storage */
+	/* Check if aligned size fits into storage */
 	if(pgmAlignedSize > SBL_MAIN_FW_SIZE)
 	{
 		(void)QMC2_FLASH_Erase(SBL_FWU_STORAGE_ADDRESS, pgmAlignedSize);
@@ -147,31 +158,26 @@ sss_status_t QMC2_FWU_Program(boot_data_t *boot, log_entry_t *log)
 	if (status != kStatus_SSS_Success)
 	{
 		PRINTF("\r\nERROR: Erase of the Main FW location failed.!\r\n");
-		return status;
+		return kStatus_SSS_Fail;
 	}
 
-	/* Program FW image onto main FW adddress. */
+	/* Program FW image onto main FW address. */
 	status = QMC2_FLASH_ProgramPages(SBL_MAIN_FW_ADDRESS, (const void *)boot->fwuManifest.man.fwDataAddr, pgmAlignedSize);
-	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_ExtMemOprFailed);
+	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, LOG_EVENT_ExtMemOprFailed);
 
 	status = QMC2_FLASH_encXipMemcmp(SBL_MAIN_FW_ADDRESS, boot->fwuManifest.man.fwDataAddr, pgmAlignedSize);
-	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_ExtMemOprFailed);
+	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, LOG_EVENT_ExtMemOprFailed);
 
 	/* Set status to force the new main FW to do selfcheck. */
-	//TODO double check if there can be some state which cannot be overwritten
-	boot->svnsLpGpr.fwState = kFWU_VerifyFw;
+	boot->svnsLpGpr.fwState |= kFWU_VerifyFw;
 	status = QMC2_LPGPR_Write(&boot->svnsLpGpr);
-	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_SvnsLpGprOpFailed);
+	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, LOG_EVENT_SvnsLpGprOpFailed);
 
-	// TODO double check this behaviour
-	/* Commit the manifest version to prevent re-instalation. */
-	status = QMC2_SE_CommitManVersionToSe(&boot->bootKeys.scp03, &boot->fwuManifest.man, &boot->seData.manVersion);
-	ENSURE_OR_EXIT_WITH_LOG((status == kStatus_SSS_Success), *log, kLOG_FwuCommitFailed);
-
-	status = QMC2_FLASH_Erase(SBL_FWU_STORAGE_ADDRESS, pgmAlignedSize);
+	/* Manifest must stay in to storage to read out its version again */
+	status = QMC2_FLASH_Erase((SBL_FWU_STORAGE_ADDRESS + OCTAL_FLASH_SECTOR_SIZE), (pgmAlignedSize - OCTAL_FLASH_SECTOR_SIZE));
 	if (status != kStatus_SSS_Success) {
-		PRINTF("\r\nERROR: of the FWU storage failed.!\r\n");
-		*log = kLOG_ExtMemOprFailed;
+		PRINTF("\r\nERROR: Erase of the FWU storage failed.!\r\n");
+		*log = LOG_EVENT_ExtMemOprFailed;
 	}
 
 	return status;
@@ -213,7 +219,7 @@ sss_status_t QMC2_FWU_ReadHeader(uint32_t *address, header_t *fwHeader)
 sss_status_t QMC2_FWU_ReadManifest(fwu_manifest_t *fwuManifest, uint32_t *manVerInSe, bool isSdCardInserted)
 {
 	sss_status_t status = kStatus_SSS_Fail;
-	uint32_t *manifest_loc = ((uint32_t *)SBL_FWU_STORAGE_ADDRESS); //TODO
+	uint32_t *manifest_loc = ((uint32_t *)SBL_FWU_STORAGE_ADDRESS);
 	manifest_t manOnSdCard = {0};
 	manifest_t manOnExtFlash = {0};
 
@@ -297,7 +303,6 @@ sss_status_t QMC2_FWU_ReadManifest(fwu_manifest_t *fwuManifest, uint32_t *manVer
 cleanup:
 
 	/* Check the revision again. */
-	//TODO also valide the addresses within the header, to make sure that
 	if(fwuManifest->man.version > *manVerInSe)
 	{
 		return kStatus_SSS_Success;
@@ -528,14 +533,14 @@ sss_status_t QMC2_FWU_BackUpCfgData(header_t *fwHeader)
 	if (status != kStatus_SSS_Success)
 	{
 		PRINTF("\r\nERROR: of the Backup Image location failed!\r\n");
-		return status;
+		return kStatus_SSS_Fail;
 	}
 
 	status = QMC2_FLASH_ProgramPages(SBL_CFGDATA_BACKUP_ADDRESS, (const void *)fwHeader->cfgDataAddr, fwHeader->cfgDataLength);
 	if (status != kStatus_SSS_Success)
 	{
 		PRINTF("\r\nERROR: Programming of the Backup Image location failed!\r\n");
-		return status;
+		return kStatus_SSS_Fail;
 	}
 
 	if (memcmp((void*) fwHeader->cfgDataAddr, (void*) SBL_CFGDATA_BACKUP_ADDRESS, SBL_CFGDATA_BACKUP_SIZE) != 0)

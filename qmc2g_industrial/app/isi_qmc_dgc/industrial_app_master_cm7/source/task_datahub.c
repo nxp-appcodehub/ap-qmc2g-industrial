@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -13,6 +13,8 @@
 #include "api_motorcontrol.h"
 #include "api_motorcontrol_internal.h"
 #include "api_logging.h"
+#include "api_rpc.h"
+#include "api_fault.h"
 #include "FreeRTOS.h"
 #include "event_groups.h"
 #include "timers.h"
@@ -41,9 +43,9 @@
  ******************************************************************************/
 #define DATAHUB_COMMAND_QUEUE_ITEM_SIZE     (sizeof(mc_motor_command_t))
 #define DATAHUB_STATUS_QUEUE_ITEM_SIZE      (sizeof(mc_motor_status_t))
-#define DATAHUB_EVENTBIT_COMMAND_QUEUE      (1 << 0)
-#define DATAHUB_EVENTBIT_STATUS_TIMER       (1 << 1)
-#define DATAHUB_EVENTBIT_FIRST_STATUS_QUEUE (1 << 2)
+#define DATAHUB_EVENTBIT_COMMAND_QUEUE      (1U << 0)
+#define DATAHUB_EVENTBIT_STATUS_TIMER       (1U << 1)
+#define DATAHUB_EVENTBIT_FIRST_STATUS_QUEUE (1U << 2)
 
 
 
@@ -89,7 +91,12 @@ TaskHandle_t g_datahub_task_handle;
  */
 qmc_status_t DataHubInit(void)
 {
-	int i;
+	unsigned int i;
+
+	if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogDataHub) != kStatus_QMC_Ok)
+	{
+		FAULT_RaiseFaultEvent(kFAULT_FunctionalWatchdogInitFail);
+	}
 
 	/* initialize event group for queue events */
 	g_motorQueueEventGroupHandle = xEventGroupCreateStatic(&gs_motorQueueEventGroup);
@@ -123,6 +130,27 @@ qmc_status_t DataHubInit(void)
     					                             pdTRUE, NULL, statusSamplingTimerCallback, &gs_statusSamplingTimer);
 
 	g_isInitialized_DataHub = true;
+
+	if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogDataHub) != kStatus_QMC_Ok)
+	{
+		log_record_t logEntryWithoutId = {
+				.rhead = {
+						.chksum				= 0,
+						.uuid				= 0,
+						.ts = {
+							.seconds		= 0,
+							.milliseconds	= 0
+						}
+				},
+				.type = kLOG_SystemData,
+				.data.systemData.source = LOG_SRC_DataHub,
+				.data.systemData.category = LOG_CAT_General,
+				.data.systemData.eventCode = LOG_EVENT_FunctionalWatchdogKickFailed
+		};
+
+		LOG_QueueLogEntry(&logEntryWithoutId, false);
+	}
+
 	return kStatus_QMC_Ok;
 }
 
@@ -144,6 +172,27 @@ void DataHubTask(void *pvParameters)
 
 	while (1)
 	{
+		if (RPC_KickFunctionalWatchdog(kRPC_FunctionalWatchdogDataHub) != kStatus_QMC_Ok)
+		{
+			log_record_t logEntryWithoutId = {
+					.rhead = {
+							.chksum				= 0,
+							.uuid				= 0,
+							.ts = {
+								.seconds		= 0,
+								.milliseconds	= 0
+							}
+					},
+					.type = kLOG_SystemData,
+					.data.systemData.source = LOG_SRC_DataHub,
+					.data.systemData.category = LOG_CAT_General,
+					.data.systemData.eventCode = LOG_EVENT_FunctionalWatchdogKickFailed
+			};
+
+			LOG_QueueLogEntry(&logEntryWithoutId, false);
+		}
+
+
 		EventBits_t events;
         events =  xEventGroupWaitBits(g_motorQueueEventGroupHandle, (DATAHUB_EVENTBIT_COMMAND_QUEUE | DATAHUB_EVENTBIT_STATUS_TIMER), pdFALSE, pdFALSE, portMAX_DELAY);
 
@@ -186,7 +235,7 @@ void DataHubTask(void *pvParameters)
                             .type                           = kLOG_FaultDataWithID,
                             .data.faultDataWithID.source    = LOG_SRC_MotorControl,
                             .data.faultDataWithID.category  = LOG_CAT_General,
-                            .data.faultDataWithID.motorId   = cmd.eMotorId,
+                            .data.faultDataWithID.id   		= (uint8_t) cmd.eMotorId,
 							.data.faultDataWithID.eventCode = LOG_EVENT_QueueingCommandFailedInternal
                         };
                         LOG_QueueLogEntry(&logEntryWithId, false);
@@ -202,11 +251,12 @@ void DataHubTask(void *pvParameters)
         /* process status sampling timer events */
         if(events & DATAHUB_EVENTBIT_STATUS_TIMER)
         {
-        	int i, k;
+        	unsigned int i;
+        	mc_motor_id_t k;
         	mc_motor_status_t motorStatus[MC_MAX_MOTORS];
 
         	/* retrieve motor status values */
-        	for(k=0; k<MC_MAX_MOTORS; k++)
+        	for(k=kMC_Motor1; k<MC_MAX_MOTORS; k++)
         	{
         		MC_GetMotorStatus(k, motorStatus+k);
         		motorStatus[k].eMotorId = k;

@@ -56,6 +56,9 @@
 /* allow session structure to be fully defined when using mbedtls port */
 #if LWIP_ALTCP_TLS_MBEDTLS
 #include "mbedtls/ssl.h"
+#if ALTCP_MBEDTLS_SSS
+#include "sss_mbedtls.h"
+#endif
 #endif
 
 #ifdef __cplusplus
@@ -79,6 +82,23 @@ err_t altcp_tls_config_server_add_privkey_cert(struct altcp_tls_config *config,
       const u8_t *privkey, size_t privkey_len,
       const u8_t *privkey_pass, size_t privkey_pass_len,
       const u8_t *cert, size_t cert_len);
+
+
+#if ALTCP_MBEDTLS_SSS
+/** @ingroup altcp_tls
+ * Add a sss certificate to an ALTCP_TLS server configuration handle
+ */
+err_t altcp_tls_create_config_server_add_sss(struct altcp_tls_config *config,
+    const u32_t cert_id, const u32_t key_id, 
+    sss_session_t *session,sss_key_store_t *ks);
+/** @ingroup altcp_tls
+ * Create an ALTCP_TLS server configuration handle with one certificate
+ * (short version of calling @ref altcp_tls_create_config_server and
+ * @ref altcp_tls_config_server_add_privkey_cert)
+ */
+struct altcp_tls_config *
+altcp_tls_create_config_server_sss(const u32_t cert_id, const u32_t key_id, sss_session_t *session,sss_key_store_t *ks);
+#endif
 
 /** @ingroup altcp_tls
  * Create an ALTCP_TLS server configuration handle with one certificate

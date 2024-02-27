@@ -77,7 +77,11 @@ qmc_status_t Init_network_addresses()
 	}
 
 	memcpy(system_cfg.net[0].net_mask, ip_mask, sizeof(system_cfg.net[0].net_mask));
-
+  #if FEATURE_TSN_PRINT_IF
+	PRINTF("IP v4 Address: %d.%d.%d.%d/%d.%d.%d.%d/\r\n",
+        ip_address[0],ip_address[1],ip_address[2],ip_address[3],
+        ip_mask[0],ip_mask[1],ip_mask[2],ip_mask[3]);
+  #endif
 	/*Set IP GW*/
 	if(CONFIG_GetBinValueById(kCONFIG_Key_Ip_GW, gw_address, sizeof(gw_address)) != kStatus_QMC_Ok)
 	{

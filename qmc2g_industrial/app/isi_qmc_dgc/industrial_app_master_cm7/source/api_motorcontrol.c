@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -40,7 +40,7 @@ extern uint32_t               g_motorStatusQueuePrescalerCounters[DATAHUB_MAX_ST
 extern QueueHandle_t          g_motorCommandQueue;
 extern QueueHandle_t          g_motorStatusQueues[DATAHUB_MAX_STATUS_QUEUES];
 extern qmc_msg_queue_handle_t g_motorStatusQueueHandles[DATAHUB_MAX_STATUS_QUEUES];
-extern EventBits_t            g_motorCommandQueueEventBit;
+extern const EventBits_t      g_motorCommandQueueEventBit;
 extern EventGroupHandle_t     g_motorQueueEventGroupHandle;
 extern TimerHandle_t          g_statusSamplingTimerHandle;
 extern SemaphoreHandle_t      g_statusQueueMutexHandle;
@@ -54,19 +54,48 @@ extern mc_fault_t             g_psbFaults[MC_MAX_MOTORS];
    eMotorId will get adjusted by the DataHub when queuing / de-queuing items.
 */
 mc_control_shm g_p = {
-		.bIsTsnCommandInjectionOn    = false,
+		.bIsTsnCommandInjectionOn	 = { 0 },
 		.ui16MotorFaultConfiguration = 0,
-		.sCommands                   = { {kMC_Motor1, kMC_App_Off, kMC_FOC_SpeedControl, {.fltSpeed = 0.0f}} },
-		.sCommands_int               = { {kMC_Motor1, kMC_App_Off, kMC_FOC_SpeedControl, {.fltSpeed = 0.0f}} },
-		.bWriteInProgress            = { NULL },
-		.bReadInProgress_fast        = { NULL },
-		.bReadInProgress_slow        = { NULL },
-		.bIsFrozen					 = { false, false, false, false },
-		.sStatus                     = { {{kMC_Init, kMC_NoFaultMC, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, {kMC_App_Off, 0.0f, {.i32Raw = 0}}, kMC_Motor1} }
+		.sCommands                   = { {kMC_Motor1, kMC_App_Off, kMC_FOC_SpeedControl, {.fltSpeed = 0.0f}},
+#if (MC_MAX_MOTORS > 1)
+										 {kMC_Motor2, kMC_App_Off, kMC_FOC_SpeedControl, {.fltSpeed = 0.0f}},
+#endif
+#if (MC_MAX_MOTORS > 2)
+										 {kMC_Motor3, kMC_App_Off, kMC_FOC_SpeedControl, {.fltSpeed = 0.0f}},
+#endif
+#if (MC_MAX_MOTORS > 3)
+										 {kMC_Motor4, kMC_App_Off, kMC_FOC_SpeedControl, {.fltSpeed = 0.0f}},
+#endif
+										},
+		.sCommands_int               = { {kMC_Motor1, kMC_App_Off, kMC_FOC_SpeedControl, {.fltSpeed = 0.0f}},
+#if (MC_MAX_MOTORS > 1)
+										 {kMC_Motor2, kMC_App_Off, kMC_FOC_SpeedControl, {.fltSpeed = 0.0f}},
+#endif
+#if (MC_MAX_MOTORS > 2)
+										 {kMC_Motor3, kMC_App_Off, kMC_FOC_SpeedControl, {.fltSpeed = 0.0f}},
+#endif
+#if (MC_MAX_MOTORS > 3)
+										 {kMC_Motor4, kMC_App_Off, kMC_FOC_SpeedControl, {.fltSpeed = 0.0f}},
+#endif
+		},
+		.bWriteInProgress            = { 0 },
+		.bReadInProgress_fast        = { 0 },
+		.bReadInProgress_slow        = { 0 },
+		.bIsFrozen					 = { 0 },
+		.sStatus                     = { {{kMC_Init, kMC_NoFaultMC, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, {kMC_App_Off, 0.0f, {.i32Raw = 0}}, kMC_Motor1},
+#if (MC_MAX_MOTORS > 1)
+										 {{kMC_Init, kMC_NoFaultMC, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, {kMC_App_Off, 0.0f, {.i32Raw = 0}}, kMC_Motor2},
+#endif
+#if (MC_MAX_MOTORS > 2)
+										 {{kMC_Init, kMC_NoFaultMC, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, {kMC_App_Off, 0.0f, {.i32Raw = 0}}, kMC_Motor3},
+#endif
+#if (MC_MAX_MOTORS > 3)
+										 {{kMC_Init, kMC_NoFaultMC, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, {kMC_App_Off, 0.0f, {.i32Raw = 0}}, kMC_Motor4},
+#endif
+		}
 };
 
 static bool gs_isStatusSamplingTimerStarted = false;
-
 
 /*******************************************************************************
  * Prototypes
@@ -92,8 +121,7 @@ qmc_status_t MC_SetMotorCommand(const mc_motor_command_t* cmd)
 	{
 		return kStatus_QMC_ErrBusy;
 	}
-
-	if (cmd->eAppSwitch == kMC_App_Freeze)
+	else if (cmd->eAppSwitch == kMC_App_Freeze)
 	{
 		 g_p.bIsFrozen[cmd->eMotorId] = true;
 	}
@@ -172,7 +200,7 @@ RAM_FUNC_CRITICAL void MC_SetFastMotorStatus_fromISR(mc_motor_id_t motorId, cons
 
     #if (FEATURE_ANOMALY_DETECTION != 0)
 	{
-	    static int counter[MC_MAX_MOTORS] = {0};
+	    static unsigned int counter[MC_MAX_MOTORS] = {0};
 
 	    if(g_p.sSyncStatus[motorId] == &(g_p.sSyncStatusA[motorId][0])){
 	    	g_p.sSyncStatusB[motorId][counter[motorId]] = *status;
@@ -282,36 +310,18 @@ qmc_status_t MC_QueueMotorCommand(const mc_motor_command_t* cmd)
 		return kStatus_QMC_ErrBusy;
 	}
 
-	if (cmd->eAppSwitch == kMC_App_Freeze)
+	if ((cmd->eAppSwitch == kMC_App_Freeze) || (cmd->eAppSwitch == kMC_App_FreezeAndStop))
 	{
-		g_p.bIsFrozen[cmd->eMotorId] = true;
+		MC_SetTsnCommandInjectionById(false, cmd->eMotorId); /* prevent TSN commands for this motor */
 	}
-	else if (cmd->eAppSwitch == kMC_App_FreezeAndStop)
-	{
-		mc_motor_command_t cmd_stop = {0};
-		cmd_stop.eMotorId = cmd->eMotorId;
-		cmd_stop.eAppSwitch = kMC_App_Off;
 
-		/* queue motor command item (xQueueSendToBack copies the value) */
-		retval = xQueueSendToBack(g_motorCommandQueue, (const void *) &cmd_stop, 0);
-		if(pdTRUE != retval)
-			return kStatus_QMC_Err;
+	/* queue motor command item (xQueueSendToBack copies the value) */
+	retval = xQueueSendToBack(g_motorCommandQueue, cmd, 0);
+	if(pdTRUE != retval)
+		return kStatus_QMC_Err;
 
-		g_p.bIsFrozen[cmd->eMotorId] = true;
-
-		/* trigger corresponding new-message-event */
-		xEventGroupSetBits(g_motorQueueEventGroupHandle, g_motorCommandQueueEventBit);
-	}
-	else
-	{
-		/* queue motor command item (xQueueSendToBack copies the value) */
-		retval = xQueueSendToBack(g_motorCommandQueue, cmd, 0);
-		if(pdTRUE != retval)
-			return kStatus_QMC_Err;
-
-		/* trigger corresponding new-message-event */
-		xEventGroupSetBits(g_motorQueueEventGroupHandle, g_motorCommandQueueEventBit);
-	}
+	/* trigger corresponding new-message-event */
+	xEventGroupSetBits(g_motorQueueEventGroupHandle, g_motorCommandQueueEventBit);
 
 	return kStatus_QMC_Ok;
 }
@@ -342,12 +352,32 @@ qmc_status_t MC_DequeueMotorStatus(const qmc_msg_queue_handle_t* handle, uint32_
 
 void MC_SetTsnCommandInjection(bool isOn)
 {
-	g_p.bIsTsnCommandInjectionOn = isOn;
+	taskENTER_CRITICAL();
+
+	for (mc_motor_id_t motorId = kMC_Motor1; motorId < MC_MAX_MOTORS; motorId++)
+	{
+		g_p.bIsTsnCommandInjectionOn[motorId] = isOn;
+	}
+
+	taskEXIT_CRITICAL();
+}
+
+qmc_status_t MC_SetTsnCommandInjectionById(bool isOn, mc_motor_id_t motorId)
+{
+	if (IS_MOTORID_INVALID(motorId))
+	{
+		return kStatus_QMC_ErrArgInvalid;
+	}
+	else
+	{
+		g_p.bIsTsnCommandInjectionOn[motorId] = isOn;
+		return kStatus_QMC_Ok;
+	}
 }
 
 qmc_status_t MC_GetNewStatusQueueHandle(qmc_msg_queue_handle_t** handle, uint32_t prescaler)
 {
-	int i;
+	unsigned int i;
 
 	/* input sanitation and limit checks */
 	if(NULL == handle)
@@ -357,7 +387,8 @@ qmc_status_t MC_GetNewStatusQueueHandle(qmc_msg_queue_handle_t** handle, uint32_
 	if(!g_isInitialized_DataHub)
 		return kStatus_QMC_Err;
 
-	xSemaphoreTake(g_statusQueueMutexHandle, portMAX_DELAY);
+	if(pdTRUE != xSemaphoreTake(g_statusQueueMutexHandle, portMAX_DELAY))
+		return kStatus_QMC_Err;
 	for(i=0; i<DATAHUB_MAX_STATUS_QUEUES; i++)
 	{
 		if(NULL == g_motorStatusQueueHandles[i].queueHandle)
@@ -381,7 +412,7 @@ qmc_status_t MC_GetNewStatusQueueHandle(qmc_msg_queue_handle_t** handle, uint32_
 
 qmc_status_t MC_ReturnStatusQueueHandle(const qmc_msg_queue_handle_t* handle)
 {
-	int          i;
+	unsigned int i;
 	bool         areAllHandlesReturned = true;
 	qmc_status_t retval = kStatus_QMC_ErrRange;
 
@@ -391,7 +422,8 @@ qmc_status_t MC_ReturnStatusQueueHandle(const qmc_msg_queue_handle_t* handle)
 	if(!g_isInitialized_DataHub)
 		return kStatus_QMC_Err;
 
-	xSemaphoreTake(g_statusQueueMutexHandle, portMAX_DELAY);
+	if(pdTRUE != xSemaphoreTake(g_statusQueueMutexHandle, portMAX_DELAY))
+		return kStatus_QMC_Err;
 	for(i=0; i<DATAHUB_MAX_STATUS_QUEUES; i++)
 	{
 		/* search handle and mark it as available again */
@@ -419,14 +451,13 @@ qmc_status_t MC_ReturnStatusQueueHandle(const qmc_msg_queue_handle_t* handle)
 
 qmc_status_t MC_ExecuteMotorCommandFromTsn(const mc_motor_command_t* cmd)
 {
-	if(!g_p.bIsTsnCommandInjectionOn)
-		return kStatus_QMC_Err;
-
 	/* input sanitation and limit checks */
 	if(NULL == cmd)
 		return kStatus_QMC_ErrArgInvalid;
 	if(IS_MOTORID_INVALID(cmd->eMotorId))
 		return kStatus_QMC_ErrRange;
+	if(!g_p.bIsTsnCommandInjectionOn[cmd->eMotorId])
+		return kStatus_QMC_Err;
 	if(!isMotorCommandInRange(cmd))
 		return kStatus_QMC_ErrArgInvalid;
 
@@ -534,6 +565,7 @@ qmc_status_t MC_UnfreezeMotor(mc_motor_id_t motor_id)
 	}
 
 	g_p.bIsFrozen[motor_id] = false;
+	MC_SetTsnCommandInjectionById(true, motor_id); /* enable TSN commands for this motor */
 
 	return kStatus_QMC_Ok;
 }

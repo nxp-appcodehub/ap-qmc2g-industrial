@@ -14,6 +14,7 @@
 #include "sm_const.h"
 #include "nxEnsure.h"
 #include <fsl_sss_api.h>
+#include "qmc2_boot_cfg.h"
 // For SIMW-656
 // #include "../../sss/ex/inc/ex_sss_objid.h"
 
@@ -27,6 +28,7 @@ smStatus_t Se05x_API_DeleteAll_Iterative(pSe05xSession_t session_ctx)
     size_t i;
     smStatus_t retStatus  = SM_NOT_OK;
     uint16_t outputOffset = 0;
+    volatile bool isSblAuthIdPresent = false;
     do {
         retStatus = Se05x_API_ReadIDList(session_ctx, outputOffset, 0xFF, &pmore, list, &listlen);
         if (retStatus != SM_OK) {
@@ -36,6 +38,7 @@ smStatus_t Se05x_API_DeleteAll_Iterative(pSe05xSession_t session_ctx)
         for (i = 0; i < listlen; i += 4) {
             uint32_t id = 0 | (list[i + 0] << (3 * 8)) | (list[i + 1] << (2 * 8)) | (list[i + 2] << (1 * 8)) |
                           (list[i + 3] << (0 * 8));
+
             if (SE05X_OBJID_SE05X_APPLET_RES_START == SE05X_OBJID_SE05X_APPLET_RES_MASK(id)) {
                 LOG_D("Not erasing ObjId=0x%08X (Reserved)", id);
                 /* In Reserved space */
@@ -51,17 +54,54 @@ smStatus_t Se05x_API_DeleteAll_Iterative(pSe05xSession_t session_ctx)
             else if (!SE05X_OBJID_TP_MASK(id) && id) {
                 LOG_D("Not erasing Trust Provisioned objects");
             }
+            else if (id == SE_AES_AUTH_OBJ_SBL_ID) {
+            	isSblAuthIdPresent = true;
+            	LOG_W("Not erasing  SBL Auth objects ObjId=0x%08X. It will be erased as the last object.", id);
+            }
             else {
                 retStatus = Se05x_API_DeleteSecureObject(session_ctx, id);
                 if (retStatus != SM_OK) {
                     LOG_W("Error in erasing ObjId=0x%08X (Others)", id);
                 }
+                else
+                {
+                	LOG_W("Erased Secure ObjId=0x%08X (Others)", id);
+                }
             }
         }
     } while (pmore == kSE05x_MoreIndicator_MORE);
+
+	retStatus = Se05x_API_DeleteSecureObject(session_ctx, SE_FW_VERSION_ID);
+	if (retStatus != SM_OK) {
+		LOG_W("Error in erasing ObjId=0x%08X (Others)", SE_FW_VERSION_ID);
+	}
+	else
+	{
+		LOG_W("Erased Secure ObjId=0x%08X (Others)", SE_FW_VERSION_ID);
+	}
+
+	retStatus = Se05x_API_DeleteSecureObject(session_ctx, SE_MAN_VERSION_ID);
+	if (retStatus != SM_OK) {
+		LOG_W("Error in erasing ObjId=0x%08X (Others)", SE_MAN_VERSION_ID);
+	}
+	else
+	{
+		LOG_W("Erased Secure ObjId=0x%08X (Others)", SE_MAN_VERSION_ID);
+	}
+
+	retStatus = Se05x_API_DeleteSecureObject(session_ctx, SE_OEM_CA_CERT);
+	if (retStatus != SM_OK) {
+		LOG_W("Error in erasing ObjId=0x%08X (Others)", SE_OEM_CA_CERT);
+	}
+	else
+	{
+		LOG_W("Erased Secure ObjId=0x%08X (Others)", SE_OEM_CA_CERT);
+	}
+
 #if SSSFTR_SE05X_CREATE_DELETE_CRYPTOOBJ
     retStatus = Se05x_API_ReadCryptoObjectList(session_ctx, list, &listlen);
     if (retStatus != SM_OK) {
+    	LOG_W("Error");
         goto cleanup;
     }
     for (i = 0; i < listlen; i += 4) {
@@ -71,9 +111,26 @@ smStatus_t Se05x_API_DeleteAll_Iterative(pSe05xSession_t session_ctx)
         if (retStatus != SM_OK) {
             LOG_W("Error in erasing CryptoObject=%04X", cryptoObjectId);
         }
+        else
+        {
+        	LOG_W("Erased CryptoObject=%04X", cryptoObjectId);
+        }
     }
 cleanup:
 #endif
+
+	if(isSblAuthIdPresent)
+	{
+		retStatus = Se05x_API_DeleteSecureObject(session_ctx, SE_AES_AUTH_OBJ_SBL_ID);
+		if (retStatus != SM_OK) {
+			LOG_W("Error in erasing ObjId=0x%08X (Others)", SE_AES_AUTH_OBJ_SBL_ID);
+		}
+		else
+		{
+			LOG_W("Erased Secure ObjId=0x%08X (Others)", SE_AES_AUTH_OBJ_SBL_ID);
+		}
+	}
+
     return retStatus;
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -36,19 +36,41 @@ typedef enum _config_id
     kCONFIG_Key_VLAN_ID = 0x08U,
     kCONFIG_Key_TSN_RX_STREAM_MAC_ADDR = 0x09U,
     kCONFIG_Key_TSN_TX_STREAM_MAC_ADDR = 0x0AU,
+	kCONFIG_Key_CloudAzureHubName = 0x0BU,
+	kCONFIG_Key_CloudGenericHostName = 0x0DU,
+	kCONFIG_Key_CloudGenericUserName = 0x0EU,
+	kCONFIG_Key_CloudGenericPassword = 0x0FU,
+	kCONFIG_Key_CloudGenericDeviceName = 0x10U,
+	kCONFIG_Key_CloudGenericPort = 0x11U,
 
-
-    /* TODO: extend enumeration */
-    kCONFIG_KeyUser1Id           = 0x81U, /*!< User ID or Name of user 1. */
-    kCONFIG_KeyUser1Password     = 0x82U, /*!< Passphrase hash of user 1. */
-    kCONFIG_KeyUser1Role         = 0x83U, /*!< Role of user 1. */
-    kCONFIG_KeyUser2Id           = 0x84U, /*!< User ID or Name of user 2. */
-    kCONFIG_KeyUser2Password     = 0x85U, /*!< Passphrase hash of user 2. */
-    kCONFIG_KeyUser2Role         = 0x86U, /*!< Role of user 2. */
-    /* TODO: extend enumeration */
+    kCONFIG_Key_MOTD              = 0x70U, /*!< System Usage Message */
+    kCONFIG_Key_User1              = 0x80U, /*!< first user config */
+    kCONFIG_Key_User2              = 0x81U, 
+    kCONFIG_Key_User3              = 0x82U, 
+    kCONFIG_Key_User4              = 0x83U,
+    kCONFIG_Key_User5              = 0x84U,
+    kCONFIG_Key_User6              = 0x85U,
+    kCONFIG_Key_User7              = 0x86U,
+    kCONFIG_Key_User8              = 0x87U,
+    kCONFIG_Key_User9              = 0x88U,
+    kCONFIG_Key_User10             = 0x89U,
+    kCONFIG_Key_UserHashes1              = 0x90U, /*!< first user config */
+    kCONFIG_Key_UserHashes2              = 0x91U, 
+    kCONFIG_Key_UserHashes3              = 0x92U, 
+    kCONFIG_Key_UserHashes4              = 0x93U,
+    kCONFIG_Key_UserHashes5              = 0x94U,
+    kCONFIG_Key_UserHashes6              = 0x95U,
+    kCONFIG_Key_UserHashes7              = 0x96U,
+    kCONFIG_Key_UserHashes8              = 0x97U,
+    kCONFIG_Key_UserHashes9              = 0x98U,
+    kCONFIG_Key_UserHashes10             = 0x99U,
 } config_id_t;
 
 
+#define kCONFIG_Key_UserFirst kCONFIG_Key_User1
+#define kCONFIG_Key_UserLast  kCONFIG_Key_User10
+#define kCONFIG_Key_UserHashesFirst kCONFIG_Key_UserHashes1
+#define kCONFIG_Key_UserHashesLast  kCONFIG_Key_UserHashes10
 
 /*******************************************************************************
  * API

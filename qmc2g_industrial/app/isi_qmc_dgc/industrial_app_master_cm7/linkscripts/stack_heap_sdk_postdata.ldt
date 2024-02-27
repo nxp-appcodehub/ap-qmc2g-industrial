@@ -11,14 +11,14 @@
 <#if HEAP_STACK_STYLE?? && HEAP_STACK_STYLE == "sdk">
     <#if HEAP_LOCATION == "Post Data">
 
-_ucHEAP_SIZE = 0x40000;
+_ucHEAP_SIZE = 0x80000;
     .ucHeap :
-  	{
+    {
     . = ALIGN(8);
     __ucHeapBase__ = .;
     PROVIDE(ucHeap = .);
     . += _ucHEAP_SIZE;
-  	} > SRAM_OC2
+    } > SRAM_OC2
 
   __ucHeapSize = . - __ucHeapBase__;
 
@@ -32,7 +32,7 @@ _ucHEAP_SIZE = 0x40000;
         _pvHeapLimit = .;
     } > ${HEAP_REGION}
     </#if>
-    
+
 
     <#if STACK_LOCATION == "Post Data">
 

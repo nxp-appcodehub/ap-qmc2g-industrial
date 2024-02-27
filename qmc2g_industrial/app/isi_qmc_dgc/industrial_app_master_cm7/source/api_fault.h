@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 NXP 
+ * Copyright 2022-2023 NXP 
  *
  * NXP Confidential and Proprietary. This software is owned or controlled by NXP and may only be used strictly
  * in accordance with the applicable license terms. By expressly accepting such terms or by downloading,
@@ -22,27 +22,26 @@
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
-#define MOTOR_ID_BITS						0x00000003
-#define FAULT_GetMotorIdFromSource(x) 		((mc_motor_id_t) ((x) & MOTOR_ID_BITS))
-#define SRC_WITHOUT_MOTOR_ID(x) 			(x & ~(MOTOR_ID_BITS))
+#define ID_BITS								(uint32_t) 0x00000003
+#define FAULT_GetIdFromSource(x) 			((uint8_t) ((x) & (uint32_t) ID_BITS))
+#define SRC_WITHOUT_ID(x) 					(x & ~((uint32_t) ID_BITS))
 
-#define SYSTEM_FAULTS_MASK 					(kFAULT_DbOverTemperature | kFAULT_McuOverTemperature | kFAULT_EmergencyStop | kFAULT_PmicUnderVoltage1 |\
-											kFAULT_PmicUnderVoltage2 | kFAULT_PmicUnderVoltage3 | kFAULT_PmicUnderVoltage4 | kFAULT_PmicOverTemperature)
+#define SYSTEM_FAULTS_MASK 					(uint32_t) (kFAULT_DbOverTemperature | kFAULT_McuOverTemperature | kFAULT_EmergencyStop | kFAULT_PmicUnderVoltage |\
+											kFAULT_RpcCallFailed | kFAULT_PmicOverTemperature | kFAULT_FunctionalWatchdogInitFail)
 
-#define FAULT_HANDLING_ERRORS_MASK 			(kFAULT_AfePsbCommunicationError | kFAULT_AfeDbCommunicationError | kFAULT_DBTempSensCommunicationError)
+#define FAULT_HANDLING_ERRORS_MASK 			(uint32_t) (kFAULT_AfePsbCommunicationError | kFAULT_AfeDbCommunicationError | kFAULT_DBTempSensCommunicationError)
 
-#define FAULT_OVERFLOW_ERRORS_MASK 			(kFAULT_FaultBufferOverflow | kFAULT_FaultQueueOverflow)
+#define FAULT_OVERFLOW_ERRORS_MASK 			(uint32_t) (kFAULT_FaultBufferOverflow | kFAULT_FaultQueueOverflow)
 
-#define ALL_SYSTEM_FAULT_BITS_MASK 			(SYSTEM_FAULTS_MASK | FAULT_HANDLING_ERRORS_MASK | FAULT_OVERFLOW_ERRORS_MASK | kFAULT_NoFault)
+#define ALL_SYSTEM_FAULT_BITS_MASK 			(uint32_t) (SYSTEM_FAULTS_MASK | FAULT_HANDLING_ERRORS_MASK | FAULT_OVERFLOW_ERRORS_MASK | kFAULT_NoFault)
 
-#define INVALID_FAULT_BITS 					(~(ALL_SYSTEM_FAULT_BITS_MASK | ALL_PSB_FAULTS_BITS_MASK | MOTOR_ID_BITS))
+#define INVALID_FAULT_BITS 					(~ (uint32_t) (ALL_SYSTEM_FAULT_BITS_MASK | ALL_PSB_FAULTS_BITS_MASK | ID_BITS | kFAULT_KickWatchdogNotification | kFAULT_FunctionalWatchdogInitFail))
 
-#define CONTAINS_BUFFER_OVERFLOW_FLAG(x) 	(x & kFAULT_FaultBufferOverflow)
+#define CONTAINS_BUFFER_OVERFLOW_FLAG(x) 	(x & (uint32_t) kFAULT_FaultBufferOverflow)
 
-#define CONTAINS_QUEUE_OVERFLOW_FLAG(x) 	(x & kFAULT_FaultQueueOverflow)
+#define CONTAINS_QUEUE_OVERFLOW_FLAG(x) 	(x & (uint32_t) kFAULT_FaultQueueOverflow)
 
-#define IS_MOTORID_INVALID(x) \
-        (((x) < kMC_Motor1) || ((x) >= (MC_MAX_MOTORS)))
+#define IS_MOTORID_INVALID(x)				(((x) < kMC_Motor1) || ((x) >= (MC_MAX_MOTORS)))
 
  /*!
  * @brief Enumeration that list system-wide (not motor specific) faults.
@@ -54,18 +53,18 @@ typedef enum _fault_system_fault
     kFAULT_NoFault						= 0x00020000U, /*!< Normal operation; no fault occurred. */
     kFAULT_DbOverTemperature			= 0x00040000U, /*!< Over-temperature on digital board */
     kFAULT_McuOverTemperature			= 0x00080000U, /*!< MCU over-temperature */
-    kFAULT_PmicUnderVoltage1			= 0x00100000U, /*!< Under-voltage on the VDD_SOC domain */
-    kFAULT_PmicUnderVoltage2			= 0x00200000U, /*!< Under-voltage on the VDD_1V8 domain */
-    kFAULT_PmicUnderVoltage3			= 0x00400000U, /*!< Under-voltage on the VDD_3V3 domain */
-    kFAULT_PmicUnderVoltage4			= 0x00800000U, /*!< Under-voltage on the VDD_ANALOG domain */
-    kFAULT_PmicOverTemperature			= 0x01000000U, /*!< PMIC (daughter card) over-temperature */
-    kFAULT_EmergencyStop				= 0x02000000U, /*!< Emergency stop was triggered */
-    kFAULT_AfePsbCommunicationError		= 0x04000000U, /*!< Failed to communicate with an AFE on a PSB */
-    kFAULT_AfeDbCommunicationError		= 0x08000000U, /*!< Failed to communicate with the AFE on the DB */
-    kFAULT_DBTempSensCommunicationError	= 0x10000000U, /*!< Failed to communicate with the temperature sensor on the DB */
-	kFAULT_FaultBufferOverflow			= 0x20000000U, /*!< Circular fault buffer overflow */
-	kFAULT_FaultQueueOverflow			= 0x40000000U, /*!< Fault queue overflow */
-	kFAULT_InvalidFaultSource			= 0x80000000U, /*!< Invalid fault source */
+    kFAULT_PmicUnderVoltage				= 0x00100000U, /*!< PMIC Under-voltage */
+	kFAULT_PmicOverTemperature			= 0x00200000U, /*!< PMIC (daughter card) over-temperature */
+	kFAULT_EmergencyStop				= 0x00400000U, /*!< Emergency stop was triggered */
+	kFAULT_RpcCallFailed				= 0x00800000U, /*!< RPC call failed */
+	kFAULT_AfePsbCommunicationError		= 0x01000000U, /*!< Failed to communicate with an AFE on a PSB */
+	kFAULT_AfeDbCommunicationError		= 0x02000000U, /*!< Failed to communicate with the AFE on the DB */
+	kFAULT_DBTempSensCommunicationError	= 0x04000000U, /*!< Failed to communicate with the temperature sensor on the DB */
+	kFAULT_FaultBufferOverflow			= 0x08000000U, /*!< Circular fault buffer overflow */
+	kFAULT_FaultQueueOverflow			= 0x10000000U, /*!< Fault queue overflow */
+	kFAULT_InvalidFaultSource			= 0x20000000U, /*!< Invalid fault source */
+	kFAULT_KickWatchdogNotification		= 0x40000000U, /*!< Notification for the fault handling task to kick its functional watchdog */
+	kFAULT_FunctionalWatchdogInitFail	= 0x80000000U, /*!< The initial kick for a functional watchdog failed */
 } fault_system_fault_t;
 
  /*!
@@ -115,7 +114,7 @@ __attribute__((always_inline)) static inline void FAULT_RaiseFaultEvent_fromISR(
 		}
 		else if (CONTAINS_BUFFER_OVERFLOW_FLAG(g_systemFaultStatus))
 		{
-			g_FaultHandlingErrorFlags &= ~(kFAULT_FaultBufferOverflow);
+			g_FaultHandlingErrorFlags &= (fault_system_fault_t) ~((uint32_t) kFAULT_FaultBufferOverflow);
 		}
 		else
 		{
@@ -144,8 +143,7 @@ __attribute__((always_inline)) static inline void FAULT_SetImmediateStopConfigur
 		return;
 	}
 
-	uint16_t mask = 0;
-	mask = (1 << ((4*faultMotorId)+stopMotorId));
+	uint16_t mask = (1 << ((4 * faultMotorId) + stopMotorId));
 
 	if (doStop)
 	{
@@ -176,8 +174,7 @@ __attribute__((always_inline)) static inline bool FAULT_GetImmediateStopConfigur
 		return false;
 	}
 
-	uint16_t mask = 0;
-	mask = (1 << ((4*faultMotorId)+stopMotorId));
+	uint16_t mask = (1 << ((4 * faultMotorId) + stopMotorId));
 	return g_p.ui16MotorFaultConfiguration & mask;
 }
 

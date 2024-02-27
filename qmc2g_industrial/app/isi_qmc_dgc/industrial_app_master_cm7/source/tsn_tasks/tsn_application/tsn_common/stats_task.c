@@ -167,11 +167,16 @@ static int STATS_AsyncInit(struct Async_Ctx *Ctx)
  */
 static void STATS_AsyncProcess(struct Async_Ctx *Ctx, unsigned int WaitMs)
 {
-    struct Async_Msg Msg;
+	unsigned int wait_ms = WaitMs;
+    struct Async_Msg Msg = {};
     TickType_t Last, Now;
     unsigned int Elapsed, Timeout;
 
-    Timeout = pdMS_TO_TICKS(WaitMs);
+    if(wait_ms > 100000)
+    {
+    	wait_ms = 100000;
+    }
+    Timeout = pdMS_TO_TICKS(wait_ms);
     Last = xTaskGetTickCount();
 
     while (true) {

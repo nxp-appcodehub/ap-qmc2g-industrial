@@ -22,13 +22,14 @@
 			<memoryBlock id="SRAM_DTC_cm7_isi_qmc_dgc" name="SRAM_DTC_cm7" addr="20000000" size="00040000" type="RAM" access="RW"/>
 			<memoryBlock id="SRAM_OC1_isi_qmc_dgc" name="SRAM_OC1" addr="20240000" size="00080000" type="RAM" access="RW"/>
 			<memoryBlock id="SRAM_OC2_isi_qmc_dgc" name="SRAM_OC2" addr="202C0000" size="00080000" type="RAM" access="RW"/>
-			<memoryBlock id="SRAM_OC_ECC1_isi_qmc_dgc" name="SRAM_OC_ECC1" addr="20340000" size="00010000" type="RAM" access="RW"/>
+			<memoryBlock id="SRAM_OC_ECC1_isi_qmc_dgc" name="SRAM_OC_ECC1" addr="2034fc00" size="00000400" type="RAM" access="RW"/>
 			<memoryBlock id="NCACHE_REGION_isi_qmc_dgc" name="NCACHE_REGION" addr="20350000" size="00010000" type="RAM" access="RW"/>
 			<memoryBlock id="SRAM_OC_cm7_isi_qmc_dgc" name="SRAM_OC_cm7" addr="20360000" size="00020000" type="RAM" access="RW"/>
 			<memoryBlock id="BOARD_OCTAL_FLASH_isi_qmc_dgc" name="BOARD_OCTAL_FLASH" addr="30000000" size="04000000" type="ExtFlash" access="RO"/>
 			<memoryBlock id="BOARD_OCTAL_RAM_isi_qmc_dgc" name="BOARD_OCTAL_RAM" addr="34000000" size="01000000" type="RAM" access="RW"/>
 			<memoryBlock id="OCRAM_LMEM_CODE_isi_qmc_dgc" name="OCRAM_LMEM_CODE" addr="20200000" size="00020000" type="RAM" access="RW"/>
 			<memoryBlock id="OCRAM_LMEM_DATA_isi_qmc_dgc" name="OCRAM_LMEM_DATA" addr="20220000" size="00020000" type="RAM" access="RW"/>
+			<memoryBlock id="RPC_SHM_isi_qmc_dgc" name="RPC_SHM" addr="20340000" size="0000fc00" type="RAM" access="RW"/>
 		</memory>
 		<toolchainSettings>
 			<toolchainSetting id_refs="com.nxp.mcuxpresso">
@@ -42,18 +43,21 @@
 					<buildConfiguration instance_of="com.nxp.mcuxpresso.ide.build_config.debug" id="com.nxp.mcuxpresso.ide.build_config.debug_sbl" name="Debug_SBL">
 						<description>CM7 application will be loaded and executed by SBL</description>
 					</buildConfiguration>
+					<buildConfiguration instance_of="com.nxp.mcuxpresso.ide.build_config.release" id="com.nxp.mcuxpresso.ide.build_config.release_sbl" name="Release_SBL">
+						<description>CM7 application will be loaded and executed by SBL</description>
+					</buildConfiguration>
 				</buildConfigurations>
 				<buildSteps>
-					<postBuildStep build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">arm-none-eabi-size "${BuildArtifactFileName}"; arm-none-eabi-objcopy -v -O binary "${BuildArtifactFileName}" "${BuildArtifactFileBaseName}.bin" ; # checksum -p ${TargetChip} -d "${BuildArtifactFileBaseName}.bin";</postBuildStep>
+					<postBuildStep build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">arm-none-eabi-size "${BuildArtifactFileName}"; arm-none-eabi-objcopy -v -O binary "${BuildArtifactFileName}" "${BuildArtifactFileBaseName}.bin" ; # checksum -p ${TargetChip} -d "${BuildArtifactFileBaseName}.bin";</postBuildStep>
 				</buildSteps>
-				<option id="gnu.cpp.compiler.option.preprocessor.def" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release">
+				<option id="gnu.cpp.compiler.option.preprocessor.def" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release ">
 					<value>__NEWLIB__</value>
 					<value>__MULTICORE_M4SLAVE</value>
 				</option>
 				<option id="com.crt.advproject.link.gcc.multicore.master" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug">
 					<value>M4SLAVE,${workspace_loc:/isi_qmc_dgc_industrial_app_slave_cm4/Debug/isi_qmc_dgc_industrial_app_slave_cm4.axf.o},OCRAM_LMEM_CODE,,true;M7SLAVE,,,,false;</value>
 				</option>
-				<option id="com.crt.advproject.cpp.prefixmap" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release">
+				<option id="com.crt.advproject.cpp.prefixmap" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release ">
 					<value>"$(&lt;D)/"=</value>
 				</option>
 				<option id="com.crt.advproject.cpp.specs" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release">
@@ -107,11 +111,14 @@
 					<value>CPU_MIMXRT1176DVMAA</value>
 					<value>CPU_MIMXRT1176DVMAA_cm7</value>
 				</option>
-				<option id="com.crt.advproject.gcc.exe.debug.option.optimization.level" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.gcc.exe.debug.option.optimization.level" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+                    <value>gnu.c.optimization.level.general</value>
+                </option>
+				<option id="com.crt.advproject.gcc.exe.release.option.optimization.level" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>gnu.c.optimization.level.size</value>
 				</option>
-				<option id="gnu.c.compiler.option.optimization.flags" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
-					<value>-fno-common -fno-omit-frame-pointer -fno-toplevel-reorder</value>
+				<option id="gnu.c.compiler.option.optimization.flags" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
+					<value>-fno-common -fno-omit-frame-pointer -fno-toplevel-reorder -mno-unaligned-access</value>
 				</option>
 				<option id="com.crt.advproject.gcc.exe.debug.option.debugging.level" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.release">
 					<value>gnu.c.debugging.level.default</value>
@@ -120,46 +127,49 @@
 					<value>gnu.c.debugging.level.max</value>
 				</option>
 				<option id="com.crt.advproject.gcc.exe.debug.option.debugging.level" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+					<value>gnu.c.debugging.level.max</value>
+				</option>
+				<option id="com.crt.advproject.gcc.exe.debug.option.debugging.level" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>gnu.c.debugging.level.default</value>
 				</option>
-				<option id="gnu.c.compiler.option.misc.other" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="gnu.c.compiler.option.misc.other" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>-c -ffunction-sections -fdata-sections -ffreestanding -fno-builtin -gdwarf-4</value>
 				</option>
-				<option id="com.crt.advproject.gcc.prefixmap" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.gcc.prefixmap" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>"$(&lt;D)/"=</value>
 				</option>
-				<option id="com.crt.advproject.gcc.hdrlib" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.gcc.hdrlib" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>com.crt.advproject.gcc.hdrlib.newlibnano</value>
 				</option>
-				<option id="com.crt.advproject.gcc.specs" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.gcc.specs" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>com.crt.advproject.gcc.specs.newlibnano</value>
 				</option>
-				<option id="gnu.both.asm.option.flags.crt" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="gnu.both.asm.option.flags.crt" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>-c -x assembler-with-cpp -D__NEWLIB__ -D__MULTICORE_MASTER -D__MULTICORE_MASTER_SLAVE_M4SLAVE -fno-common -ffreestanding -fno-builtin -mapcs</value>
 				</option>
-				<option id="com.crt.advproject.gas.hdrlib" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.gas.hdrlib" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>com.crt.advproject.gas.hdrlib.newlibnano</value>
 				</option>
-				<option id="com.crt.advproject.gas.specs" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.gas.specs" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>com.crt.advproject.gas.specs.newlibnano</value>
 				</option>
-				<option id="gnu.cpp.link.option.libs" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl"/>
-				<option id="gnu.cpp.link.option.paths" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl"/>
-				<option id="gnu.cpp.link.option.other" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl"/>
-				<option id="com.crt.advproject.link.cpp.lto" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="gnu.cpp.link.option.libs" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl"/>
+				<option id="gnu.cpp.link.option.paths" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl"/>
+				<option id="gnu.cpp.link.option.other" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl"/>
+				<option id="com.crt.advproject.link.cpp.lto" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>false</value>
 				</option>
-				<option id="com.crt.advproject.link.cpp.hdrlib" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.link.cpp.hdrlib" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>com.crt.advproject.cpp.link.hdrlib.newlibnano.nohost</value>
 				</option>
-				<option id="com.crt.advproject.link.cpp.nanofloat" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.link.cpp.nanofloat" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>false</value>
 				</option>
-				<option id="com.crt.advproject.link.cpp.nanofloat.scanf" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.link.cpp.nanofloat.scanf" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>false</value>
 				</option>
-				<option id="com.crt.advproject.link.memory.sections.cpp" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl"/>
-				<option id="gnu.c.link.option.libs" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.link.memory.sections.cpp" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl"/>
+				<option id="gnu.c.link.option.libs" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>AMCLIB</value>
 					<value>GFLIB</value>
 					<value>GDFLIB</value>
@@ -168,7 +178,7 @@
 					<value>avb-core</value>
 					<value>avb-freertos</value>
 				</option>
-				<option id="gnu.c.link.option.paths" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="gnu.c.link.option.paths" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>"${workspace_loc:/${ProjName}/rtcesl/CM7F_RTCESL_4.7_MCUX/AMCLIB}"</value>
 					<value>"${workspace_loc:/${ProjName}/rtcesl/CM7F_RTCESL_4.7_MCUX/GFLIB}"</value>
 					<value>"${workspace_loc:/${ProjName}/rtcesl/CM7F_RTCESL_4.7_MCUX/GDFLIB}"</value>
@@ -176,10 +186,10 @@
 					<value>"${workspace_loc:/${ProjName}/rtcesl/CM7F_RTCESL_4.7_MCUX/MLIB}"</value>
 					<value>"${workspace_loc:/${ProjName}/tsn/tsn_libraries}"</value>
 				</option>
-				<option id="gnu.c.link.option.ldflags" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="gnu.c.link.option.ldflags" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>--specs=nano.specs -u _printf_float --specs=nosys.specs -fno-common -ffreestanding -fno-builtin -mapcs</value>
 				</option>
-				<option id="gnu.c.link.option.other" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="gnu.c.link.option.other" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>-Map="${BuildArtifactFileBaseName}.map"</value>
 					<value>--gc-sections</value>
 					<value>-print-memory-usage</value>
@@ -188,34 +198,34 @@
 					<value>-z</value>
 					<value>muldefs</value>
 				</option>
-				<option id="com.crt.advproject.link.gcc.lto" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.link.gcc.lto" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>false</value>
 				</option>
-				<option id="com.crt.advproject.link.gcc.hdrlib" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.link.gcc.hdrlib" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>com.crt.advproject.gcc.link.hdrlib.newlibnano.semihost</value>
 				</option>
-				<option id="com.crt.advproject.link.gcc.nanofloat" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.link.gcc.nanofloat" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>false</value>
 				</option>
-				<option id="com.crt.advproject.link.gcc.nanofloat.scanf" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.link.gcc.nanofloat.scanf" type="boolean" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>false</value>
 				</option>
-				<option id="com.crt.advproject.link.memory.load.image" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.link.memory.load.image" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>false;</value>
 				</option>
-				<option id="com.crt.advproject.link.memory.heapAndStack" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.link.memory.heapAndStack" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>&amp;Heap:SRAM_OC_cm7;Post Data;0x20000&amp;Stack:SRAM_DTC_cm7;End;0x10000</value>
 				</option>
-				<option id="com.crt.advproject.link.memory.data" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.link.memory.data" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>SRAM_DTC_cm7</value>
 				</option>
-				<option id="com.crt.advproject.link.memory.sections" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.link.memory.sections" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>isd=*(NonCacheable.init);region=NCACHE_REGION;type=.data</value>
 					<value>isd=*(NonCacheable);region=NCACHE_REGION;type=.bss</value>
 					<value>isd=*(NonCacheable_OctalRAM.init);region=BOARD_OCTAL_RAM;type=.data</value>
 					<value>isd=*(NonCacheable_OctalRAM);region=BOARD_OCTAL_RAM;type=.bss</value>
 				</option>
-				<option id="com.crt.advproject.link.gcc.multicore.slave" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.link.gcc.multicore.slave" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>Master</value>
 				</option>
 				<option id="gnu.cpp.compiler.option.preprocessor.def" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug">
@@ -276,20 +286,77 @@
 				<option id="com.crt.advproject.gcc.exe.debug.option.optimization.level" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug">
 					<value>gnu.c.optimization.level.size</value>
 				</option>
-				<option id="gnu.cpp.compiler.option.preprocessor.def" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="gnu.cpp.compiler.option.preprocessor.def" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.debug_sbl com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>__NEWLIB__</value>
 					<value>__MULTICORE_M4SLAVE</value>
 				</option>
-				<option id="com.crt.advproject.link.gcc.multicore.master" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.link.gcc.multicore.master" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl ">
 					<value>M4SLAVE,${workspace_loc:/isi_qmc_dgc_industrial_app_slave_cm4/Debug_SBL/isi_qmc_dgc_industrial_app_slave_cm4.axf.o},OCRAM_LMEM_CODE,,true;M7SLAVE,,,,false;</value>
 				</option>
-				<option id="com.crt.advproject.cpp.prefixmap" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+				<option id="com.crt.advproject.cpp.prefixmap" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.debug_sbl ">
 					<value>"$(&lt;D)/"=</value>
 				</option>
 				<option id="com.crt.advproject.cpp.specs" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.debug com.nxp.mcuxpresso.ide.build_config.debug_sbl">
 					<value>com.crt.advproject.cpp.specs.newlibnano</value>
 				</option>
 				<option id="gnu.c.compiler.option.preprocessor.def.symbols" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.debug_sbl">
+					<value>RAM_RELOCATION</value>
+					<value>ENET_1588TIME_DELAY_COUNT=50</value>
+					<value>APP_CLOCK_CONFIG_MODE=1</value>
+					<value>ENABLE_RAM_VECTOR_TABLE</value>
+					<value>FLEXRAM_RECOFIG_ENABLE</value>
+					<value>FSL_RTOS_BM</value>
+					<value>SDK_OS_BAREMETAL</value>
+					<value>XIP_EXTERNAL_FLASH=1</value>
+					<value>XIP_BOOT_HEADER_ENABLE=0</value>
+					<value>XIP_BOOT_HEADER_DCD_ENABLE=0</value>
+					<value>SERIAL_PORT_TYPE_UART=1</value>
+					<value>SDK_DEBUGCONSOLE=1</value>
+					<value>CR_INTEGER_PRINTF</value>
+					<value>PRINTF_FLOAT_ENABLE=1</value>
+					<value>FSL_RTOS_FREE_RTOS</value>
+					<value>SDK_OS_FREE_RTOS</value>
+					<value>__MCUXPRESSO</value>
+					<value>__USE_CMSIS</value>
+					<value>DEBUG</value>
+					<value>__NEWLIB__</value>
+					<value>__MULTICORE_MASTER</value>
+					<value>__MULTICORE_MASTER_SLAVE_M4SLAVE</value>
+					<value>USE_RTOS=1</value>
+					<value>DEBUG_CONSOLE_TRANSMIT_BUFFER_LEN=8192</value>
+					<value>DEBUG_CONSOLE_PRINTF_MAX_LOG_LEN=256</value>
+					<value>DISABLE_WDOG=0</value>
+					<value>SERIAL_MANAGER_READ_TIME_DELAY_DEFAULT_VALUE=10</value>
+					<value>SERIAL_MANAGER_NON_BLOCKING_DUAL_MODE=1</value>
+					<value>PRINTF_ADVANCED_ENABLE=1</value>
+					<value>ENET_ENHANCEDBUFFERDESCRIPTOR_MODE=1</value>
+					<value>DATA_SECTION_IS_CACHABLE=0</value>
+					<value>FSL_SDK_DRIVER_QUICK_ACCESS_ENABLE=1</value>
+					<value>DEBUG_CONSOLE_TRANSFER_NON_BLOCKING=1</value>
+					<value>LV_CONF_INCLUDE_SIMPLE=1</value>
+					<value>LV_DEMO_CONF_INCLUDE_SIMPLE=1</value>
+					<value>IMX_RT</value>
+					<value>MBEDTLS_CONFIG_FILE='"ksdk_mbedtls_config.h"'</value>
+					<value>MBEDTLS_USER_CONFIG_FILE='"sss_ksdk_mbedtls_config.h"'</value>
+					<value>CRYPTO_USE_DRIVER_CAAM</value>
+					<value>T1oI2C</value>
+					<value>T1oI2C_UM11225</value>
+					<value>SSS_USE_FTR_FILE</value>
+					<value>MBEDTLS</value>
+					<value>CACHE_MODE_WRITE_THROUGH=1</value>
+					<value>CPU_MIMXRT1176DVMAA</value>
+					<value>CPU_MIMXRT1176DVMAA_cm7</value>
+				</option>
+				<option id="com.crt.advproject.link.gcc.multicore.master" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.release_sbl ">
+					<value>M4SLAVE,${workspace_loc:/isi_qmc_dgc_industrial_app_slave_cm4/Release_SBL/isi_qmc_dgc_industrial_app_slave_cm4.axf.o},OCRAM_LMEM_CODE,,true;M7SLAVE,,,,false;</value>
+				</option>
+				<option id="com.crt.advproject.cpp.prefixmap" type="string" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.release_sbl ">
+					<value>"$(&lt;D)/"=</value>
+				</option>
+				<option id="com.crt.advproject.cpp.specs" type="enum" build_configs="com.nxp.mcuxpresso.ide.build_config.release com.nxp.mcuxpresso.ide.build_config.release_sbl">
+					<value>com.crt.advproject.cpp.specs.newlibnano</value>
+				</option>
+				<option id="gnu.c.compiler.option.preprocessor.def.symbols" type="stringList" build_configs="com.nxp.mcuxpresso.ide.build_config.release_sbl">
 					<value>RAM_RELOCATION</value>
 					<value>ENET_1588TIME_DELAY_COUNT=50</value>
 					<value>APP_CLOCK_CONFIG_MODE=1</value>
@@ -373,6 +440,7 @@
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/tsn_tasks/tsn_application/tsn_app" project_relative_path="source/tsn_tasks/tsn_application/tsn_app" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/tsn_tasks/tsn_application/tsn_board" project_relative_path="source/tsn_tasks/tsn_application/tsn_board" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/tsn_tasks/tsn_application/tsn_common" project_relative_path="source/tsn_tasks/tsn_application/tsn_common" type="c_include"/>
+			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/tsn_tasks/tsn_application/tsn_common" project_relative_path="source/tsn_tasks/tsn_application/tsn_common" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/phy" project_relative_path="phy" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/phy/mdio/enet_qos" project_relative_path="phy/mdio/enet_qos" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/phy/device/phyrtl8211f" project_relative_path="phy/device/phyrtl8211f" type="c_include"/>
@@ -386,6 +454,7 @@
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/lwip/src/include" project_relative_path="lwip/src/include" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/lwip/src/include/lwip" project_relative_path="lwip/src/include/lwip" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/lwip/port" project_relative_path="lwip/port" type="c_include"/>
+			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/lwip/src/apps/altcp_tls" project_relative_path="lwip/src/apps/altcp_tls" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/board" project_relative_path="board" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source" project_relative_path="source" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/sdmmc/inc" project_relative_path="sdmmc/inc" type="c_include"/>
@@ -486,10 +555,16 @@
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/vendors/nxp/secure_sockets/lwip" project_relative_path="freertos/vendors/nxp/secure_sockets/lwip" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/configuration_tasks" project_relative_path="source/configuration_tasks" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/se_iot" project_relative_path="source/se_iot" type="c_include"/>
+			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/se_mbedtls" project_relative_path="source/se_mbedtls" type="c_include"/>
+			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/usermanagement" project_relative_path="source/usermanagement" type="c_include"/>
+		       <include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/webservice" project_relative_path="source/webservice" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/se_iot/config" project_relative_path="source/se_iot/config" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/se_utils" project_relative_path="source/se_utils" type="c_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/board" project_relative_path="board" type="asm_include"/>
 			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source" project_relative_path="source" type="asm_include"/>
+			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver" project_relative_path="webserver" type="c_include"/>
+			<include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver/contrib" project_relative_path="webserver/contrib" type="c_include"/>
+		        <include_path path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver/parser" project_relative_path="webserver/parser" type="c_include"/>
 		</include_paths>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/component/lists" project_relative_path="component/lists" type="c_include">
 			<files mask="fsl_component_generic_list.h"/>
@@ -715,6 +790,9 @@
 			<files mask="task_datahub.c"/>
 			<files mask="task_startup.c"/>
 			<files mask="task_awdg_connection_service.c"/>
+			<files mask="api_usermanagement.c"/>
+			<files mask="lwip_wdg.c"/>
+			<files mask="mem_fault_info.c"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source" project_relative_path="source" type="c_include">
 			<files mask="api_awdg_client.h"/>
@@ -736,6 +814,11 @@
 			<files mask="lwipopts.h"/>
 			<files mask="main_cm7.h"/>
 			<files mask="qmc_features_config.h"/>
+			<files mask="core_http_client.h"/>
+			<files mask="api_mem_fault_info.h"/>
+		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source" project_relative_path="source" type="other">
+		         <files mask="web_root.zip"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/awdg_client" project_relative_path="source/awdg_client" type="src">
 			<files mask="api_awdg_client.c"/>
@@ -943,16 +1026,65 @@
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/se_iot" project_relative_path="source/se_iot" type="src">
 			<files mask="se_secure_sockets.c"/>
+			<files mask="cloud_conn_common.c"/>
+			<files mask="cloud_service.c"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/se_iot" project_relative_path="source/se_iot" type="c_include">
 			<files mask="se_secure_sockets.h"/>
+			<files mask="cloud_conn_common.h"/>
+			<files mask="cloud_service.h"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/se_utils" project_relative_path="source/se_utils" type="c_include">
 			<files mask="fsl_sss_ftr.h"/>
 			<files mask="se_session.h"/>
+			<files mask="ThreadSafetyWorkaround.h"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/se_utils" project_relative_path="source/se_utils" type="src">
 			<files mask="se_session.c"/>
+			<files mask="ThreadSafetyWorkaround.c"/>
+		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/se_mbedtls" project_relative_path="source/se_mbedtls" type="src">
+			<files mask="se_mbedtls.c"/>
+		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/se_mbedtls" project_relative_path="source/se_mbedtls" type="c_include">
+			<files mask="se_mbedtls.h"/>
+		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/usermanagement" project_relative_path="source/usermanagement" type="other">
+			<files mask="Usermanagement.md"/>
+		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/webservice" project_relative_path="source/webservice" type="src">
+			<files mask="base64url.c"/>
+			<files mask="json_api_common.c"/>
+			<files mask="json_log_api.c"/>
+			<files mask="json_motd_api.c"/>
+			<files mask="json_motor_api.c"/>
+			<files mask="json_motor_api_service_task.c"/>
+			<files mask="json_reset_api.c"/>
+			<files mask="json_session_api.c"/>
+			<files mask="json_settings_api.c"/>
+			<files mask="json_string.c"/>
+			<files mask="json_system_api.c"/>
+			<files mask="json_time_api.c"/>
+			<files mask="json_user_api.c"/>
+			<files mask="plug_qmc_authorize.c"/>
+			<files mask="plug_qmc_check_session.c"/>
+			<files mask="plug_qmc_fw_upload.c"/>
+			<files mask="plug_qmc_logging.c"/>
+			<files mask="webservice.c"/>
+			<files mask="webservice_logging_task.c"/>
+		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/webservice" project_relative_path="source/webservice" type="c_include">
+			<files mask="base64url.h"/>
+			<files mask="constant_time.h"/>
+			<files mask="json_api.h"/>
+			<files mask="json_string.h"/>
+			<files mask="json_api_common.h"/>
+			<files mask="json_motor_api_service_task.h"/>
+			<files mask="webservice.h"/>
+			<files mask="webservice_logging_task.h"/>
+		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/webservice" project_relative_path="source/webservice" type="other">
+			<files mask="Webservice.md"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/source/tsn_tasks/tsn_application/tsn_app" project_relative_path="source/tsn_tasks/tsn_application/tsn_app" type="src">
 			<files mask="configs.c"/>
@@ -1122,6 +1254,7 @@
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/3rdparty/mbedtls_utils" project_relative_path="freertos/libraries/3rdparty/mbedtls_utils" type="other">
 			<files mask="README.md"/>
+			<files mask="LICENSE-2.0.txt"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/3rdparty/mbedtls_utils" project_relative_path="freertos/libraries/3rdparty/mbedtls_utils" type="src">
 			<files mask="mbedtls_error.c"/>
@@ -1219,6 +1352,9 @@
 			<files mask="core_mqtt_serializer.c"/>
 			<files mask="core_mqtt_state.c"/>
 		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/coreMQTT" project_relative_path="freertos/libraries/coreMQTT" type="other">
+			<files mask="LICENSE.txt"/>
+		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/coreMQTT/source/include" project_relative_path="freertos/libraries/coreMQTT/source/include" type="c_include">
 			<files mask="core_mqtt.h"/>
 			<files mask="core_mqtt_config_defaults.h"/>
@@ -1287,6 +1423,9 @@
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/coreHTTP/source" project_relative_path="freertos/libraries/coreHTTP/source" type="src">
 			<files mask="core_http_client.c"/>
 		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/coreHTTP" project_relative_path="freertos/libraries/coreHTTP" type="other">
+			<files mask="LICENSE.txt"/>
+		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/coreHTTP/source/include" project_relative_path="freertos/libraries/coreHTTP/source/include" type="c_include">
 			<files mask="core_http_client.h"/>
 			<files mask="core_http_client_private.h"/>
@@ -1301,12 +1440,18 @@
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/coreJSON/source/include" project_relative_path="freertos/libraries/coreJSON/source/include" type="c_include">
 			<files mask="core_json.h"/>
 		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/coreJSON" project_relative_path="freertos/libraries/coreJSON" type="other">
+			<files mask="LICENSE.txt"/>
+		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/libraries/coreJSON/source/include" project_relative_path="freertos/libraries/coreJSON/source/include" type="other">
 			<files mask="stdbool.readme"/>
 			<files mask="stdint.readme"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freertos/vendors/nxp/secure_sockets/lwip" project_relative_path="freertos/vendors/nxp/secure_sockets/lwip" type="src">
 			<files mask="iot_secure_sockets.c"/>
+		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/fatfs/" project_relative_path="fatfs/" type="other">
+			<files mask="fatfs_license.txt"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/fatfs/source" project_relative_path="fatfs/source" type="src">
 			<files mask="diskio.c"/>
@@ -1779,6 +1924,14 @@
 			<files mask="sockets.c"/>
 			<files mask="tcpip.c"/>
 		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/lwip/src/apps/altcp_tls" project_relative_path="lwip/src/apps/altcp_tls" type="src">
+			<files mask="altcp_tls_mbedtls.c"/>
+			<files mask="altcp_tls_mbedtls_mem.c"/>
+		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/lwip/src/apps/altcp_tls" project_relative_path="lwip/src/apps/altcp_tls" type="c_include">
+			<files mask="altcp_tls_mbedtls_mem.h"/>
+			<files mask="altcp_tls_mbedtls_structs.h"/>
+		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/lwip/src/core" project_relative_path="lwip/src/core" type="src">
 			<files mask="def.c"/>
 			<files mask="dns.c"/>
@@ -1797,6 +1950,9 @@
 			<files mask="tcp_out.c"/>
 			<files mask="timeouts.c"/>
 			<files mask="udp.c"/>
+			<files mask="altcp.c"/>
+			<files mask="altcp_alloc.c"/>
+			<files mask="altcp_tcp.c"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/lwip/src/core/ipv4" project_relative_path="lwip/src/core/ipv4" type="src">
 			<files mask="acd.c"/>
@@ -2106,6 +2262,22 @@
 			<files mask="crypto_struct.h"/>
 			<files mask="crypto_types.h"/>
 			<files mask="crypto_values.h"/>
+		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/mbedtls/doc" project_relative_path="mbedtls/doc" type="other">
+		    <files mask="readme.txt"/>
+		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/mbedtls/fatfs" project_relative_path="mbedtls/fatfs" type="other">
+		    <files mask="fatfs_license.txt"/>
+		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/mbedtls/lvgl" project_relative_path="mbedtls/lvgl" type="other">
+		    <files mask="ChangeLogKSDK.txt"/>
+		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/mbedtls/lvgl/lvgl" project_relative_path="mbedtls/lvgl/lvgl" type="other">
+		    <files mask="LICENSE.txt"/>
+		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/mbedtls/vglite" project_relative_path="mbedtls/vglite" type="other">
+		    <files mask="LICENSE.txt"/>
+		    <files mask="ChangeLogKSDK.txt"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/mbedtls/library" project_relative_path="mbedtls/library" type="src">
 			<files mask="aes.c"/>
@@ -2523,9 +2695,6 @@
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/rtcesl/CM7F_RTCESL_4.7_MCUX/MLIB" project_relative_path="rtcesl/CM7F_RTCESL_4.7_MCUX/MLIB" type="other">
 			<files mask="libMLIB.a"/>
 		</source>
-		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/scripts" project_relative_path="scripts" type="other">
-			<files mask="cm7_reset.jlinkscript"/>
-		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/sdmmc/host" project_relative_path="sdmmc/host" type="src">
 			<files mask="fsl_sdmmc_host.c"/>
 		</source>
@@ -2550,8 +2719,9 @@
 			<files mask="fsl_sdmmc_common.c"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/se_hostlib" project_relative_path="se_hostlib" type="other">
+			<files mask="ChangeLogKSDK.txt"/>
 			<files mask="EULA.pdf"/>
-			<files mask="Third_Party_License.pdf"/>
+		    <files mask="Third_Party_License.pdf"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/se_hostlib/hostlib/hostLib/inc" project_relative_path="se_hostlib/hostlib/hostLib/inc" type="c_include">
 			<files mask="Applet_SE050_Ver.h"/>
@@ -3059,8 +3229,8 @@
 			<files mask="fsl_video_common.c"/>
 		</source>
 		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7" project_relative_path="./" type="other">
-			<files mask="qmc2g_industrial_config_tool.mex"/>
-			<files mask="qmc2g_industrial_fmstr.pmpx"/>
+			<files mask="isi_qmc_dgc_industrial_config_tool.mex"/>
+			<files mask="makefile.defs"/>
 			<files mask="isi_qmc_dgc_industrial_app_master_cm7 JLink Release.launch"/>
 			<files mask="isi_qmc_dgc_industrial_app_master_cm7 JLink Debug.launch"/>
 		</source>
@@ -3070,84 +3240,61 @@
 			<files mask="pmsm_demo_QUAD_debug.pmp"/>
 			<files mask="pmsm_demo_QUAD_release.pmp"/>
 			<files mask="pmsm_demo_QUAD_Debug_SBL.pmp"/>
+			<files mask="pmsm_demo_QUAD_Release_SBL.pmp"/>
 			<files mask="style.css"/>
 		</source>
-		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freemaster_exe/fm_control" project_relative_path="freemaster_exe/fm_control" type="other">
-			<files mask="dual_mc_enc_base.htm"/>
-			<files mask="jquery-1.11.1.min.js"/>
-			<files mask="jqxbuttons.js"/>
-			<files mask="jqxcore.js"/>
-			<files mask="jqxdraw.js"/>
-			<files mask="jqxgauge.js"/>
-			<files mask="jqxnotification.js"/>
-			<files mask="jqxpanel.js"/>
-			<files mask="jqxscrollbar.js"/>
-			<files mask="jqxslider.js"/>
-			<files mask="jqxswitchbutton.js"/>
-			<files mask="jqxtooltip.js"/>
-			<files mask="nxp_logo.png"/>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver" project_relative_path="webserver" type="src">
+		    <files mask="httpd.c"/>
+		    <files mask="lookup_http_method.c"/>
+		    <files mask="lookup_mimetype.c"/>
+		    <files mask="plug.c"/>
+		    <files mask="plug_json.c"/>
+		    <files mask="plug_redirect.c"/>
+		    <files mask="plug_rewrite_path.c"/>
+		    <files mask="plug_status.c"/>
+		    <files mask="plug_zip_fatfs.c"/>
+		    <files mask="plug_zip_fs.c"/>
+			<files mask="status_code_string.c"/>
+			<files mask="urldecode.c"/>
 		</source>
-		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freemaster_exe/fm_control/styles/images" project_relative_path="freemaster_exe/fm_control/styles/images" type="other">
-			<files mask="loader-small.gif"/>
-			<files mask="loader.gif"/>
-			<files mask="multi-arrow.gif"/>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver" project_relative_path="webserver" type="c_include">
+		    <files mask="cit_httpd.h"/>
+		    <files mask="cit_httpd_opt.h"/>
+		    <files mask="cit_plug_status.h"/>
+		    <files mask="constants.h"/>
+		    <files mask="plug.h"/>
+		    <files mask="plug_json.h"/>
+		    <files mask="plug_macros.h"/>
+		    <files mask="plug_status.h"/>
+		    <files mask="plug_zip_fs.h"/>
+		    <files mask="urldecode.h"/>
 		</source>
-		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freemaster_exe/fm_control/styles" project_relative_path="freemaster_exe/fm_control/styles" type="other">
-			<files mask="jqx.base.css"/>
-			<files mask="jqx.darkblue.css"/>
-			<files mask="jqx.energyblue.css"/>
+	    <source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver" project_relative_path="webserver" type="other">
+		    <files mask="README.md"/>
 		</source>
-		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freemaster_exe/mcat/src" project_relative_path="freemaster_exe/mcat/src" type="other">
-			<files mask="AppSetting.html"/>
-			<files mask="MainPage.html"/>
-			<files mask="form_PathSelector.html"/>
-			<files mask="form_buttonCloseWindow.html"/>
-			<files mask="inner_CLoop.html"/>
-			<files mask="inner_CtrlStructure.html"/>
-			<files mask="inner_Intro_M1.html"/>
-			<files mask="inner_Intro_M2.html"/>
-			<files mask="inner_Intro_M3.html"/>
-			<files mask="inner_MID.html"/>
-			<files mask="inner_OutputHeader.html"/>
-			<files mask="inner_Parameters.html"/>
-			<files mask="inner_PoSpeBemfDQ.html"/>
-			<files mask="inner_PoSpeSensor.html"/>
-			<files mask="inner_SLoop.html"/>
-			<files mask="style.css"/>
+	    <source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver/contrib" project_relative_path="webserver/contrib" type="src">
+		    <files mask="incbin.c"/>
+		    <files mask="miniz.c"/>
+		    <files mask="pattern.c"/>
 		</source>
-		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freemaster_exe/mcat/src/JS_functions" project_relative_path="freemaster_exe/mcat/src/JS_functions" type="other">
-			<files mask="calculations.js"/>
-			<files mask="config.js"/>
-			<files mask="fileProcessing.js"/>
-			<files mask="hFileConfig.js"/>
-			<files mask="inner_CLoop.js"/>
-			<files mask="inner_CtrlStruc.js"/>
-			<files mask="inner_MID.js"/>
-			<files mask="inner_Parameters.js"/>
-			<files mask="inner_PoSpeBemfDQ.js"/>
-			<files mask="inner_PoSpeSensor.js"/>
-			<files mask="inner_SLoop.js"/>
-			<files mask="mainInclude.js"/>
-			<files mask="settings.js"/>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver/contrib" project_relative_path="webserver/contrib" type="c_include">
+		    <files mask="incbin.h"/>
+			<files mask="miniz.h"/>
+			<files mask="pattern.h"/>
 		</source>
-		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/freemaster_exe/mcat/src/images" project_relative_path="freemaster_exe/mcat/src/images" type="other">
-			<files mask="Ccontrol.png"/>
-			<files mask="NXP-Logo.png"/>
-			<files mask="Pcontrol.png"/>
-			<files mask="SCcontrol.png"/>
-			<files mask="SCcontrol_n.png"/>
-			<files mask="ToolPic.png"/>
-			<files mask="Vcontrol.png"/>
-			<files mask="Wcontrol.png"/>
-			<files mask="obr1.png"/>
-			<files mask="onoff_red_off.png"/>
-			<files mask="onoff_red_off1.png"/>
-			<files mask="onoff_red_on.png"/>
-			<files mask="onoff_red_on1.png"/>
-			<files mask="pozadi.png"/>
-			<files mask="speedFOCwOLSwBEMF.gif"/>
-			<files mask="switch_slide_off.png"/>
-			<files mask="switch_slide_on.png"/>
+	    <source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver/parser" project_relative_path="webserver/parser" type="src">
+		    <files mask="http11_parser.c"/>
 		</source>
-	</example>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver/parser" project_relative_path="webserver/parser" type="c_include">
+		    <files mask="http11_parser.h"/>
+		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver/parser" project_relative_path="webserver/parser" type="other">
+		    <files mask="http11_parser.rl"/>
+		</source>
+		<source path="examples/qmc2g_industrial/app/isi_qmc_dgc/industrial_app_master_cm7/webserver/parser/afl-fuzz" project_relative_path="webserver/parser/afl-fuzz" type="other">
+		    <files mask="http11_parser_afl.c"/>
+		</source>
+	  </example>
 </ksdk:examples>
+
+					

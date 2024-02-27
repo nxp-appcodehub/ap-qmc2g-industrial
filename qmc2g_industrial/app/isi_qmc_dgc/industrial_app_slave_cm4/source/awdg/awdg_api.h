@@ -12,98 +12,107 @@
  * @file awdg_api.h
  * @brief Defines the authenticated watchdog timer (AWDG).
  *
- * The authenticated watchdog timer is an extension for the LWDGU module. An authenticated
- * watchdog only allows the deferral if a fresh + valid signed ticket is provided.
+ * The authenticated watchdog timer is an extension of the LWDGU module. An authenticated
+ * watchdog only performs a deferral if a fresh and valid signed ticket is provided.
  *
  * This module relies on the mbedtls library and requires at least AWDG_MBEDTLS_HEAP_MIN_STATIC_BUFFER_SIZE
- * bytes of memory. The user has to setup mbedtls to have at least this amount of heap
- * memory available!
+ * bytes of memory. The user must set up mbedtls to have at least this heap memory available!
  *
- * The AWDG has to be initialized dynamically with the AWDG_Init() function which also
+ * The AWDG has to be initialized dynamically with the AWDG_Init() function, which also
  * starts the watchdog. A nonce for ticket creation can be obtained by calling the
  * AWDG_GetNonce() function. A signed ticket can be given to and verified by the AWDG
- * using the AWDG_ValidateTicket() function (takes up to 15016ms on a RT1176 CM4).
+ * using the AWDG_ValidateTicket() function (takes up to 15016ms on an RT1176 CM4).
  * After a successful verification attempt, the user can defer the watchdog by executing
  * the AWDG_DeferWatchdog() function.
  *
- * The AWDG_Tick() and AWDG_GetRemainingTicks() functions can be called from interrupts,
- * other functions should not be called from interrupts.
+ * The AWDG_Tick() and AWDG_GetRemainingTicks() functions can be called from interrupts.
+ * Other functions should not be called from interrupts!
  * Check the API descriptions of the individual functions for detailed information
  * about the concurrency assumptions.
  *
- * The ticket signature algorithm is fixed to ECDSA with a 512 bit curve, the
- * signature and key have to be in the ASN.1 DER format defined in www.secg.org/sec1-v2.pdf
+ * The ticket signature algorithm is fixed to ECDSA with a 512-bit curve. The
+ * signature and key must be in the ASN.1 DER format defined in www.secg.org/sec1-v2.pdf
  * Appendix C. The ticket is a binary blob with the following content:
- *  | new timeout (u32 LE) | ASN.1 DER 512 bit ECDSA signature |
+ * 
+ *  ```text
+ *  | new timeout (u32 LE) | ASN.1 DER 512-bit ECDSA signature |
  *   0                    3 4                               140 (max)
- *
- * The external requirements for the QMC2G project are:
- *  - The AWDG should be ticked every millisecond. This allows timeout periods
+ *  ```
+ * 
+ * The external requirements for the QMC 2G project are:
+ *  - The AWDG should be ticked every millisecond allowing timeout periods
  *    up to (2^32 - 2) / 1000 / 3600 / 24 ~ 49 days.
- *  - After the AWDG expires the system has to be notified about the upcoming reset (logging)
- *    and the reset cause  has to be stored in the SNVS storage. The reset cause should not
- *    be reset during booting by the CM4 (as the CM7 application needs the contents).
- *  - The AWDG's counter value and state (running / not running) should be stored in a
- *    shadow register for the SNVS storage after each AWDG tick in the timer interrupt.
- *    The backup counter value is calculated by right shifting the current tick value by 16
- *    (+ rounding up; value approximately represents minutes). If the AWDG has not expired the
- *    backup state value matches the AWDG's isRunning flag, otherwise it is set to 0.
- *    If the AWDG did expire the state value of 0 is directly written into the SNVS
- *    storage, similar as the reset cause, to ensure the values are backed up before
- *    the system reset.
- *    The shadow register is periodically written back to the SNVS storage in the main loop.
- *    These backup values are used during initialization to restore the watchdog's state (if it was running).
- *    For the initialization the 16-bit shifted counter value is decremented by 1.
- *    The two possible saved states before an initialization are: Timer was not running at all (fresh init)
- *    and timer was running (resume with values from SNVS).
- *    The SNVS values are reset to zero at a cold boot, hence the values in the SNVS storage
- *    should be designed so that an initial value of zero is logically correct
- *    (e.g. a running flag is ok).
- *  - The before mentioned SNVS storage has to be isolated from the CM7 after the initial
- *    bootloader handed over control and must be only accessible by the CM4 afterwards.
+ *  - After the AWDG expires, the system has to be notified about the upcoming reset (logging), 
+ *    and the reset cause has to be stored in the SNVS (secure non-volatile storage). 
+ *    The previous reset cause should be available after a reboot (as the CM7 application 
+ *    needs this information).
+ *  - The AWDG's tick value and state (running / not running) should periodically be stored
+ *    in the SNVS to restore the state after a reset. The backup tick value is calculated by right-shifting 
+ *    the current tick value by 16 (rounding up; value approximately represents minutes). If the AWDG has not expired,
+ *    the backup state value is 1. Otherwise, it is set to 0. If the AWDG did expire, the state value of 0
+ *    and the reset cause are directly written into the SNVS to ensure these values are backed up before
+ *    the system reset. The backup values are used during initialization to restore the watchdog's state 
+ *    (if it was running). The 16-bit shifted tick value is halved before the initialization to ensure the 
+ *    AWDG expires in case of a reboot loop. Before an initialization, the two possible saved states are:  
+ *    Timer was not running at all (fresh init), or timer was running (resume with values from SNVS).
+ *    The SNVS values are reset to zero at a cold boot. Hence, the backup format should be designed so that
+ *    initial zero values are logically correct (e.g., an isRunning flag is ok).
+ *  - The before-mentioned SNVS must be isolated from the CM7 after the initial
+ *    bootloader handed over control and only accessible by the CM4 afterward.
  *  - If the AWDG should expire during the grace period of a functional watchdog unit,
  *    the reset cause shall be overwritten to reflect that the AWDG expired. This
- *    behaviour is relevant for security as the reset cause is used to trigger an
- *    boot of the recovery image. However, in the worst case this means that the log entry describing
- *    that the AWDG expired will not make it into the log file.
- *    Further, in the case a functional watchdog unit expires during the grace period of the AWDG
+ *    behavior is relevant for security as the reset cause triggers a boot into recovery mode. 
+ *    However, in the worst case, the log entry describing the AWDG expired will not appear in the log file. 
+ *    Further, if a functional watchdog unit expires during the grace period of the AWDG,
  *    the reset cause should not be overwritten by the functional watchdog unit!
- *  - If the AWDG initialization fails the caller has to ensure that the board reboots
+ *  - If the AWDG initialization fails, the caller has to ensure that the board reboots
  *    into recovery mode.
- *  - The QMC project needs possible timeout times of >= 7 days, this should be asserted wherever
- *    the AWDG is configured. Can not be done in this module as it would influence testability.
- *
+ *  - The QMC 2G project needs possible timeout times of >= 7 days, which should be asserted wherever
+ *    the AWDG is configured. This assertion can not be done in this module as it would influence 
+ *    testability.
+ *  - The initial seed (384 bit of min-entropy) for initializing the used CTR_DRBG implementation from mbedtls comes 
+ *    from the DRBG in CAAM and is passed to the CM4 via the bootloader (CAAM usage is reserved to the CM7).  
+ *    However, as stated below reseeding is disabled as no access to an entropy source is possible afterwards.
+ * 
+ * Limitations:
+ *  - The CM4 does not have access to the secure element or other entropy providers. Hence, the used software
+ *    DRBG only receives entropy provided by CAAM's DRBG once. Therefore, prediction resistance was turned off and
+ *    the reseeding interval was increased to INT32_MAX - 1 requests which is below the maximum allowed 2^48 requests
+ *    without reseeding according to NIST SP 800-90A. If reseeding is still triggered, it will fail and the AWDG is 
+ *    disabled.
+ *    For a genuine application we expect that the AWDG_ValidateTicket() call which fetches random data from the 
+ *    DRBG is called at max in 10s interval. Hence, the AWDG could operate ~680 years (beyond the lifetime of the device) 
+ *    before it would be disabled.
  */
 #ifndef _AWDG_API_H_
 #define _AWDG_API_H_
 
 #include <stdint.h>
 #include <stddef.h>
-#include <stdatomic.h>
 
 #include "lwdg/lwdg_unit_api.h"
 
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
-/* Signature algorithm is fixed: ECDSA with a 512 bit curve */
+/* Signature algorithm is fixed: ECDSA with a 512-bit curve */
 #define AWDG_EXPECTED_KEY_TYPE       MBEDTLS_PK_ECDSA /*!< ECDSA as signature algorithm. */
-#define AWDG_EXPECTED_CURVE_SIZE_BIT (512U)           /*!< We only support 512 bit ECDSA curves. */
-/* crypto.stackexchange.com/questions/50019/public-key-format-for-ecdsa-as-in-fips-186-4 */
-#define AWDG_NONCE_LENGTH   (32U)            /*!< Length of the nonce used within ticket data. */
-#define AWDG_TIMEOUT_LENGTH sizeof(uint32_t) /*!< Length of the timeout used within ticket data. */
+#define AWDG_EXPECTED_CURVE_SIZE_BIT (512U)           /*!< We only support 512-bit ECDSA curves. */
+#define AWDG_NONCE_LENGTH   (32U)            /*!< Length of the nonce. */
+#define AWDG_TIMEOUT_LENGTH sizeof(uint32_t) /*!< Length of the timeout value in the ticket data. */
 #define AWDG_TICKET_SIGNATURE_INDEX \
     (AWDG_TIMEOUT_LENGTH) /*!< Index at which the signature is present in the ticket data. */
-/* stackoverflow.com/questions/17269238/ecdsa-signature-length
- * superuser.com/questions/1023167/can-i-extract-r-and-s-from-an-ecdsa-signature-in-bit-form-and-vica-versa */
+/* www.secg.org/sec1-v2.pdf page 114ff 
+ * openssl asn1parse */
 #define AWDG_TICKET_MAX_SIGNATURE_LENGTH \
-    ((AWDG_EXPECTED_CURVE_SIZE_BIT + 3U) / 4U + \
-     9U) /*!< Maximum length of the ASN.1 DER encoded signature (ECDSA with a 512 bit curve) in the ticket data. */
+    ((2U * ((AWDG_EXPECTED_CURVE_SIZE_BIT + 7U) / 8U)) + \
+     9U) /*!< Maximum length of the ASN.1 DER encoded signature (ECDSA with a 512-bit curve) in the ticket data. */
 #define AWDG_RNG_SEED_LENGTH (48U) /*!< Length of the random seed. */
 #define AWDG_HASH_LENGTH     (64U) /*!< Length of the hash buffer (SHA512). */
 #define AWDG_MAX_TICKET_LENGTH \
     (AWDG_TIMEOUT_LENGTH + AWDG_TICKET_MAX_SIGNATURE_LENGTH) /*!< Maximum length a ticket is expected to have. */
-/* superuser.com/questions/1023167/can-i-extract-r-and-s-from-an-ecdsa-signature-in-bit-form-and-vica-versa */
+/* www.secg.org/sec1-v2.pdf page 114ff 
+ * openssl asn1parse */
 #define AWDG_MIN_TICKET_LENGTH (AWDG_TIMEOUT_LENGTH + 6U) /*!< Minimum length a ticket is expected to have. */
 #define AWDG_DATA_COMBINED_LENGTH \
     (AWDG_TIMEOUT_LENGTH + AWDG_NONCE_LENGTH) /*!< Length of the combined timeout and nonce data. */
@@ -211,12 +220,12 @@ typedef enum
  *          :ret = kStatus_AWDG_InitLogicalWatchdogUnitError;
  *    elseif (LWDGU_InitWatchdog(&gs_awdg.watchdogUnit, 0U, initialTimeoutMs)) then (failed)
  *          :ret = kStatus_AWDG_InitLogicalWatchdogUnitError;
- *    elseif (AWDG_SetupMbedtlsInternal(rngSeed, rngSeedLen, eccPublicKey, keyLen, &setupMbetlsRet)) then (failed)
+ *    elseif (AWDG_SetupMbedtlsInternal(pRngSeed, rngSeedLen, pEccPublicKey, keyLen, &setupMbetlsRet)) then (failed)
  *          :ret = setupMbedtlsRet;
  *    elseif (mbedtls_ctr_drbg_random(&gs_awdg.ctrDrbg, gs_awdg.nonceTicket, AWDG_NONCE_LENGTH)) then (failed)
  *          :ret = kStatus_AWDG_InitNonceRNGFailed;
  *    elseif () then (wasRunning == true)
- *          if (LWDGU_ChangeTimeoutTicksWatchdog(&gs_awdg.watchdogUnit, 0U, savedTimeoutTicks)) then (failed)
+ *          if (LWDGU_ChangeTimeoutTicksWatchdog(&gs_awdg.watchdogUnit, 0U, savedTicksToTimeout)) then (failed)
  *              :ret = kStatus_AWDG_InitInvalidSavedTimeoutTicks;
  *          else (else)
  *              :LWDGU_KickOne(&gs_awdg.watchdogUnit, 0)
@@ -249,7 +258,7 @@ typedef enum
  * @retval kStatus_AWDG_InitInitializedNew
  * The AWDG was started successfully and the timeout was freshly initialized.
  * @retval kStatus_AWDG_InitInitializedResumed
- * The AWDG was started successfully but it was already running before
+ * The AWDG was started successfully, but it was already running before
  * and therefore its previous state was restored.
  * @retval kStatus_AWDG_InitInvalidPointer
  * A given pointer was invalid (NULL).
@@ -264,10 +273,10 @@ typedef enum
  * @retval kStatus_AWDG_InitLogicalWatchdogUnitError
  * LWDGU initialization or watchdog initialization failed.
  * The most probable reason is that the combination of the specified tick frequency and
- * a timeout period would have lead to an internal overflow.
+ * a timeout period would have led to an internal overflow.
  * @retval kStatus_AWDG_InitInvalidTickFrequency
  * The specified tick frequency was invalid (0?).
- * @retval kStatus_AWDG_InitInvalidSavedTimeoutTick
+ * @retval kStatus_AWDG_InitInvalidSavedTimeoutTicks
  * The passed saved timeout ticks were invalid.
  * @retval kStatus_AWDG_InitNonceRNGFailed
  * The generation of the initial nonce failed due to a RNG error.
@@ -285,9 +294,15 @@ awdg_init_status_t AWDG_Init(const uint32_t initialTimeoutMs,
 /*!
  * @brief Ticks the internal watchdog and returns the result.
  *
+ * @startuml
+ * start
+ *    :return LWDGU_Tick(&gs_awdg.watchdogUnit);
+ * stop
+ * @enduml
+ * 
  * Proxy for LWDGU_Tick() (see relevant documentation in the LWDGU module).
  * This function has to be run mutually exclusive with
- * AWDG_DeferWatchdog() and AWDG_GetRemainingTimoutTicks() as the underlying
+ * AWDG_DeferWatchdog() and AWDG_GetRemainingTicks() as the underlying
  * LWDGU library requires it.
  *
  * @return A lwdg_tick_status_t status code, see the relevant documentation.
@@ -312,7 +327,7 @@ lwdg_tick_status_t AWDG_Tick(void);
  *    if () then (gs_awdg.isRngDisabled == true || pNonce == NULL)
  *       :ret = 0;
  *    else (else)
- *       :nonce = gs_awdg.nonceTicket
+ *       :~*pNonce = ~*gs_awdg.nonceTicket
  *       ret = AWDG_NONCE_LENGTH;
  *    endif
  *    :return ret;
@@ -320,14 +335,14 @@ lwdg_tick_status_t AWDG_Tick(void);
  * @enduml
  *
  * @param[out] pNonce Pointer to result buffer for nonce (must be at least AWDG_NONCE_LENGTH bytes long).
- * @return size_t Number of bytes written to nonce. 0 if the RNG is disabled or a given pointer was invalid (NULL).
+ * @return size_t Number of bytes written to pNonce. 0, if the RNG is disabled or a given pointer was invalid (NULL).
  */
 size_t AWDG_GetNonce(uint8_t *const pNonce);
 
 /*!
  * @brief Validates the ticket.
  *
- * This function verifies the signature of the provided ticket w.r.t to the the
+ * This function verifies the signature of the provided ticket w.r.t. the
  * current nonce. The AWDG_DeferWatchdog() function must be called directly afterwards
  * to extend the timer! The nonce is invalidated after the verification attempt,
  * so that a fresh ticket has to be put for the next verification.
@@ -348,11 +363,11 @@ size_t AWDG_GetNonce(uint8_t *const pNonce);
  *    else (else)
  *      if () then (pTicket == NULL)
  *          :ret = kStatus_AWDG_ValidateTicketInvalidPointer;
- *      elseif () then (gs_awdg.ticketLatchedLen not in [AWDG_MIN_TICKET_LENGTH, AWDG_MAX_TICKET_LENGTH])
+ *      elseif () then (ticketLen not in [AWDG_MIN_TICKET_LENGTH, AWDG_MAX_TICKET_LENGTH])
  *          :ret = kStatus_AWDG_ValidateTicketInvalidTicketLength;
  *      else (else)
  *           :signatureLen = ticketLen - AWDG_TIMEOUT_LENGTH
- *          signature = &pTicket + AWDG_TICKET_SIGNATURE_INDEX
+ *          signature = pTicket + AWDG_TICKET_SIGNATURE_INDEX
  *          timeout = first uint32_t of *pTicket
  *          gs_awdg.data = timeout | gs_awdg.nonceTicket;
  *          if (mbedtls_sha512_ret(gs_awdg.data, AWDG_DATA_COMBINED_LENGTH, gs_awdg.hashBuffer, 0)) then (failed)
@@ -395,7 +410,7 @@ awdg_validate_ticket_status_t AWDG_ValidateTicket(const uint8_t *const pTicket, 
  * @brief Extends the timer if the previous validation attempt was successful.
  *
  * This function has to be executed mutually exclusive with the AWDG_GetNonce(),
- * AWDG_ValidateTicket(), AWDG_Tick() and AWDG_GetRemainingTimeoutTicks() function.
+ * AWDG_ValidateTicket(), AWDG_Tick() and AWDG_GetRemainingTicks() function.
  *
  * @startuml
  * start
@@ -431,6 +446,12 @@ awdg_defer_watchdog_status_t AWDG_DeferWatchdog(void);
  * This function has to be run mutually exclusive with
  * AWDG_Tick() and AWDG_DeferWatchdog() as the underlying LWDGU library requires it.
  *
+ * @startuml
+ * start
+ *    :return LWDGU_GetRemainingTicksWatchdog(&gs_awdg.watchdogUnit, 0U, &remainingTicks);
+ * stop
+ * @enduml
+ * 
  * @return uint32_t representing the remaining ticks until the AWDG expires.
  */
 uint32_t AWDG_GetRemainingTicks(void);

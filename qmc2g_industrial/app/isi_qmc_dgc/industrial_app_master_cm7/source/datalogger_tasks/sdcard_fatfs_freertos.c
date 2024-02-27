@@ -43,7 +43,11 @@ qmc_status_t SDCard_MountVolume(void)
     FRESULT error;
     const TCHAR driverNumberBuffer[3U] = {SDDISK + '0', ':', '/'};
 
+#ifdef DATALOGGER_SDCARD_FATFS_DELAYED_MOUNT
+    if (f_mount(&g_fileSystem, driverNumberBuffer, 0U))
+#else
     if (f_mount(&g_fileSystem, driverNumberBuffer, 1U))
+#endif
     {
         dbgSDcPRINTF("Mount volume failed.\r\n");
         return kStatus_QMC_Err;
@@ -61,7 +65,18 @@ qmc_status_t SDCard_MountVolume(void)
     return kStatus_QMC_Ok;
 }
 
-//void FileAccessTask1(void *pvParameters)
+qmc_status_t SDCard_UnMountVolume(void)
+{
+    const TCHAR driverNumberBuffer[3U] = {SDDISK + '0', ':', '/'};
+    if (f_mount( NULL, driverNumberBuffer, 1U))
+    {
+        dbgSDcPRINTF("UnMount volume failed.\r\n");
+        return kStatus_QMC_Err;
+    }
+
+    return kStatus_QMC_Ok;
+}
+
 qmc_status_t SDCard_WriteRecord( const char *dir_path, const char *file_path, uint8_t *buf, size_t buf_len)
 {
     UINT bytesWritten   = 0U;
@@ -127,7 +142,8 @@ qmc_status_t Handle_file( const char * dir_path, const char *file_path)
 	qmc_timestamp_t	ts = {0,0};
 	qmc_datetime_t dt;
 
-	if (f_stat( _T( file_path), &fno) != FR_OK)
+	FRESULT fresult = f_stat( _T( file_path), &fno);
+	if( fresult != FR_OK)
 	{
 		dbgSDcPRINTF("fstat file failed.\r\n");
 		return kStatus_QMC_Err;
@@ -140,7 +156,7 @@ qmc_status_t Handle_file( const char * dir_path, const char *file_path)
 		memset( &dt, 0, sizeof(qmc_datetime_t));
 		if( BOARD_GetTime( &ts) == kStatus_QMC_Ok)
 			BOARD_ConvertTimestamp2Datetime( &ts, &dt);	//return status currently doesn't care
-		sprintf( buf, "%s/%02d%02d%02d%02d.bin", dir_path, dt.year&0xff, dt.month, dt.day, dt.hour );
+		sprintf( buf, "%s/%02d%02d%02d%02d.bin", dir_path, dt.year%100, dt.month%100, dt.day%100, dt.hour%100 );
 		if( f_rename( _T( file_path), buf) != FR_OK)
 		{
 			if( f_unlink ( _T( buf)) != FR_OK)
@@ -158,5 +174,24 @@ qmc_status_t Handle_file( const char * dir_path, const char *file_path)
 		dbgSDcPRINTF("Renamed file %s to %s\n\r", file_path, buf);
 #endif
 	}
+	return kStatus_QMC_Ok;
+}
+
+qmc_status_t Get_SD_FSTAT( uint32_t *total_sect, uint32_t *free_sect, const char *file_path)
+{
+	FATFS *fs;
+	uint32_t free_clust;
+	FRESULT fresult = f_getfree( _T( file_path), &free_clust, &fs);
+	if( fresult != FR_OK)
+	{
+		dbgSDcPRINTF("fstat file failed.\r\n");
+		return kStatus_QMC_Err;
+	}
+	*total_sect = (fs->n_fatent - 2) * fs->csize;
+	*free_sect = free_clust * fs->csize;
+#ifdef SDCARD_POSITIVE_DEBUG
+	dbgSDcPRINTF("SDCARD total_sect:%d rfee_sect:%d\n\r", *total_sect, *free_sect);
+#endif
+
 	return kStatus_QMC_Ok;
 }
